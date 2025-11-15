@@ -1,0 +1,3 @@
+-- V1: Initial schema baseline
+-- Эта миграция пустая, так как схема базы данных уже существует
+-- Flyway использует baseline-on-migrate=true для работы с существующей БД
