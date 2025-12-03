@@ -39,6 +39,11 @@ public class MessageServiceImpl implements MessageService {
     public List<Message> findByChatId(Integer chatId) { 
         return repository.findByChatIdWithChat(chatId); 
     }
+    
+    @Override
+    public Long countUnreadMessages(Integer chatId, Integer userId, java.time.OffsetDateTime lastCheckedTime) {
+        return repository.countUnreadMessagesByChatAndUser(chatId, userId, lastCheckedTime);
+    }
 }
 
 

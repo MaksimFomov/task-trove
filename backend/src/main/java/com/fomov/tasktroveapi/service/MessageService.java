@@ -11,6 +11,7 @@ public interface MessageService {
     Message save(Message message);
     void deleteById(Integer id);
     List<Message> findByChatId(Integer chatId);
+    Long countUnreadMessages(Integer chatId, Integer userId, java.time.OffsetDateTime lastCheckedTime);
 }
 
 

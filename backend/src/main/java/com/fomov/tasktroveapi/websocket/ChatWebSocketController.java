@@ -82,6 +82,16 @@ public class ChatWebSocketController {
         
         Message savedMessage = messageService.save(message);
         
+        // Помечаем чат как непрочитанный для получателя
+        if ("Customer".equals(userRole)) {
+            chat.setCheckByCustomer(true); // Отправитель прочитал (отправил сообщение)
+            chat.setCheckByPerformer(false); // Получатель не прочитал
+        } else if ("Performer".equals(userRole)) {
+            chat.setCheckByPerformer(true); // Отправитель прочитал (отправил сообщение)
+            chat.setCheckByCustomer(false); // Получатель не прочитал
+        }
+        chatService.save(chat);
+        
         // Обновляем chatMessage с реальными данными
         chatMessage.setSenderId(userId);
         chatMessage.setSenderType(userRole);

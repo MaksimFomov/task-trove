@@ -91,6 +91,7 @@ export interface Chat {
   customerName?: string;
   performerName?: string;
   orderTitle?: string;
+  unreadCount?: number;
 }
 
 export interface Message {

@@ -180,14 +180,24 @@ public class CustomerServiceImpl implements CustomerService {
         List<Chat> chats = chatService.findByCustomerId(customer.getId());
         
         List<ChatDto> chatDtos = chats.stream()
-                .map(chatMapper::toDto)
+                .map(chat -> {
+                    ChatDto dto = chatMapper.toDto(chat);
+                    // Подсчитываем непрочитанные сообщения (сообщения от performer после последней проверки)
+                    Long unreadCount = messageService.countUnreadMessages(
+                        chat.getId(), 
+                        accountId, 
+                        chat.getLastCheckedByCustomerTime()
+                    );
+                    dto.setUnreadCount(unreadCount != null ? unreadCount.intValue() : 0);
+                    return dto;
+                })
                 .collect(Collectors.toList());
         
         return Map.of("chats", chatDtos);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<String, Object> getChatMessages(Integer accountId, Integer chatId) {
         Customer customer = repository.findByAccountId(accountId)
                 .orElseThrow(() -> new NotFoundException("Customer", accountId));
@@ -198,6 +208,11 @@ public class CustomerServiceImpl implements CustomerService {
         if (!chat.getCustomerId().equals(customer.getId())) {
             throw new SecurityException("Access denied to chat " + chatId);
         }
+        
+        // Помечаем чат как прочитанный для customer и обновляем время последней проверки
+        chat.setCheckByCustomer(true);
+        chat.setLastCheckedByCustomerTime(OffsetDateTime.now());
+        chatService.save(chat);
         
         List<Message> messages = messageService.findByChatId(chatId);
         List<MessageDto> messageDtos = messages.stream()
@@ -322,17 +337,19 @@ public class CustomerServiceImpl implements CustomerService {
     }
     
     private void createChatIfNotExists(Customer customer, Performer performer, Orders order) {
-        // Проверяем, существует ли уже чат между этими пользователями
-        List<Chat> existingChats = chatService.findByCustomerId(customer.getId());
-        boolean chatExists = existingChats.stream()
-                .anyMatch(chat -> chat.getPerformerId().equals(performer.getId()));
+        // Формируем roomName для этого конкретного заказа
+        String roomName = "Order #" + order.getId() + ": " + 
+                         (order.getTitle() != null ? order.getTitle() : "Chat");
+        
+        // Проверяем, существует ли уже чат для этого конкретного заказа
+        List<Chat> existingChats = chatService.findByRoomName(roomName);
+        boolean chatExists = !existingChats.isEmpty();
         
         if (!chatExists) {
             Chat chat = new Chat();
             chat.setCustomer(customer);
             chat.setPerformer(performer);
-            chat.setRoomName("Order #" + order.getId() + ": " + 
-                           (order.getTitle() != null ? order.getTitle() : "Chat"));
+            chat.setRoomName(roomName);
             chat.setCheckByCustomer(false);
             chat.setCheckByPerformer(false);
             chat.setCheckByAdministrator(false);

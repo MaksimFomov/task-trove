@@ -8,6 +8,7 @@ public class ChatDto {
     private String customerName;
     private String performerName;
     private String orderTitle;
+    private Integer unreadCount;
 
     public ChatDto() {}
 
@@ -32,6 +33,8 @@ public class ChatDto {
     public void setPerformerName(String performerName) { this.performerName = performerName; }
     public String getOrderTitle() { return orderTitle; }
     public void setOrderTitle(String orderTitle) { this.orderTitle = orderTitle; }
+    public Integer getUnreadCount() { return unreadCount; }
+    public void setUnreadCount(Integer unreadCount) { this.unreadCount = unreadCount; }
 }
 
 

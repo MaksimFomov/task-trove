@@ -61,6 +61,12 @@ public class Chat {
     @Column(name = "check_by_administrator", nullable = false)
     private Boolean checkByAdministrator = false;
     
+    @Column(name = "last_checked_by_customer_time")
+    private OffsetDateTime lastCheckedByCustomerTime;
+    
+    @Column(name = "last_checked_by_performer_time")
+    private OffsetDateTime lastCheckedByPerformerTime;
+    
     // Геттеры для обратной совместимости
     public Integer getCustomerId() {
         return customer != null ? customer.getId() : null;

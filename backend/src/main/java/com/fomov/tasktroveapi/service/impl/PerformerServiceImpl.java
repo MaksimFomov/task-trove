@@ -273,14 +273,24 @@ public class PerformerServiceImpl implements PerformerService {
         List<Chat> chats = chatService.findByPerformerId(performer.getId());
         
         List<ChatDto> chatDtos = chats.stream()
-                .map(chatMapper::toDto)
+                .map(chat -> {
+                    ChatDto dto = chatMapper.toDto(chat);
+                    // Подсчитываем непрочитанные сообщения (сообщения от customer после последней проверки)
+                    Long unreadCount = messageService.countUnreadMessages(
+                        chat.getId(), 
+                        accountId, 
+                        chat.getLastCheckedByPerformerTime()
+                    );
+                    dto.setUnreadCount(unreadCount != null ? unreadCount.intValue() : 0);
+                    return dto;
+                })
                 .collect(Collectors.toList());
         
         return Map.of("chats", chatDtos);
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public Map<String, Object> getChatMessages(Integer accountId, Integer chatId) {
         Performer performer = repository.findByAccountId(accountId)
                 .orElseThrow(() -> new NotFoundException("Performer", accountId));
@@ -291,6 +301,11 @@ public class PerformerServiceImpl implements PerformerService {
         if (!chat.getPerformer().getId().equals(performer.getId())) {
             throw new SecurityException("Access denied to chat " + chatId);
         }
+        
+        // Помечаем чат как прочитанный для performer и обновляем время последней проверки
+        chat.setCheckByPerformer(true);
+        chat.setLastCheckedByPerformerTime(java.time.OffsetDateTime.now());
+        chatService.save(chat);
         
         List<Message> messages = messageService.findByChatId(chatId);
         List<MessageDto> messageDtos = messages.stream()
