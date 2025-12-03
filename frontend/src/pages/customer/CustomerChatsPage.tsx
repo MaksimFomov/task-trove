@@ -77,21 +77,21 @@ export default function CustomerChatsPage() {
                   >
                     <div className="flex items-center space-x-3">
                       <div className="relative">
-                        <MessageSquare className="w-8 h-8 text-primary-600" />
+                  <MessageSquare className="w-8 h-8 text-primary-600" />
                         {(chat.unreadCount ?? 0) > 0 && (
                           <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
                             {(chat.unreadCount ?? 0) > 99 ? '99+' : chat.unreadCount}
                           </span>
                         )}
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg">
-                          {chat.orderTitle || chat.roomName}
-                        </h3>
-                        <p className="text-sm text-gray-600">
-                          Исполнитель: {chat.performerName || 'Не указан'}
-                        </p>
-                      </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg">
+                      {chat.orderTitle || chat.roomName}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Исполнитель: {chat.performerName || 'Не указан'}
+                    </p>
+                  </div>
                     </div>
                   </div>
                   {canDeleteChat(chat) && (

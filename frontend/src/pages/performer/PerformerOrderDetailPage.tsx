@@ -233,8 +233,17 @@ export default function PerformerOrderDetailPage() {
                     disabled={deleteReplyMutation.isPending || !currentReplyId}
                     className="btn btn-danger flex items-center"
                   >
-                    <X className="w-4 h-4 mr-2" />
-                    {deleteReplyMutation.isPending ? 'Отмена...' : 'Отменить отклик'}
+                    {deleteReplyMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Отмена...
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-4 h-4 mr-2" />
+                        Отменить отклик
+                      </>
+                    )}
                   </button>
                 ) : hasReplied && isReplyApproved ? (
                   <>
@@ -243,10 +252,20 @@ export default function PerformerOrderDetailPage() {
                       <>
                         <button
                           onClick={handleRefuseClick}
+                          disabled={refuseOrderMutation.isPending}
                           className="btn btn-danger flex items-center"
                         >
-                          <X className="w-4 h-4 mr-2" />
-                          Отказаться
+                          {refuseOrderMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Отказ...
+                            </>
+                          ) : (
+                            <>
+                              <X className="w-4 h-4 mr-2" />
+                              Отказаться
+                            </>
+                          )}
                         </button>
                         <button
                           onClick={handleCompleteClick}
@@ -274,8 +293,17 @@ export default function PerformerOrderDetailPage() {
                         disabled={deleteCompletedReplyMutation.isPending}
                         className="btn btn-danger flex items-center"
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        {deleteCompletedReplyMutation.isPending ? 'Удаление...' : 'Удалить'}
+                        {deleteCompletedReplyMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Удаление...
+                          </>
+                        ) : (
+                          <>
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Удалить
+                          </>
+                        )}
                       </button>
                     )}
                   </>
@@ -359,13 +387,22 @@ export default function PerformerOrderDetailPage() {
             </p>
             
             <div className="flex space-x-2 pt-4">
-              <button
+              <button 
                 onClick={handleConfirmRefuse}
                 disabled={refuseOrderMutation.isPending}
                 className="btn btn-danger flex items-center flex-1"
               >
+                {refuseOrderMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Отказ...
+                  </>
+                ) : (
+                  <>
                 <X className="w-4 h-4 mr-2" />
-                {refuseOrderMutation.isPending ? 'Отказ...' : 'Да, отказаться'}
+                    Да, отказаться
+                  </>
+                )}
               </button>
               <button
                 onClick={handleCancelRefuse}
@@ -395,21 +432,30 @@ export default function PerformerOrderDetailPage() {
               <p className="text-green-700 text-sm">
                 Вы уверены, что хотите завершить этот заказ? После завершения заказ перейдет на проверку заказчику, 
                 и ему будет отправлено уведомление.
-              </p>
-            </div>
+                  </p>
+                </div>
             
             <p className="text-gray-700">
               После завершения вы сможете внести исправления, если заказчик их запросит.
             </p>
             
             <div className="flex space-x-2 pt-4">
-              <button
+                  <button
                 onClick={handleConfirmComplete}
                 disabled={completeOrderMutation.isPending}
                 className="btn bg-green-600 hover:bg-green-700 text-white flex items-center flex-1"
               >
-                <CheckCircle className="w-4 h-4 mr-2" />
-                {completeOrderMutation.isPending ? 'Завершение...' : 'Да, завершить'}
+                {completeOrderMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Завершение...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Да, завершить
+                  </>
+                )}
               </button>
               <button
                 onClick={handleCancelComplete}
@@ -439,16 +485,25 @@ export default function PerformerOrderDetailPage() {
               <p className="text-red-700 text-sm">
                 Вы уверены, что хотите удалить этот завершенный заказ из истории? Это действие нельзя отменить.
               </p>
-            </div>
+              </div>
             
             <div className="flex space-x-2 pt-4">
-              <button
+              <button 
                 onClick={handleConfirmDelete}
                 disabled={deleteCompletedReplyMutation.isPending}
                 className="btn btn-danger flex items-center flex-1"
               >
-                <Trash2 className="w-4 h-4 mr-2" />
-                {deleteCompletedReplyMutation.isPending ? 'Удаление...' : 'Да, удалить'}
+                {deleteCompletedReplyMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Удаление...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Да, удалить
+                  </>
+                )}
               </button>
               <button
                 onClick={handleCancelDelete}
@@ -457,9 +512,9 @@ export default function PerformerOrderDetailPage() {
               >
                 Отмена
               </button>
-            </div>
           </div>
-        </div>
+          </div>
+      </div>
       </Modal>
     </div>
   );

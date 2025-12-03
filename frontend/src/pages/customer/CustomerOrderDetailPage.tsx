@@ -4,6 +4,7 @@ import { customerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, CheckCircle, Send, Star, FileText, Upload, X, User, Briefcase, Award, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '../../components/Modal';
@@ -419,10 +420,12 @@ export default function CustomerOrderDetailPage() {
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               {order.publicationTime && (
                 <span>
-                  Опубликован: {format(new Date(order.publicationTime), 'dd MMM yyyy HH:mm')}
+                  Опубликован: {format(new Date(order.publicationTime), 'd MMMM yyyy', { locale: ru })}
                 </span>
               )}
-              {order.howReplies && <span>Откликов: {order.howReplies}</span>}
+              {order.howReplies !== undefined && order.howReplies > 0 && (
+                <span>Откликов: {order.howReplies}</span>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-2 items-end">
@@ -862,7 +865,7 @@ export default function CustomerOrderDetailPage() {
                 <button 
                   onClick={handleAddReview} 
                   disabled={addReviewMutation.isPending}
-                  className="btn btn-primary flex items-center flex-1"
+                  className="btn btn-primary flex items-center"
                 >
                   {addReviewMutation.isPending ? (
                     <>
@@ -879,7 +882,7 @@ export default function CustomerOrderDetailPage() {
                 <button 
                   onClick={() => setShowReviewForm(false)} 
                   disabled={addReviewMutation.isPending}
-                  className="btn btn-secondary flex-1"
+                  className="btn btn-secondary"
                 >
                   Отмена
                 </button>
@@ -1018,7 +1021,6 @@ export default function CustomerOrderDetailPage() {
                   ) : (
                     <div className="text-center py-12">
                       <p className="text-gray-500">Портфолио не найдено</p>
-                      <p className="text-sm text-gray-400 mt-2">Performer ID: {selectedPerformerId}</p>
                     </div>
                   )}
                 </div>
@@ -1041,7 +1043,7 @@ export default function CustomerOrderDetailPage() {
                             {order.stackS && <span>• Технологии: {order.stackS}</span>}
                             {order.endTime && (
                               <span>
-                                • Завершен: {format(new Date(order.endTime), 'dd MMM yyyy')}
+                                • Завершен: {format(new Date(order.endTime), 'd MMMM yyyy', { locale: ru })}
                               </span>
                             )}
                           </div>
@@ -1092,7 +1094,7 @@ export default function CustomerOrderDetailPage() {
                           )}
                           {review.createdAt && (
                             <p className="text-xs text-gray-400 mt-2">
-                              {format(new Date(review.createdAt), 'dd MMM yyyy')}
+                              {format(new Date(review.createdAt), 'd MMMM yyyy', { locale: ru })}
                             </p>
                           )}
                         </div>

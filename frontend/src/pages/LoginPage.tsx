@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../services/api';
-import { LogIn, Mail, Lock } from 'lucide-react';
+import { LogIn, Mail, Lock, Loader2 } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 
 export default function LoginPage() {
@@ -91,8 +91,17 @@ export default function LoginPage() {
               disabled={loading}
               className="w-full btn btn-primary flex items-center justify-center"
             >
-              <LogIn className="w-5 h-5 mr-2" />
-              {loading ? 'Вход...' : 'Войти'}
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Вход...
+                </>
+              ) : (
+                <>
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Войти
+                </>
+              )}
             </button>
           </form>
           <div className="mt-6 text-center">

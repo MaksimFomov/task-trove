@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { customerApi } from '../../services/api';
 import { Plus, Search, Eye, Trash2, CheckCircle, Clock, XCircle, AlertTriangle, Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import Modal from '../../components/Modal';
 import type { Order, Chat } from '../../types';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
@@ -138,10 +139,7 @@ export default function CustomerOrdersPage() {
     
     const searchLower = debouncedSearchTerm.toLowerCase();
     return filtered.filter(order =>
-      order.title?.toLowerCase().includes(searchLower) ||
-      order.description?.toLowerCase().includes(searchLower) ||
-      order.scope?.toLowerCase().includes(searchLower) ||
-      order.stackS?.toLowerCase().includes(searchLower)
+      order.title?.toLowerCase().includes(searchLower)
     );
   };
 
@@ -327,7 +325,7 @@ export default function CustomerOrdersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Поиск по названию, описанию, области или технологиям..."
+              placeholder="Поиск по названию заказа..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10"
@@ -417,14 +415,10 @@ export default function CustomerOrdersPage() {
                       <h3 className="text-xl font-semibold text-gray-900">{order.title}</h3>
                       {getStatusBadge(order)}
                     </div>
-                    <p className="text-gray-600 mb-2 line-clamp-2">{order.description}</p>
-                    <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                      <span>Область: {order.scope}</span>
-                      {order.stackS && <span>• Технологии: {order.stackS}</span>}
+                    <div className="flex flex-col gap-1 text-sm text-gray-500">
                       {order.publicationTime && (
                         <span>
-                          • Опубликован:{' '}
-                          {format(new Date(order.publicationTime), 'dd MMM yyyy')}
+                          • Опубликован: {format(new Date(order.publicationTime), 'd MMMM yyyy', { locale: ru })}
                         </span>
                       )}
                       {order.performerId && order.performerName ? (
@@ -478,8 +472,17 @@ export default function CustomerOrdersPage() {
                         disabled={activateMutation.isPending}
                         className="btn bg-green-600 hover:bg-green-700 text-white flex items-center"
                       >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        {activateMutation.isPending ? 'Активация...' : 'Сделать активным'}
+                        {activateMutation.isPending ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                            Активация...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Сделать активным
+                          </>
+                        )}
                       </button>
                     )}
                   </div>

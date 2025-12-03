@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../services/api';
-import { UserPlus, Mail, Lock, User, Calendar, MapPin, Briefcase } from 'lucide-react';
+import { UserPlus, Mail, Lock, User, Calendar, MapPin, Briefcase, Loader2 } from 'lucide-react';
 import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 
 type RegisterType = 'customer' | 'performer';
@@ -225,9 +225,18 @@ export default function RegisterPage() {
                   className="input"
                 />
               </div>
-              <button type="submit" disabled={loading} className="w-full btn btn-primary">
-                <UserPlus className="w-5 h-5 inline mr-2" />
-                {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+              <button type="submit" disabled={loading} className="w-full btn btn-primary flex items-center justify-center">
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Регистрация...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-5 h-5 mr-2" />
+                    Зарегистрироваться
+                  </>
+                )}
               </button>
             </form>
           </div>
@@ -349,9 +358,18 @@ export default function RegisterPage() {
                   rows={3}
                 />
               </div>
-              <button type="submit" disabled={loading} className="w-full btn btn-primary">
-                <UserPlus className="w-5 h-5 inline mr-2" />
-                {loading ? 'Регистрация...' : 'Зарегистрироваться'}
+              <button type="submit" disabled={loading} className="w-full btn btn-primary flex items-center justify-center">
+                {loading ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Регистрация...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-5 h-5 mr-2" />
+                    Зарегистрироваться
+                  </>
+                )}
               </button>
             </form>
           </div>

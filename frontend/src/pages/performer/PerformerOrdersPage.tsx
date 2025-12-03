@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { performerApi } from '../../services/api';
@@ -63,12 +63,14 @@ export default function PerformerOrdersPage() {
 
   // Запрос для новых заказов (доступные для отклика)
   const { data: newOrdersData, isLoading: isLoadingNew } = useQuery({
-    queryKey: ['performerOrders', debouncedSearchTerm, page],
+    queryKey: ['performerOrders', page],
     queryFn: () =>
       performerApi
-        .getOrders({ searchTerm: debouncedSearchTerm || undefined, page, pageSize: 20 })
+        .getOrders({ page, pageSize: 20 })
         .then((res) => res.data.orders),
     enabled: activeTab === 'new',
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
   });
 
   // Запрос для откликов (используется для вкладок: pending, active, completed)
@@ -154,8 +156,8 @@ export default function PerformerOrdersPage() {
     );
   };
 
-  // Фильтруем и сортируем данные в зависимости от вкладки
-  const filteredData = useMemo(() => {
+  // Фильтруем данные в зависимости от вкладки
+  const getFilteredOrders = () => {
     if (activeTab === 'new') {
       // Новые заказы
       if (!newOrdersData) return [];
@@ -165,7 +167,6 @@ export default function PerformerOrdersPage() {
         orders = orders.filter((order) => !order.hasReplied);
       }
       
-      orders.sort((a, b) => sortOrder === 'newest' ? b.id - a.id : a.id - b.id);
       return orders;
     } else {
       // Все остальные вкладки работают с откликами
@@ -190,24 +191,46 @@ export default function PerformerOrdersPage() {
       }
       // Для 'completed' фильтрация уже применена на бэкенде (tab='done', donned = true)
       
-      // Применяем поиск
-      if (debouncedSearchTerm) {
-        const searchLower = debouncedSearchTerm.toLowerCase();
-        replies = replies.filter(
-          (reply) =>
-            (reply.orderNameByOrder || reply.orderName || '')
-              .toLowerCase()
-              .includes(searchLower) ||
-            reply.orderId.toString().includes(searchLower)
-        );
-      }
-      
-      // Сортировка
-      replies.sort((a, b) => sortOrder === 'newest' ? b.id - a.id : a.id - b.id);
-      
       return replies;
     }
-  }, [newOrdersData, repliesData, showOnlyWithoutReplies, activeTab, sortOrder, debouncedSearchTerm]);
+  };
+
+  // Применяем поиск к отфильтрованным данным
+  const getFilteredAndSearchedData = () => {
+    const filtered = getFilteredOrders();
+    
+    if (!debouncedSearchTerm) {
+      return filtered;
+    }
+    
+    const searchLower = debouncedSearchTerm.toLowerCase();
+    
+    if (activeTab === 'new') {
+      // Поиск по новым заказам
+      return (filtered as Order[]).filter((order) =>
+        order.title?.toLowerCase().includes(searchLower) ||
+        order.description?.toLowerCase().includes(searchLower) ||
+        order.scope?.toLowerCase().includes(searchLower) ||
+        order.stackS?.toLowerCase().includes(searchLower)
+      );
+    } else {
+      // Поиск по откликам
+      return (filtered as Reply[]).filter(
+        (reply) =>
+          (reply.orderNameByOrder || reply.orderName || '')
+            .toLowerCase()
+            .includes(searchLower) ||
+          reply.orderId.toString().includes(searchLower)
+      );
+    }
+  };
+
+  // Сортируем данные
+  const sortData = (data: (Order | Reply)[]) => {
+    return [...data].sort((a, b) => sortOrder === 'newest' ? b.id - a.id : a.id - b.id);
+  };
+
+  const filteredData = sortData(getFilteredAndSearchedData());
 
   if (isLoading) {
     return (
