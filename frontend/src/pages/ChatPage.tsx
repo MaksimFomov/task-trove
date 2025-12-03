@@ -18,6 +18,7 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
+  const [chatDeletedMessage, setChatDeletedMessage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const stompClientRef = useRef<Client | null>(null);
 
@@ -58,6 +59,19 @@ export default function ChatPage() {
       setMessages(initialMessages);
     }
   }, [initialMessages]);
+
+  // Проверяем, удален ли чат другим участником
+  useEffect(() => {
+    if (chatInfo) {
+      if (isCustomer && chatInfo.deletedByPerformer) {
+        setChatDeletedMessage('Чат был удален исполнителем. Вы не можете отправлять сообщения в этот чат.');
+      } else if (isPerformer && chatInfo.deletedByCustomer) {
+        setChatDeletedMessage('Чат был удален заказчиком. Вы не можете отправлять сообщения в этот чат.');
+      } else {
+        setChatDeletedMessage(null);
+      }
+    }
+  }, [chatInfo, isCustomer, isPerformer]);
 
   useEffect(() => {
     if (!chatId) return;
@@ -110,6 +124,22 @@ export default function ChatPage() {
         }
       });
 
+      // Subscribe to error messages (for deleted chat notifications)
+      const userId = user?.id;
+      if (userId) {
+        client.subscribe(`/user/${userId}/queue/errors`, (message) => {
+          try {
+            const data = JSON.parse(message.body);
+            console.log('Received error:', data);
+            if (data.type === 'ERROR' && data.content) {
+              setChatDeletedMessage(data.content);
+            }
+          } catch (error) {
+            console.error('Error parsing error message:', error);
+          }
+        });
+      }
+
       // Send join message
       client.publish({
         destination: '/app/chat.addUser',
@@ -147,6 +177,11 @@ export default function ChatPage() {
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !chatId || !stompClientRef.current || !isConnected) return;
+    
+    // Блокируем отправку, если чат удален другим участником
+    if (chatDeletedMessage) {
+      return;
+    }
 
     const message = {
       content: newMessage,
@@ -199,6 +234,11 @@ export default function ChatPage() {
       </div>
 
       <div className="card flex-1 flex flex-col">
+        {chatDeletedMessage && (
+          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-yellow-800 text-sm font-medium">{chatDeletedMessage}</p>
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto space-y-4 mb-4">
           {messages.map((message) => {
             const isOwn = message.authorUserId === user?.id;
@@ -236,12 +276,13 @@ export default function ChatPage() {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Введите сообщение..."
-            className="flex-1 input"
+            placeholder={chatDeletedMessage ? "Чат удален. Сообщения недоступны." : "Введите сообщение..."}
+            disabled={!!chatDeletedMessage}
+            className="flex-1 input disabled:opacity-50 disabled:cursor-not-allowed"
           />
           <button 
             onClick={handleSendMessage} 
-            disabled={!isConnected}
+            disabled={!isConnected || !!chatDeletedMessage}
             className="btn btn-primary flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send className="w-5 h-5" />

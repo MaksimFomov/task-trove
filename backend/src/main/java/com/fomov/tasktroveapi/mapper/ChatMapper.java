@@ -52,6 +52,10 @@ public class ChatMapper {
             dto.setOrderTitle(roomName);
         }
         
+        // Добавляем информацию об удалении
+        dto.setDeletedByCustomer(entity.getDeletedByCustomer());
+        dto.setDeletedByPerformer(entity.getDeletedByPerformer());
+        
         return dto;
     }
 }

@@ -1,6 +1,7 @@
 package com.fomov.tasktroveapi.controller;
 
 import com.fomov.tasktroveapi.dto.*;
+import com.fomov.tasktroveapi.exception.NotFoundException;
 import com.fomov.tasktroveapi.mapper.PerformerMapper;
 import com.fomov.tasktroveapi.model.*;
 import com.fomov.tasktroveapi.security.SecurityUtils;
@@ -354,6 +355,31 @@ public class PerformerController {
         } catch (Exception e) {
             logger.error("Error getting reviews", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get reviews"));
+        }
+    }
+
+    @DeleteMapping("/chats/{chatId}")
+    public ResponseEntity<?> deleteChat(@PathVariable Integer chatId) {
+        try {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            service.deleteChat(accountId, chatId);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            logger.error("Chat or performer not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            logger.error("Access denied: {}", e.getMessage());
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            logger.error("Invalid state: {}", e.getMessage());
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error deleting chat: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to delete chat"));
         }
     }
 }

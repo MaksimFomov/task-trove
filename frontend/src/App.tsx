@@ -17,6 +17,7 @@ import PerformerChatsPage from './pages/performer/PerformerChatsPage';
 import PerformerPortfolioPage from './pages/performer/PerformerPortfolioPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import ChatPage from './pages/ChatPage';
+import NotificationsPage from './pages/NotificationsPage';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -156,6 +157,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <ChatPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Notifications route */}
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <NotificationsPage />
               </ProtectedRoute>
             }
           />

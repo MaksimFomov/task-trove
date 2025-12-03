@@ -419,6 +419,31 @@ public class CustomerController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    @DeleteMapping("/chats/{chatId}")
+    public ResponseEntity<?> deleteChat(@PathVariable Integer chatId) {
+        try {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            customerService.deleteChat(accountId, chatId);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            logger.error("Chat or customer not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            logger.error("Access denied: {}", e.getMessage());
+            return ResponseEntity.status(403).body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            logger.error("Invalid state: {}", e.getMessage());
+            return ResponseEntity.status(400).body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error deleting chat: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }
 
 

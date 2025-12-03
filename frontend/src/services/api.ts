@@ -14,6 +14,7 @@ import type {
   AddPerformerToOrderDto,
   ReadyOrderDto,
   Account,
+  Notification,
 } from '../types';
 
 const API_BASE_URL = '/api';
@@ -111,6 +112,7 @@ export const customerApi = {
   getPerformerDoneOrders: (performerId: number) => api.get<{ orders: Order[] }>(`/customers/performer/${performerId}/done-orders`),
   getPerformerReviews: (performerId: number) => api.get<{ reviews: WorkExperience[] }>(`/customers/performer/${performerId}/reviews`),
   refusePerformer: (orderId: number) => api.post(`/customers/refuse-performer/${orderId}`),
+  deleteChat: (chatId: number) => api.delete(`/customers/chats/${chatId}`),
 };
 
 // Performer API
@@ -135,6 +137,7 @@ export const performerApi = {
   getPortfolio: () => api.get<Portfolio>('/performers/portfolio'),
   getInfo: () => api.get<Account>('/performers/info'),
   getMyReviews: () => api.get<{ reviews: WorkExperience[] }>('/performers/reviews'),
+  deleteChat: (chatId: number) => api.delete(`/performers/chats/${chatId}`),
 };
 
 // Admin API
@@ -145,6 +148,16 @@ export const adminApi = {
   activate: (userId: number) => api.post<Portfolio>('/admin/activate', null, { params: { userId } }),
   disactivate: (userId: number) => api.post<Portfolio>('/admin/disactivate', null, { params: { userId } }),
   deleteComment: (id: number) => api.delete('/admin/deletecomment', { params: { id } }),
+};
+
+// Notifications API
+export const notificationApi = {
+  getAll: () => api.get<{ notifications: Notification[]; unreadCount: number }>('/notifications'),
+  getUnread: () => api.get<{ notifications: Notification[] }>('/notifications/unread'),
+  getUnreadCount: () => api.get<{ count: number }>('/notifications/count'),
+  markAsRead: (id: number) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
+  deleteAll: () => api.delete('/notifications/all'),
 };
 
 export default api;

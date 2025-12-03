@@ -28,6 +28,7 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
            "LEFT JOIN FETCH perf.account " +
            "LEFT JOIN FETCH c.administrator " +
            "WHERE c.customer.id = :customerId " +
+           "AND c.deletedByCustomer = false " +
            "ORDER BY c.lastMessageTime DESC, c.id DESC")
     List<Chat> findByCustomerIdWithRelations(@Param("customerId") Integer customerId);
     
@@ -38,6 +39,7 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
            "LEFT JOIN FETCH perf.account " +
            "LEFT JOIN FETCH c.administrator " +
            "WHERE c.performer.id = :performerId " +
+           "AND c.deletedByPerformer = false " +
            "ORDER BY c.lastMessageTime DESC, c.id DESC")
     List<Chat> findByPerformerIdWithRelations(@Param("performerId") Integer performerId);
     

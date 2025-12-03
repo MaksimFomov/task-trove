@@ -11,6 +11,5 @@ public interface RoleMapper {
     
     RoleDto toDto(Role role);
     
-    @Mapping(target = "userRoles", ignore = true)
     Role toEntity(RoleDto roleDto);
 }

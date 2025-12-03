@@ -32,4 +32,5 @@ public interface CustomerService {
     void sendEmailToPerformer(Integer accountId, Integer orderId, Integer performerId, 
                              String text, MultipartFile document, Boolean isCorrection);
     void refusePerformer(Integer accountId, Integer orderId);
+    void deleteChat(Integer accountId, Integer chatId);
 }

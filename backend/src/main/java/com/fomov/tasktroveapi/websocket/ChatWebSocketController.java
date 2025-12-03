@@ -69,6 +69,42 @@ public class ChatWebSocketController {
             return;
         }
         
+        // Проверяем, не удален ли чат другим участником
+        boolean isChatDeletedByOther = false;
+        String deletedByMessage = null;
+        if ("Customer".equals(userRole)) {
+            // Если заказчик пытается отправить сообщение, проверяем, не удалил ли исполнитель чат
+            if (Boolean.TRUE.equals(chat.getDeletedByPerformer())) {
+                isChatDeletedByOther = true;
+                deletedByMessage = "Чат был удален исполнителем. Вы не можете отправлять сообщения в этот чат.";
+            }
+        } else if ("Performer".equals(userRole)) {
+            // Если исполнитель пытается отправить сообщение, проверяем, не удалил ли заказчик чат
+            if (Boolean.TRUE.equals(chat.getDeletedByCustomer())) {
+                isChatDeletedByOther = true;
+                deletedByMessage = "Чат был удален заказчиком. Вы не можете отправлять сообщения в этот чат.";
+            }
+        }
+        
+        // Если чат удален другим участником, отправляем ошибку обратно отправителю
+        if (isChatDeletedByOther) {
+            logger.warn("User {} attempted to send message to deleted chat {}", userId, chatMessage.getChatId());
+            ChatMessage errorMessage = new ChatMessage();
+            errorMessage.setChatId(chatMessage.getChatId());
+            errorMessage.setType(ChatMessage.MessageType.ERROR);
+            errorMessage.setContent(deletedByMessage);
+            errorMessage.setSenderId(userId);
+            errorMessage.setSenderType(userRole);
+            
+            // Отправляем ошибку только отправителю
+            messagingTemplate.convertAndSendToUser(
+                userId.toString(), 
+                "/queue/errors", 
+                errorMessage
+            );
+            return;
+        }
+        
         // Получаем имя отправителя
         String senderName = getSenderName(chat, userId, userRole);
         
@@ -176,7 +212,7 @@ public class ChatWebSocketController {
         private MessageType type;
 
         public enum MessageType {
-            CHAT, JOIN, LEAVE
+            CHAT, JOIN, LEAVE, ERROR
         }
 
         public String getContent() {

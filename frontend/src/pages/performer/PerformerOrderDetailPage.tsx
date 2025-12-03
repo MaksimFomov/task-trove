@@ -1,11 +1,13 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { performerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Send, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Send, X, Loader2, CheckCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
-import type { Reply, Chat } from '../../types';
+import type { Reply, Chat, UpdateReplyDto } from '../../types';
+import Modal from '../../components/Modal';
 
 export default function PerformerOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +47,10 @@ export default function PerformerOrderDetailPage() {
   
   const currentReplyId = currentReply?.id || null;
 
+  const [showRefuseConfirm, setShowRefuseConfirm] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const addReplyMutation = useMutation({
     mutationFn: (data: { orderId: number; orderName: string }) =>
       performerApi.addReply(data),
@@ -81,6 +87,95 @@ export default function PerformerOrderDetailPage() {
   const handleCancelReply = () => {
     if (!currentReplyId) return;
     deleteReplyMutation.mutate(currentReplyId);
+  };
+
+  const refuseOrderMutation = useMutation({
+    mutationFn: (orderId: number) => performerApi.refuseOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
+      queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
+      queryClient.invalidateQueries({ queryKey: ['performerMyActiveOrders'] });
+      toast.success('Вы успешно отказались от заказа');
+      setShowRefuseConfirm(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Не удалось отказаться от заказа');
+    },
+  });
+
+  const completeOrderMutation = useMutation({
+    mutationFn: (data: UpdateReplyDto) => performerApi.updateTaskStatus(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
+      queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
+      queryClient.invalidateQueries({ queryKey: ['performerMyActiveOrders'] });
+      toast.success('Заказ успешно завершен и отправлен на проверку');
+      setShowCompleteConfirm(false);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Не удалось завершить заказ');
+    },
+  });
+
+  const deleteCompletedReplyMutation = useMutation({
+    mutationFn: (replyId: number) => performerApi.deleteCompletedReply(replyId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
+      queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
+      toast.success('Выполненный заказ успешно удален из истории');
+      setShowDeleteConfirm(false);
+      navigate('/performer/orders?tab=completed');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Не удалось удалить заказ');
+    },
+  });
+
+  const handleRefuseClick = () => {
+    if (!order) return;
+    setShowRefuseConfirm(true);
+  };
+
+  const handleConfirmRefuse = () => {
+    if (order) {
+      refuseOrderMutation.mutate(order.id);
+    }
+  };
+
+  const handleCancelRefuse = () => {
+    setShowRefuseConfirm(false);
+  };
+
+  const handleCompleteClick = () => {
+    if (!currentReplyId) return;
+    setShowCompleteConfirm(true);
+  };
+
+  const handleConfirmComplete = () => {
+    if (currentReplyId) {
+      completeOrderMutation.mutate({
+        id: currentReplyId,
+        isDoneThisTask: true,
+      });
+    }
+  };
+
+  const handleCancelComplete = () => {
+    setShowCompleteConfirm(false);
+  };
+
+  const handleDeleteClick = () => {
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (currentReplyId) {
+      deleteCompletedReplyMutation.mutate(currentReplyId);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
   };
 
   if (isLoading) {
@@ -129,6 +224,83 @@ export default function PerformerOrderDetailPage() {
               {order.howReplies !== undefined && <span>Откликов: {order.howReplies}</span>}
             </div>
           </div>
+          <div className="flex flex-col gap-2 items-end">
+            {isOrderActive && (
+              <>
+                {hasReplied && !isReplyApproved ? (
+                  <button 
+                    onClick={handleCancelReply} 
+                    disabled={deleteReplyMutation.isPending || !currentReplyId}
+                    className="btn btn-danger flex items-center"
+                  >
+                    <X className="w-4 h-4 mr-2" />
+                    {deleteReplyMutation.isPending ? 'Отмена...' : 'Отменить отклик'}
+                  </button>
+                ) : hasReplied && isReplyApproved ? (
+                  <>
+                    {/* Кнопки для заказов в работе */}
+                    {!currentReply?.isDoneThisTask && !currentReply?.donned && (
+                      <>
+                        <button
+                          onClick={handleRefuseClick}
+                          className="btn btn-danger flex items-center"
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Отказаться
+                        </button>
+                        <button
+                          onClick={handleCompleteClick}
+                          disabled={completeOrderMutation.isPending}
+                          className="btn bg-green-600 hover:bg-green-700 text-white flex items-center"
+                        >
+                          {completeOrderMutation.isPending ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Завершение...
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Завершить
+                            </>
+                          )}
+                        </button>
+                      </>
+                    )}
+                    {/* Кнопка удаления для завершенных заказов */}
+                    {currentReply?.donned && (
+                      <button
+                        onClick={handleDeleteClick}
+                        disabled={deleteCompletedReplyMutation.isPending}
+                        className="btn btn-danger flex items-center"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        {deleteCompletedReplyMutation.isPending ? 'Удаление...' : 'Удалить'}
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <button 
+                    onClick={handleAddReply} 
+                    disabled={addReplyMutation.isPending}
+                    className="btn btn-primary flex items-center"
+                  >
+                    {addReplyMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Отправка...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Откликнуться на заказ
+                      </>
+                    )}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -154,56 +326,6 @@ export default function PerformerOrderDetailPage() {
           )}
         </div>
 
-        {isOrderActive && (
-          <div className="mt-6">
-            {hasReplied && !isReplyApproved ? (
-              <button 
-                onClick={handleCancelReply} 
-                disabled={deleteReplyMutation.isPending || !currentReplyId}
-                className="btn btn-danger flex items-center"
-              >
-                <X className="w-4 h-4 mr-2" />
-                {deleteReplyMutation.isPending ? 'Отмена...' : 'Отменить отклик'}
-              </button>
-            ) : hasReplied && isReplyApproved ? (
-              <div className="space-y-3">
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <p className="text-blue-800 font-medium">
-                    ✓ Вы утверждены заказчиком для выполнения этого заказа
-                  </p>
-                </div>
-                {chatWithCustomer && (
-                  <button
-                    onClick={() => navigate(`/chat/${chatWithCustomer.id}`)}
-                    className="btn btn-primary flex items-center"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Открыть чат с заказчиком
-                  </button>
-                )}
-              </div>
-            ) : (
-              <button 
-                onClick={handleAddReply} 
-                disabled={addReplyMutation.isPending}
-                className="btn btn-primary flex items-center"
-              >
-                {addReplyMutation.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Отправка...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Откликнуться на заказ
-                  </>
-                )}
-              </button>
-            )}
-          </div>
-        )}
-
         {!isOrderActive && (
           <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
             <p className="text-gray-600">
@@ -212,6 +334,133 @@ export default function PerformerOrderDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Модальное окно подтверждения отказа */}
+      <Modal isOpen={showRefuseConfirm} onClose={handleCancelRefuse}>
+        <div className="card max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <AlertTriangle className="w-8 h-8 text-orange-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-900">Подтверждение отказа</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <p className="text-orange-800 font-semibold mb-2">
+                ⚠️ Внимание!
+              </p>
+              <p className="text-orange-700 text-sm">
+                Вы уверены, что хотите отказаться от этого заказа? Заказ вернется в статус активного, 
+                и заказчику будет отправлено уведомление об отказе.
+              </p>
+            </div>
+            
+            <p className="text-gray-700">
+              Это действие нельзя отменить.
+            </p>
+            
+            <div className="flex space-x-2 pt-4">
+              <button
+                onClick={handleConfirmRefuse}
+                disabled={refuseOrderMutation.isPending}
+                className="btn btn-danger flex items-center flex-1"
+              >
+                <X className="w-4 h-4 mr-2" />
+                {refuseOrderMutation.isPending ? 'Отказ...' : 'Да, отказаться'}
+              </button>
+              <button
+                onClick={handleCancelRefuse}
+                disabled={refuseOrderMutation.isPending}
+                className="btn btn-secondary flex-1"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Модальное окно подтверждения завершения */}
+      <Modal isOpen={showCompleteConfirm} onClose={handleCancelComplete}>
+        <div className="card max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-900">Подтверждение завершения</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-green-800 font-semibold mb-2">
+                ✓ Завершить заказ
+              </p>
+              <p className="text-green-700 text-sm">
+                Вы уверены, что хотите завершить этот заказ? После завершения заказ перейдет на проверку заказчику, 
+                и ему будет отправлено уведомление.
+              </p>
+            </div>
+            
+            <p className="text-gray-700">
+              После завершения вы сможете внести исправления, если заказчик их запросит.
+            </p>
+            
+            <div className="flex space-x-2 pt-4">
+              <button
+                onClick={handleConfirmComplete}
+                disabled={completeOrderMutation.isPending}
+                className="btn bg-green-600 hover:bg-green-700 text-white flex items-center flex-1"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                {completeOrderMutation.isPending ? 'Завершение...' : 'Да, завершить'}
+              </button>
+              <button
+                onClick={handleCancelComplete}
+                disabled={completeOrderMutation.isPending}
+                className="btn btn-secondary flex-1"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Модальное окно подтверждения удаления */}
+      <Modal isOpen={showDeleteConfirm} onClose={handleCancelDelete}>
+        <div className="card max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-900">Подтверждение удаления</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-800 font-semibold mb-2">
+                ⚠️ Внимание!
+              </p>
+              <p className="text-red-700 text-sm">
+                Вы уверены, что хотите удалить этот завершенный заказ из истории? Это действие нельзя отменить.
+              </p>
+            </div>
+            
+            <div className="flex space-x-2 pt-4">
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleteCompletedReplyMutation.isPending}
+                className="btn btn-danger flex items-center flex-1"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                {deleteCompletedReplyMutation.isPending ? 'Удаление...' : 'Да, удалить'}
+              </button>
+              <button
+                onClick={handleCancelDelete}
+                disabled={deleteCompletedReplyMutation.isPending}
+                className="btn btn-secondary flex-1"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

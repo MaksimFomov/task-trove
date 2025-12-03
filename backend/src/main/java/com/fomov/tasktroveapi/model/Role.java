@@ -7,9 +7,7 @@ import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.proxy.HibernateProxy;
 
-import java.util.HashSet;
 import java.util.Objects;
-import java.util.Set;
 
 @Entity
 @Table(name = "roles")
@@ -29,10 +27,6 @@ public class Role {
     @Column(length = 255)
     private String description;
     
-    @OneToMany(mappedBy = "role", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
-    @ToString.Exclude
-    private Set<UserRole> userRoles = new HashSet<>();
-    
     // Конструкторы
     public Role(String name) {
         this.name = name;
@@ -41,17 +35,6 @@ public class Role {
     public Role(String name, String description) {
         this.name = name;
         this.description = description;
-    }
-    
-    // Методы для работы с пользователями
-    public void addUserRole(UserRole userRole) {
-        userRoles.add(userRole);
-        userRole.setRole(this);
-    }
-    
-    public void removeUserRole(UserRole userRole) {
-        userRoles.remove(userRole);
-        userRole.setRole(null);
     }
 
     @Override

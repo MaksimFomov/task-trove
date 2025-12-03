@@ -30,4 +30,5 @@ public interface PerformerService {
     void refuseOrder(Integer accountId, Integer orderId);
     Map<String, Object> getPerformerInfo(Integer accountId);
     Map<String, Object> getMyReviews(Integer accountId);
+    void deleteChat(Integer accountId, Integer chatId);
 }

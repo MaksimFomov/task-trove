@@ -39,6 +39,7 @@ public class PerformerServiceImpl implements PerformerService {
     private final WorkExperienceService workExperienceService;
     private final WorkExperienceMapper workExperienceMapper;
     private final NotificationService notificationService;
+    private final com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService;
 
     public PerformerServiceImpl(PerformerRepository repository,
                                OrdersService ordersService,
@@ -53,7 +54,8 @@ public class PerformerServiceImpl implements PerformerService {
                                MessageMapper messageMapper,
                                WorkExperienceService workExperienceService,
                                WorkExperienceMapper workExperienceMapper,
-                               NotificationService notificationService) {
+                               NotificationService notificationService,
+                               com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService) {
         this.repository = repository;
         this.ordersService = ordersService;
         this.ordersMapper = ordersMapper;
@@ -68,6 +70,7 @@ public class PerformerServiceImpl implements PerformerService {
         this.workExperienceService = workExperienceService;
         this.workExperienceMapper = workExperienceMapper;
         this.notificationService = notificationService;
+        this.emailNotificationService = emailNotificationService;
     }
 
     @Override
@@ -282,6 +285,17 @@ public class PerformerServiceImpl implements PerformerService {
                         chat.getLastCheckedByPerformerTime()
                     );
                     dto.setUnreadCount(unreadCount != null ? unreadCount.intValue() : 0);
+                    
+                    // Заполняем информацию о заказе для проверки возможности удаления
+                    Integer orderId = extractOrderIdFromRoomName(chat.getRoomName());
+                    if (orderId != null) {
+                        dto.setOrderId(orderId);
+                        ordersService.findById(orderId).ifPresent(order -> {
+                            dto.setOrderIsDone(order.getIsDone());
+                            dto.setOrderPerformerId(order.getPerformer() != null ? order.getPerformer().getId() : null);
+                        });
+                    }
+                    
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -331,6 +345,19 @@ public class PerformerServiceImpl implements PerformerService {
         
         Reply reply = new Reply(order, performer);
         Reply saved = replyService.save(reply);
+        
+        // Создаем уведомление для заказчика о новом отклике
+        if (order.getCustomer() != null && order.getCustomer().getAccount() != null) {
+            String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
+            String performerName = performer.getName() != null ? performer.getName() : "Исполнитель";
+            notificationService.createReplyNotification(
+                order.getCustomer().getAccount().getId(),
+                performer.getId(),
+                order.getId(),
+                orderTitle,
+                performerName
+            );
+        }
         
         return saved.getId();
     }
@@ -455,6 +482,17 @@ public class PerformerServiceImpl implements PerformerService {
         order.setIsInProcess(false);
         ordersService.save(order);
         
+        // Создаем уведомление для заказчика об отказе исполнителя
+        if (customer != null && customer.getAccount() != null) {
+            notificationService.createPerformerRefusedNotification(
+                customer.getAccount().getId(),
+                performerId,
+                orderId,
+                orderTitle,
+                performerName
+            );
+        }
+        
         // Send email to customer
         sendRefusalEmail(customer, performerName, orderTitle);
     }
@@ -561,10 +599,76 @@ public class PerformerServiceImpl implements PerformerService {
         String orderTitle = order.getTitle() != null ? order.getTitle() : "заказ #" + order.getId();
         String performerName = performer.getName() != null ? performer.getName() : "Исполнитель";
         
-        notificationService.sendWorkCompletionEmail(customer, performerName, orderTitle);
+        emailNotificationService.sendWorkCompletionEmail(customer, performerName, orderTitle);
+        
+        // Создаем уведомление для заказчика о завершении работы
+        if (customer != null && customer.getAccount() != null) {
+            notificationService.createCompletedNotification(
+                customer.getAccount().getId(),
+                performer.getId(),
+                order.getId(),
+                orderTitle,
+                performerName
+            );
+        }
     }
 
     private void sendRefusalEmail(Customer customer, String performerName, String orderTitle) {
-        notificationService.sendCustomerRefusalEmail(customer, performerName, orderTitle);
+        emailNotificationService.sendCustomerRefusalEmail(customer, performerName, orderTitle);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteChat(Integer accountId, Integer chatId) {
+        Performer performer = repository.findByAccountId(accountId)
+                .orElseThrow(() -> new NotFoundException("Performer", accountId));
+        
+        Chat chat = chatService.findById(chatId)
+                .orElseThrow(() -> new NotFoundException("Chat", chatId));
+        
+        if (!chat.getPerformerId().equals(performer.getId())) {
+            throw new SecurityException("Access denied to chat " + chatId);
+        }
+        
+        // Извлекаем ID заказа из roomName (формат: "Order #14: Название")
+        Integer orderId = extractOrderIdFromRoomName(chat.getRoomName());
+        if (orderId == null) {
+            throw new IllegalStateException("Cannot extract order ID from chat roomName");
+        }
+        
+        Orders order = ordersService.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Order", orderId));
+        
+        // Проверяем условия: заказ завершен ИЛИ исполнитель не привязан
+        boolean canDelete = Boolean.TRUE.equals(order.getIsDone()) || 
+                           order.getPerformer() == null;
+        
+        if (!canDelete) {
+            throw new IllegalStateException("Chat can only be deleted for completed orders or orders without assigned performer");
+        }
+        
+        // Помечаем чат как удаленный для исполнителя
+        chat.setDeletedByPerformer(true);
+        chatService.save(chat);
+        
+        logger.info("Chat {} deleted by performer {}", chatId, performer.getId());
+    }
+    
+    private Integer extractOrderIdFromRoomName(String roomName) {
+        if (roomName == null || !roomName.startsWith("Order #")) {
+            return null;
+        }
+        try {
+            // Формат: "Order #14: Название"
+            String[] parts = roomName.split(":");
+            if (parts.length > 0) {
+                String orderPart = parts[0].trim(); // "Order #14"
+                String idStr = orderPart.replace("Order #", "").trim();
+                return Integer.parseInt(idStr);
+            }
+        } catch (NumberFormatException e) {
+            logger.error("Failed to extract order ID from roomName: {}", roomName, e);
+        }
+        return null;
     }
 }

@@ -67,6 +67,12 @@ public class Chat {
     @Column(name = "last_checked_by_performer_time")
     private OffsetDateTime lastCheckedByPerformerTime;
     
+    @Column(name = "deleted_by_customer", nullable = false)
+    private Boolean deletedByCustomer = false;
+    
+    @Column(name = "deleted_by_performer", nullable = false)
+    private Boolean deletedByPerformer = false;
+    
     // Геттеры для обратной совместимости
     public Integer getCustomerId() {
         return customer != null ? customer.getId() : null;

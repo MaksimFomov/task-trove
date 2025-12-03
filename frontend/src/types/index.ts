@@ -92,6 +92,11 @@ export interface Chat {
   performerName?: string;
   orderTitle?: string;
   unreadCount?: number;
+  orderId?: number;
+  orderIsDone?: boolean;
+  orderPerformerId?: number;
+  deletedByCustomer?: boolean;
+  deletedByPerformer?: boolean;
 }
 
 export interface Message {
@@ -180,5 +185,19 @@ export interface ErrorResponse {
   status: number;
   timestamp: string;
   errors?: Record<string, string>; // For validation errors
+}
+
+export interface Notification {
+  id: number;
+  accountId: number;
+  userRole: string;
+  type: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  createdAt: string;
+  relatedOrderId?: number;
+  relatedPerformerId?: number;
+  relatedCustomerId?: number;
 }
 

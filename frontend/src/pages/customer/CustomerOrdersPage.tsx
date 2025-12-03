@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { customerApi } from '../../services/api';
-import { Plus, Search, Eye, Trash2, CheckCircle, Clock, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { Plus, Search, Eye, Trash2, CheckCircle, Clock, XCircle, AlertTriangle, Loader2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import Modal from '../../components/Modal';
-import type { Order } from '../../types';
+import type { Order, Chat } from '../../types';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
 
 type SortOrder = 'newest' | 'oldest';
@@ -90,6 +90,12 @@ export default function CustomerOrdersPage() {
     refetchOnWindowFocus: true,
     refetchOnMount: true,
     enabled: true, // Всегда загружаем выполненные заказы
+  });
+
+  // Запрос чатов для отображения кнопки чата в списке
+  const { data: chatsData } = useQuery({
+    queryKey: ['customerChats'],
+    queryFn: () => customerApi.getChats().then((res) => res.data.chats),
   });
 
   // Определяем какие данные использовать в зависимости от вкладки
@@ -437,6 +443,23 @@ export default function CustomerOrdersPage() {
                       Просмотр
                     </button>
                     
+                    {/* Кнопка чата для заказов с исполнителем */}
+                    {order.performerId && chatsData && (() => {
+                      const chatWithPerformer = chatsData.find(
+                        (chat: Chat) => chat.orderId === order.id
+                      );
+                      return chatWithPerformer ? (
+                        <button
+                          onClick={() => navigate(`/chat/${chatWithPerformer.id}`)}
+                          className="btn btn-primary flex items-center"
+                          title="Открыть чат с исполнителем"
+                        >
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          Чат
+                        </button>
+                      ) : null;
+                    })()}
+                    
                     {/* Для активных незавершенных заказов БЕЗ исполнителя - кнопка "Сделать неактивным" */}
                     {order.isActived && !order.isDone && !order.performerId && (
                       <button
@@ -448,35 +471,15 @@ export default function CustomerOrdersPage() {
                       </button>
                     )}
                     
-                    {/* Для неактивных заказов - кнопки "Активировать" и "Удалить" */}
+                    {/* Для неактивных заказов - кнопка "Активировать" */}
                     {!order.isActived && !order.isDone && (
-                      <>
-                        <button
-                          onClick={() => activateMutation.mutate(order.id)}
-                          disabled={activateMutation.isPending}
-                          className="btn bg-green-600 hover:bg-green-700 text-white flex items-center"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          {activateMutation.isPending ? 'Активация...' : 'Сделать активным'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteClick(order.id, true)}
-                          className="btn btn-danger flex items-center"
-                        >
-                          <Trash2 className="w-4 h-4 mr-1" />
-                          Удалить
-                        </button>
-                      </>
-                    )}
-                    
-                    {/* Для завершенных заказов - кнопка "Удалить" */}
-                    {order.isDone && (
                       <button
-                        onClick={() => handleDeleteClick(order.id, true)}
-                        className="btn btn-danger flex items-center"
+                        onClick={() => activateMutation.mutate(order.id)}
+                        disabled={activateMutation.isPending}
+                        className="btn bg-green-600 hover:bg-green-700 text-white flex items-center"
                       >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        Удалить
+                        <CheckCircle className="w-4 h-4 mr-1" />
+                        {activateMutation.isPending ? 'Активация...' : 'Сделать активным'}
                       </button>
                     )}
                   </div>

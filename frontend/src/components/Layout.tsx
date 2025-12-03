@@ -1,7 +1,11 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, Home, Briefcase, MessageSquare, User } from 'lucide-react';
+import { LogOut, Home, Briefcase, MessageSquare, User, Bell, Check } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { notificationApi } from '../services/api';
+import { useState, useRef, useEffect } from 'react';
+import type { Notification } from '../types';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,6 +15,95 @@ export default function Layout({ children }: LayoutProps) {
   const { user, logout, isAuthenticated } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Запрос для счетчика непрочитанных (работает всегда)
+  const { data: countData } = useQuery({
+    queryKey: ['notifications', 'count'],
+    queryFn: () => notificationApi.getUnreadCount().then((res) => res.data),
+    enabled: isAuthenticated,
+    refetchInterval: 30000, // Обновляем каждые 30 секунд
+  });
+
+  // Запрос для полного списка уведомлений (только когда dropdown открыт)
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationApi.getAll().then((res) => res.data),
+    enabled: isAuthenticated && isNotificationsOpen,
+    refetchInterval: isNotificationsOpen ? 30000 : false,
+  });
+
+  const notifications = notificationsData?.notifications || [];
+  const unreadCount = countData?.count || 0;
+
+  const markAsReadMutation = useMutation({
+    mutationFn: (id: number) => notificationApi.markAsRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'count'] });
+    },
+  });
+
+  const markAllAsReadMutation = useMutation({
+    mutationFn: () => notificationApi.markAllAsRead(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+      queryClient.invalidateQueries({ queryKey: ['notifications', 'count'] });
+      toast.success('Все уведомления отмечены как прочитанные');
+    },
+  });
+
+  // Закрытие dropdown при клике вне его
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsNotificationsOpen(false);
+      }
+    };
+
+    if (isNotificationsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isNotificationsOpen]);
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    
+    const months = [
+      'янв', 'фев', 'мар', 'апр', 'мая', 'июн',
+      'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'
+    ];
+    
+    return `${day} ${months[date.getMonth()]} ${year}, ${hours}:${minutes}`;
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'REPLY':
+        return '💬';
+      case 'ASSIGNED':
+        return '✅';
+      case 'COMPLETED':
+        return '🎉';
+      case 'CORRECTION':
+        return '✏️';
+      case 'REFUSED':
+        return '❌';
+      default:
+        return '🔔';
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -26,6 +119,19 @@ export default function Layout({ children }: LayoutProps) {
   const isCustomer = role === 'Customer';
   const isPerformer = role === 'Performer';
   const isAdmin = role === 'Administrator';
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case 'Customer':
+        return 'Заказчик';
+      case 'Performer':
+        return 'Исполнитель';
+      case 'Administrator':
+        return 'Администратор';
+      default:
+        return role;
+    }
+  };
 
   const navItems = [
     { path: '/', label: 'Главная', icon: Home },
@@ -84,9 +190,123 @@ export default function Layout({ children }: LayoutProps) {
                 <User className="w-5 h-5 text-gray-500" />
                 <span className="text-sm text-gray-700">{user?.login}</span>
                 <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
-                  {role}
+                  {getRoleLabel(role)}
                 </span>
               </div>
+              
+              {/* Уведомления с выпадающим списком */}
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                  className="relative p-2 text-gray-500 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-full transition-colors"
+                  aria-label="Уведомления"
+                >
+                  <Bell className="w-6 h-6" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {/* Выпадающий список уведомлений */}
+                {isNotificationsOpen && (
+                  <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-96 overflow-hidden flex flex-col">
+                    <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between bg-gray-50">
+                      <h3 className="text-lg font-semibold text-gray-900">Уведомления</h3>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={() => markAllAsReadMutation.mutate()}
+                          disabled={markAllAsReadMutation.isPending}
+                          className="text-xs text-primary-600 hover:text-primary-700 font-medium disabled:opacity-50"
+                        >
+                          Отметить все
+                        </button>
+                      )}
+                    </div>
+                    <div className="overflow-y-auto max-h-80">
+                      {notifications.length > 0 ? (
+                        <div className="divide-y divide-gray-200">
+                          {notifications.map((notification: Notification) => (
+                            <div
+                              key={notification.id}
+                              className={`px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer ${
+                                !notification.isRead ? 'bg-blue-50' : ''
+                              }`}
+                              onClick={() => {
+                                if (!notification.isRead) {
+                                  markAsReadMutation.mutate(notification.id);
+                                }
+                                if (notification.relatedOrderId) {
+                                  const orderPath = isCustomer 
+                                    ? `/customer/orders/${notification.relatedOrderId}`
+                                    : `/performer/orders/${notification.relatedOrderId}`;
+                                  navigate(orderPath);
+                                  setIsNotificationsOpen(false);
+                                }
+                              }}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-start space-x-3 flex-1">
+                                  <div className="text-xl">{getNotificationIcon(notification.type)}</div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center space-x-2 mb-1">
+                                      <h4 className="text-sm font-semibold text-gray-900 truncate">
+                                        {notification.title}
+                                      </h4>
+                                      {!notification.isRead && (
+                                        <span className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full"></span>
+                                      )}
+                                    </div>
+                                    <p className="text-sm text-gray-600 line-clamp-2 mb-1">
+                                      {notification.message}
+                                    </p>
+                                    <div className="flex items-center space-x-2 text-xs text-gray-400">
+                                      <span>{formatDate(notification.createdAt)}</span>
+                                      {notification.relatedOrderId && (
+                                        <span>• Заказ #{notification.relatedOrderId}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                                {!notification.isRead && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      markAsReadMutation.mutate(notification.id);
+                                    }}
+                                    className="ml-2 p-1 text-gray-400 hover:text-primary-600 transition-colors flex-shrink-0"
+                                    title="Отметить как прочитанное"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-4 py-8 text-center">
+                          <Bell className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-500">Уведомлений пока нет</p>
+                        </div>
+                      )}
+                    </div>
+                    {notifications.length > 0 && (
+                      <div className="px-4 py-2 border-t border-gray-200 bg-gray-50 text-center">
+                        <Link
+                          to="/notifications"
+                          onClick={() => setIsNotificationsOpen(false)}
+                          className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+                        >
+                          Показать все уведомления
+                        </Link>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <button
                 onClick={handleLogout}
                 className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"

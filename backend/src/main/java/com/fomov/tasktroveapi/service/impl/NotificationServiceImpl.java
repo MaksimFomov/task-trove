@@ -1,131 +1,155 @@
 package com.fomov.tasktroveapi.service.impl;
 
-import com.fomov.tasktroveapi.model.Customer;
-import com.fomov.tasktroveapi.model.Performer;
-import com.fomov.tasktroveapi.service.EmailService;
+import com.fomov.tasktroveapi.model.Notification;
+import com.fomov.tasktroveapi.repository.NotificationRepository;
 import com.fomov.tasktroveapi.service.NotificationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
+@Transactional
 public class NotificationServiceImpl implements NotificationService {
 
     private static final Logger logger = LoggerFactory.getLogger(NotificationServiceImpl.class);
+    
+    private final NotificationRepository repository;
 
-    private final EmailService emailService;
-
-    public NotificationServiceImpl(EmailService emailService) {
-        this.emailService = emailService;
+    public NotificationServiceImpl(NotificationRepository repository) {
+        this.repository = repository;
     }
 
     @Override
-    public void sendPerformerApprovalEmail(String performerEmail, String emailText, String attachmentPath) {
-        try {
-            String emailSubject = "Вас утвердили в TaskTrove";
-            
-            if (attachmentPath != null) {
-                emailService.sendEmailWithAttachment(performerEmail, emailSubject, emailText, attachmentPath);
-            } else {
-                emailService.sendEmail(performerEmail, emailSubject, emailText);
-            }
-            logger.info("Approval email sent to performer: {}", performerEmail);
-        } catch (Exception e) {
-            logger.error("Failed to send approval email to performer: {}", performerEmail, e);
-            throw new RuntimeException("Failed to send approval email: " + e.getMessage(), e);
-        }
+    public Notification save(Notification notification) {
+        return repository.save(notification);
     }
 
     @Override
-    public void sendCorrectionRequestEmail(String performerEmail, String emailText, String attachmentPath) {
-        try {
-            String emailSubject = "Требуются исправления - TaskTrove";
-            
-            if (attachmentPath != null) {
-                emailService.sendEmailWithAttachment(performerEmail, emailSubject, emailText, attachmentPath);
-            } else {
-                emailService.sendEmail(performerEmail, emailSubject, emailText);
-            }
-            logger.info("Correction request email sent to performer: {}", performerEmail);
-        } catch (Exception e) {
-            logger.error("Failed to send correction request email to performer: {}", performerEmail, e);
-            throw new RuntimeException("Failed to send correction request email: " + e.getMessage(), e);
-        }
+    @Transactional(readOnly = true)
+    public List<Notification> findByAccountId(Integer accountId) {
+        return repository.findByAccountIdOrderByCreatedAtDesc(accountId);
     }
 
     @Override
-    public void sendPerformerRefusalEmail(Performer performer, String performerName, 
-                                         String customerName, String orderTitle) {
-        if (performer != null && performer.getAccount() != null) {
-            try {
-                String performerEmail = performer.getAccount().getEmail();
-                String emailSubject = "Заказчик отказался от ваших услуг - TaskTrove";
-                String emailText = String.format(
-                    "Здравствуйте, %s!\n\n" +
-                    "Заказчик %s отказался от ваших услуг по заказу \"%s\".\n\n" +
-                    "Заказ снова доступен для других исполнителей.\n\n" +
-                    "С уважением,\n" +
-                    "Команда TaskTrove",
-                    performerName,
-                    customerName,
-                    orderTitle
-                );
-                
-                emailService.sendEmail(performerEmail, emailSubject, emailText);
-                logger.info("Refusal email sent to performer: {}", performerEmail);
-            } catch (Exception e) {
-                logger.error("Failed to send refusal email to performer: {}", e.getMessage(), e);
-            }
-        }
+    @Transactional(readOnly = true)
+    public List<Notification> findUnreadByAccountId(Integer accountId) {
+        return repository.findByAccountIdAndIsReadOrderByCreatedAtDesc(accountId, false);
     }
 
     @Override
-    public void sendCustomerRefusalEmail(Customer customer, String performerName, String orderTitle) {
-        if (customer != null && customer.getAccount() != null) {
-            try {
-                String customerEmail = customer.getAccount().getEmail();
-                String emailSubject = "Исполнитель отказался от заказа - TaskTrove";
-                String emailText = String.format(
-                    "Здравствуйте, %s!\n\n" +
-                    "Исполнитель %s отказался от выполнения вашего заказа \"%s\".\n\n" +
-                    "Заказ снова доступен для поиска нового исполнителя.\n\n" +
-                    "С уважением,\n" +
-                    "Команда TaskTrove",
-                    customer.getName() != null ? customer.getName() : "Уважаемый заказчик",
-                    performerName,
-                    orderTitle
-                );
-                
-                emailService.sendEmail(customerEmail, emailSubject, emailText);
-                logger.info("Refusal email sent to customer: {}", customerEmail);
-            } catch (Exception e) {
-                logger.error("Failed to send refusal email to customer: {}", e.getMessage(), e);
-            }
-        }
+    @Transactional(readOnly = true)
+    public Long countUnreadByAccountId(Integer accountId) {
+        return repository.countUnreadByAccountId(accountId);
     }
 
     @Override
-    public void sendWorkCompletionEmail(Customer customer, String performerName, String orderTitle) {
-        if (customer != null && customer.getAccount() != null) {
-            try {
-                String customerEmail = customer.getAccount().getEmail();
-                String emailSubject = "Работа по заказу завершена - TaskTrove";
-                String emailText = String.format(
-                    "Здравствуйте, %s!\n\n" +
-                    "Исполнитель %s завершил работу по вашему заказу \"%s\".\n\n" +
-                    "Теперь вы можете проверить выполненную работу и при необходимости завершить заказ.\n\n" +
-                    "С уважением,\n" +
-                    "Команда TaskTrove",
-                    customer.getName() != null ? customer.getName() : "Уважаемый заказчик",
-                    performerName,
-                    orderTitle
-                );
-                
-                emailService.sendEmail(customerEmail, emailSubject, emailText);
-                logger.info("Work completion email sent to customer: {}", customerEmail);
-            } catch (Exception e) {
-                logger.error("Failed to send work completion email to customer: {}", e.getMessage(), e);
-            }
+    public void markAsRead(Integer notificationId, Integer accountId) {
+        Notification notification = repository.findById(notificationId)
+                .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
+        
+        if (!notification.getAccountId().equals(accountId)) {
+            throw new SecurityException("Access denied to notification " + notificationId);
         }
+        
+        notification.setIsRead(true);
+        repository.save(notification);
+    }
+
+    @Override
+    public void markAllAsRead(Integer accountId) {
+        List<Notification> unreadNotifications = repository.findByAccountIdAndIsReadOrderByCreatedAtDesc(accountId, false);
+        unreadNotifications.forEach(n -> n.setIsRead(true));
+        repository.saveAll(unreadNotifications);
+    }
+
+    @Override
+    public void deleteAllByAccountId(Integer accountId) {
+        List<Notification> notifications = repository.findByAccountIdOrderByCreatedAtDesc(accountId);
+        repository.deleteAll(notifications);
+        logger.info("Deleted all notifications for accountId={}, count={}", accountId, notifications.size());
+    }
+
+    @Override
+    public void createReplyNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName) {
+        Notification notification = new Notification(
+            customerAccountId,
+            "Customer",
+            "REPLY",
+            "Новый отклик на заказ",
+            String.format("Исполнитель %s откликнулся на ваш заказ \"%s\"", performerName, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedPerformerId(performerId);
+        save(notification);
+        logger.info("Created REPLY notification for customer accountId={}, orderId={}", customerAccountId, orderId);
+    }
+
+    @Override
+    public void createAssignedNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+        Notification notification = new Notification(
+            performerAccountId,
+            "Performer",
+            "ASSIGNED",
+            "Вас приняли в работу",
+            String.format("Заказчик %s принял вас в работу по заказу \"%s\"", customerName, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedCustomerId(customerId);
+        save(notification);
+        logger.info("Created ASSIGNED notification for performer accountId={}, orderId={}", performerAccountId, orderId);
+    }
+
+    @Override
+    public void createCompletedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName) {
+        Notification notification = new Notification(
+            customerAccountId,
+            "Customer",
+            "COMPLETED",
+            "Заказ завершен",
+            String.format("Исполнитель %s завершил работу по заказу \"%s\"", performerName, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedPerformerId(performerId);
+        save(notification);
+        logger.info("Created COMPLETED notification for customer accountId={}, orderId={}", customerAccountId, orderId);
+    }
+
+    @Override
+    public void createCorrectionNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+        Notification notification = new Notification(
+            performerAccountId,
+            "Performer",
+            "CORRECTION",
+            "Требуются правки",
+            String.format("Заказчик %s запросил правки по заказу \"%s\"", customerName, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedCustomerId(customerId);
+        save(notification);
+        logger.info("Created CORRECTION notification for performer accountId={}, orderId={}", performerAccountId, orderId);
+    }
+
+    @Override
+    public void createRefusedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName) {
+        Notification notification = new Notification(
+            customerAccountId,
+            "Customer",
+            "REFUSED",
+            "Исполнитель отказался",
+            String.format("Исполнитель %s отказался от работы по заказу \"%s\"", performerName, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedPerformerId(performerId);
+        save(notification);
+        logger.info("Created REFUSED notification for customer accountId={}, orderId={}", customerAccountId, orderId);
+    }
+
+    @Override
+    public void createPerformerRefusedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName) {
+        // Это уведомление для заказчика, когда исполнитель отказывается от работы
+        createRefusedNotification(customerAccountId, performerId, orderId, orderTitle, performerName);
     }
 }

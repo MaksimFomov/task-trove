@@ -48,6 +48,7 @@ public class CustomerServiceImpl implements CustomerService {
     private final PerformerService performerService;
     private final ReplyUpdateService replyUpdateService;
     private final NotificationService notificationService;
+    private final com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService;
 
     public CustomerServiceImpl(CustomerRepository repository,
                               OrdersService ordersService,
@@ -62,7 +63,8 @@ public class CustomerServiceImpl implements CustomerService {
                               WorkExperienceMapper workExperienceMapper,
                               PerformerService performerService,
                               ReplyUpdateService replyUpdateService,
-                              NotificationService notificationService) {
+                              NotificationService notificationService,
+                              com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService) {
         this.repository = repository;
         this.ordersService = ordersService;
         this.ordersMapper = ordersMapper;
@@ -77,6 +79,7 @@ public class CustomerServiceImpl implements CustomerService {
         this.performerService = performerService;
         this.replyUpdateService = replyUpdateService;
         this.notificationService = notificationService;
+        this.emailNotificationService = emailNotificationService;
     }
 
     @Override
@@ -189,6 +192,17 @@ public class CustomerServiceImpl implements CustomerService {
                         chat.getLastCheckedByCustomerTime()
                     );
                     dto.setUnreadCount(unreadCount != null ? unreadCount.intValue() : 0);
+                    
+                    // Заполняем информацию о заказе для проверки возможности удаления
+                    Integer orderId = extractOrderIdFromRoomName(chat.getRoomName());
+                    if (orderId != null) {
+                        dto.setOrderId(orderId);
+                        ordersService.findById(orderId).ifPresent(order -> {
+                            dto.setOrderIsDone(order.getIsDone());
+                            dto.setOrderPerformerId(order.getPerformer() != null ? order.getPerformer().getId() : null);
+                        });
+                    }
+                    
                     return dto;
                 })
                 .collect(Collectors.toList());
@@ -334,6 +348,19 @@ public class CustomerServiceImpl implements CustomerService {
         
         // Создаем чат между заказчиком и исполнителем, если его еще нет
         createChatIfNotExists(customer, performer, order);
+        
+        // Создаем уведомление для исполнителя о принятии в работу
+        if (performer.getAccount() != null) {
+            String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
+            String customerName = customer.getName() != null ? customer.getName() : "Заказчик";
+            notificationService.createAssignedNotification(
+                performer.getAccount().getId(),
+                customer.getId(),
+                order.getId(),
+                orderTitle,
+                customerName
+            );
+        }
     }
     
     private void createChatIfNotExists(Customer customer, Performer performer, Orders order) {
@@ -379,6 +406,17 @@ public class CustomerServiceImpl implements CustomerService {
             if (dto.getIsDone() && order.getPerformer() != null) {
                 order.setIsOnCheck(false);
                 replyUpdateService.updateReplyOnOrderCompletion(order.getId(), order.getPerformer().getId());
+                
+                // Создаем уведомление для заказчика о завершении заказа
+                String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
+                String performerName = order.getPerformer().getName() != null ? order.getPerformer().getName() : "Исполнитель";
+                notificationService.createCompletedNotification(
+                    customer.getAccount().getId(),
+                    order.getPerformer().getId(),
+                    order.getId(),
+                    orderTitle,
+                    performerName
+                );
             }
         }
         
@@ -427,6 +465,20 @@ public class CustomerServiceImpl implements CustomerService {
         
         if (isCorrection && order != null && performerId != null) {
             handleCorrection(order, orderId, performerId);
+            
+            // Создаем уведомление для исполнителя о правках
+            if (performer != null && performer.getAccount() != null) {
+                String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
+                Customer customer = repository.findByAccountId(accountId).orElse(null);
+                String customerName = customer != null && customer.getName() != null ? customer.getName() : "Заказчик";
+                notificationService.createCorrectionNotification(
+                    performer.getAccount().getId(),
+                    customer != null ? customer.getId() : null,
+                    order.getId(),
+                    orderTitle,
+                    customerName
+                );
+            }
         }
         
         sendEmail(performerEmail, emailText, attachmentPath, isCorrection);
@@ -466,7 +518,73 @@ public class CustomerServiceImpl implements CustomerService {
         order.setIsInProcess(false);
         ordersService.save(order);
         
+        // Создаем уведомление для исполнителя об отказе
+        if (performer != null && performer.getAccount() != null) {
+            notificationService.createRefusedNotification(
+                performer.getAccount().getId(),
+                performer.getId(),
+                orderId,
+                orderTitle,
+                customerName
+            );
+        }
+        
         sendRefusalEmail(performer, performerName, customerName, orderTitle);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteChat(Integer accountId, Integer chatId) {
+        Customer customer = repository.findByAccountId(accountId)
+                .orElseThrow(() -> new NotFoundException("Customer", accountId));
+        
+        Chat chat = chatService.findById(chatId)
+                .orElseThrow(() -> new NotFoundException("Chat", chatId));
+        
+        if (!chat.getCustomerId().equals(customer.getId())) {
+            throw new SecurityException("Access denied to chat " + chatId);
+        }
+        
+        // Извлекаем ID заказа из roomName (формат: "Order #14: Название")
+        Integer orderId = extractOrderIdFromRoomName(chat.getRoomName());
+        if (orderId == null) {
+            throw new IllegalStateException("Cannot extract order ID from chat roomName");
+        }
+        
+        Orders order = ordersService.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Order", orderId));
+        
+        // Проверяем условия: заказ завершен ИЛИ исполнитель не привязан
+        boolean canDelete = Boolean.TRUE.equals(order.getIsDone()) || 
+                           order.getPerformer() == null;
+        
+        if (!canDelete) {
+            throw new IllegalStateException("Chat can only be deleted for completed orders or orders without assigned performer");
+        }
+        
+        // Помечаем чат как удаленный для заказчика
+        chat.setDeletedByCustomer(true);
+        chatService.save(chat);
+        
+        logger.info("Chat {} deleted by customer {}", chatId, customer.getId());
+    }
+    
+    private Integer extractOrderIdFromRoomName(String roomName) {
+        if (roomName == null || !roomName.startsWith("Order #")) {
+            return null;
+        }
+        try {
+            // Формат: "Order #14: Название"
+            String[] parts = roomName.split(":");
+            if (parts.length > 0) {
+                String orderPart = parts[0].trim(); // "Order #14"
+                String idStr = orderPart.replace("Order #", "").trim();
+                return Integer.parseInt(idStr);
+            }
+        } catch (NumberFormatException e) {
+            logger.error("Failed to extract order ID from roomName: {}", roomName, e);
+        }
+        return null;
     }
 
     private String buildEmailText(String text, Orders order) {
@@ -512,14 +630,14 @@ public class CustomerServiceImpl implements CustomerService {
 
     private void sendEmail(String performerEmail, String emailText, String attachmentPath, Boolean isCorrection) {
         if (isCorrection) {
-            notificationService.sendCorrectionRequestEmail(performerEmail, emailText, attachmentPath);
+            emailNotificationService.sendCorrectionRequestEmail(performerEmail, emailText, attachmentPath);
         } else {
-            notificationService.sendPerformerApprovalEmail(performerEmail, emailText, attachmentPath);
+            emailNotificationService.sendPerformerApprovalEmail(performerEmail, emailText, attachmentPath);
         }
     }
 
     private void sendRefusalEmail(Performer performer, String performerName, 
                                   String customerName, String orderTitle) {
-        notificationService.sendPerformerRefusalEmail(performer, performerName, customerName, orderTitle);
+        emailNotificationService.sendPerformerRefusalEmail(performer, performerName, customerName, orderTitle);
     }
 }

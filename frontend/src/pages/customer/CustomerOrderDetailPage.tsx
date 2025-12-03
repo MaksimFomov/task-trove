@@ -2,7 +2,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, CheckCircle, Send, Star, FileText, Upload, X, User, Briefcase, Award, Loader2, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Send, Star, FileText, Upload, X, User, Briefcase, Award, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -104,6 +104,8 @@ export default function CustomerOrderDetailPage() {
   const [profileTab, setProfileTab] = useState<'portfolio' | 'orders' | 'reviews'>('portfolio');
   const [showRefusePerformerConfirm, setShowRefusePerformerConfirm] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isPermanentDelete, setIsPermanentDelete] = useState(false);
   const [completeReviewData, setCompleteReviewData] = useState({
     mark: 5,
     text: '',
@@ -284,6 +286,57 @@ export default function CustomerOrderDetailPage() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (orderId: number) => customerApi.deleteOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['customerOrder', id] });
+      toast.success('Заказ сделан неактивным');
+      setShowDeleteConfirm(false);
+      navigate('/customer/orders');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Не удалось сделать заказ неактивным');
+      setShowDeleteConfirm(false);
+    },
+  });
+
+  const permanentDeleteMutation = useMutation({
+    mutationFn: (orderId: number) => customerApi.permanentlyDeleteOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
+      toast.success('Заказ полностью удален');
+      setShowDeleteConfirm(false);
+      navigate('/customer/orders');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Не удалось удалить заказ');
+      setShowDeleteConfirm(false);
+    },
+  });
+
+  const handleDeleteClick = (permanent: boolean = false) => {
+    if (!order) return;
+    setIsPermanentDelete(permanent);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!order) return;
+    if (isPermanentDelete) {
+      permanentDeleteMutation.mutate(order.id);
+    } else {
+      deleteMutation.mutate(order.id);
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(false);
+    setIsPermanentDelete(false);
+  };
+
   const handleApproveReply = (performerId: number) => {
     // Только открываем форму для отправки ТЗ, не утверждаем сразу
     setSelectedPerformer(performerId);
@@ -372,37 +425,44 @@ export default function CustomerOrderDetailPage() {
               {order.howReplies && <span>Откликов: {order.howReplies}</span>}
             </div>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-col gap-2 items-end">
             {/* Кнопки показываются только если заказ на проверке (когда исполнитель завершил задачу) */}
             {order.isOnCheck && !order.isDone && (
               <>
                 <button
                   onClick={() => setShowCorrectionsForm(true)}
-                  className="btn btn-secondary flex items-center"
+                  className="btn btn-secondary min-w-[200px]"
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Добавить исправления
                 </button>
                 <button
                   onClick={() => setShowCompleteConfirm(true)}
-                  className="btn btn-primary flex items-center"
+                  className="btn btn-primary min-w-[200px]"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Завершить заказ
                 </button>
               </>
             )}
-            {/* Кнопка "Оставить отзыв" показывается после завершения заказа */}
-            {order.isDone && order.performerId && (
+            {/* Кнопка удаления для неактивных заказов */}
+            {!order.isActived && !order.isDone && (
               <button
-                onClick={() => {
-                  setReviewData({ ...reviewData, performerId: order.performerId || 0 });
-                  setShowReviewForm(true);
-                }}
-                className="btn btn-primary flex items-center"
+                onClick={() => handleDeleteClick(true)}
+                className="btn btn-danger flex items-center"
               >
-                <Star className="w-4 h-4 mr-2" />
-                Оставить отзыв
+                <Trash2 className="w-4 h-4 mr-2" />
+                Удалить
+              </button>
+            )}
+            {/* Кнопка удаления для завершенных заказов */}
+            {order.isDone && (
+              <button
+                onClick={() => handleDeleteClick(true)}
+                className="btn btn-danger flex items-center"
+              >
+                <Trash2 className="w-4 h-4 mr-2" />
+                Удалить
               </button>
             )}
           </div>
@@ -443,16 +503,7 @@ export default function CustomerOrderDetailPage() {
                   {approvedPerformerPortfolio?.name || order.performerName || 'Исполнитель'}
                 </p>
               </div>
-              <div className="ml-4 flex gap-2">
-                {chatWithPerformer && (
-                  <button
-                    onClick={() => navigate(`/chat/${chatWithPerformer.id}`)}
-                    className="btn btn-primary flex items-center"
-                  >
-                    <Send className="w-4 h-4 mr-1" />
-                    Открыть чат
-                  </button>
-                )}
+              <div className="ml-4 flex flex-col gap-2">
                 <button
                   onClick={() => {
                     setSelectedPerformerId(order.performerId!);
@@ -464,6 +515,19 @@ export default function CustomerOrderDetailPage() {
                   <User className="w-4 h-4 mr-1" />
                   Профиль
                 </button>
+                {/* Кнопка "Оставить отзыв" показывается после завершения заказа */}
+                {order.isDone && order.performerId && (
+                  <button
+                    onClick={() => {
+                      setReviewData({ ...reviewData, performerId: order.performerId || 0 });
+                      setShowReviewForm(true);
+                    }}
+                    className="btn btn-primary flex items-center"
+                  >
+                    <Star className="w-4 h-4 mr-1" />
+                    Оставить отзыв
+                  </button>
+                )}
                 {/* Кнопка "Отказаться от исполнителя" показывается только если заказ не завершен */}
                 {!order.isDone && (
                   <button
@@ -1211,6 +1275,66 @@ export default function CustomerOrderDetailPage() {
                   setCompleteReviewData({ mark: 5, text: '' });
                 }}
                 disabled={updateStatusMutation.isPending || addReviewMutation.isPending}
+                className="btn btn-secondary flex-1"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Модальное окно подтверждения удаления */}
+      <Modal isOpen={showDeleteConfirm} onClose={handleCancelDelete}>
+        <div className="card max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-900">
+              {isPermanentDelete ? 'Подтверждение удаления' : 'Сделать заказ неактивным'}
+            </h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className={`border rounded-lg p-4 ${isPermanentDelete ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
+              <p className={`font-semibold mb-2 ${isPermanentDelete ? 'text-red-800' : 'text-orange-800'}`}>
+                {isPermanentDelete ? '⚠️ Внимание: заказ будет удален навсегда!' : '⚠️ Внимание!'}
+              </p>
+              <p className={`text-sm ${isPermanentDelete ? 'text-red-700' : 'text-orange-700'}`}>
+                {isPermanentDelete 
+                  ? 'Заказ будет полностью удален из базы данных. Это действие нельзя отменить.'
+                  : 'Заказ будет помечен как неактивный. Вы сможете активировать его позже.'
+                }
+              </p>
+            </div>
+            
+            <p className="text-gray-700">
+              {isPermanentDelete 
+                ? 'Вы уверены, что хотите полностью удалить этот заказ?'
+                : 'Вы уверены, что хотите сделать этот заказ неактивным?'
+              }
+            </p>
+            
+            <div className="flex space-x-2 pt-4">
+              <button
+                onClick={handleConfirmDelete}
+                disabled={deleteMutation.isPending || permanentDeleteMutation.isPending}
+                className={`btn flex items-center flex-1 ${isPermanentDelete ? 'btn-danger' : 'btn-primary'}`}
+              >
+                {deleteMutation.isPending || permanentDeleteMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {isPermanentDelete ? 'Удаление...' : 'Деактивация...'}
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    {isPermanentDelete ? 'Да, удалить' : 'Да, сделать неактивным'}
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleCancelDelete}
+                disabled={deleteMutation.isPending || permanentDeleteMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
                 Отмена
