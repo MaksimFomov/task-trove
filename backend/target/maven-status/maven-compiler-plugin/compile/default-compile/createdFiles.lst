@@ -29,6 +29,7 @@ com/fomov/tasktroveapi/repository/AccountRepository.class
 com/fomov/tasktroveapi/service/impl/WorkExperienceServiceImpl.class
 com/fomov/tasktroveapi/mapper/MessageMapper.class
 com/fomov/tasktroveapi/service/NotificationService.class
+com/fomov/tasktroveapi/service/impl/PasswordResetServiceImpl.class
 com/fomov/tasktroveapi/config/SecurityConfig.class
 com/fomov/tasktroveapi/service/RoleService.class
 com/fomov/tasktroveapi/mapper/ChatMapper.class
@@ -48,6 +49,7 @@ com/fomov/tasktroveapi/service/CustomerService.class
 com/fomov/tasktroveapi/service/RegistrationService.class
 com/fomov/tasktroveapi/advice/GlobalExceptionHandler.class
 com/fomov/tasktroveapi/dto/UpdateReplyDto.class
+com/fomov/tasktroveapi/service/EmailVerificationService.class
 com/fomov/tasktroveapi/repository/OrdersRepository.class
 com/fomov/tasktroveapi/repository/NotificationRepository.class
 com/fomov/tasktroveapi/mapper/PerformerMapper.class
@@ -69,6 +71,7 @@ com/fomov/tasktroveapi/service/impl/OrdersServiceImpl.class
 com/fomov/tasktroveapi/service/impl/NotificationServiceImpl.class
 com/fomov/tasktroveapi/dto/RegistrationAccDto.class
 com/fomov/tasktroveapi/dto/AuthenticationAccDto.class
+com/fomov/tasktroveapi/service/impl/EmailVerificationServiceImpl$VerificationCodeData.class
 com/fomov/tasktroveapi/service/impl/ChatServiceImpl.class
 com/fomov/tasktroveapi/service/impl/MessageServiceImpl.class
 com/fomov/tasktroveapi/exception/YouAlreadyRepliedException.class
@@ -87,9 +90,11 @@ com/fomov/tasktroveapi/service/impl/ReplyServiceImpl.class
 com/fomov/tasktroveapi/service/ReplyUpdateService.class
 com/fomov/tasktroveapi/security/SecurityUtils.class
 com/fomov/tasktroveapi/controller/RoleController.class
+com/fomov/tasktroveapi/service/impl/EmailVerificationServiceImpl.class
 com/fomov/tasktroveapi/controller/OrdersController.class
 com/fomov/tasktroveapi/controller/ChatController.class
 com/fomov/tasktroveapi/model/Portfolio.class
+com/fomov/tasktroveapi/service/impl/PasswordResetServiceImpl$ResetCodeData.class
 com/fomov/tasktroveapi/repository/ChatRepository.class
 com/fomov/tasktroveapi/service/OrdersService.class
 com/fomov/tasktroveapi/repository/PortfolioRepository.class
@@ -110,4 +115,6 @@ com/fomov/tasktroveapi/mapper/CustomerMapper.class
 com/fomov/tasktroveapi/TasktroveapiApplication.class
 com/fomov/tasktroveapi/service/EmailService.class
 com/fomov/tasktroveapi/repository/AdministratorRepository.class
+com/fomov/tasktroveapi/dto/UpdateCustomerPortfolioDto.class
 com/fomov/tasktroveapi/model/Orders.class
+com/fomov/tasktroveapi/service/PasswordResetService.class

@@ -79,10 +79,11 @@ public class PortfolioServiceImpl implements PortfolioService {
             portfolio = portfolios.get(0);
         }
 
-        // Обновляем все поля из DTO (даже пустые строки)
-        portfolio.setName(dto.getName() != null ? dto.getName() : "");
+        // Обновляем только разрешенные поля
+        // name и email не обновляются - они берутся из Account при регистрации и остаются неизменными
+        // portfolio.setName(...) - не обновляем
+        // portfolio.setEmail(...) - не обновляем
         portfolio.setPhone(dto.getPhone());
-        portfolio.setEmail(dto.getEmail() != null ? dto.getEmail() : "");
         portfolio.setTownCountry(dto.getTownCountry());
         portfolio.setSpecializations(dto.getSpecializations());
         portfolio.setEmployment(dto.getEmployment());

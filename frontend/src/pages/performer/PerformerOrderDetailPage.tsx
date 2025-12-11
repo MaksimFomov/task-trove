@@ -5,6 +5,7 @@ import { performerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
 import { ArrowLeft, Send, X, Loader2, CheckCircle, Trash2, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import { useMemo } from 'react';
 import type { Reply, Chat, UpdateReplyDto } from '../../types';
 import Modal from '../../components/Modal';
@@ -214,11 +215,11 @@ export default function PerformerOrderDetailPage() {
       <div className="card">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{order.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-2">{order.title}</h1>
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               {order.publicationTime && (
                 <span>
-                  Опубликован: {format(new Date(order.publicationTime), 'dd MMM yyyy HH:mm')}
+                  Опубликован: {format(new Date(order.publicationTime), 'd MMMM yyyy HH:mm', { locale: ru })}
                 </span>
               )}
               {order.howReplies !== undefined && <span>Откликов: {order.howReplies}</span>}
@@ -333,30 +334,30 @@ export default function PerformerOrderDetailPage() {
 
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-2">Описание</h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{order.description}</p>
+            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Описание</h3>
+            <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{order.description}</p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold mb-2">Область</h3>
-            <p className="text-gray-700">{order.scope}</p>
+            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Область</h3>
+            <p className="text-gray-700 dark:text-slate-300">{order.scope}</p>
           </div>
           {order.stackS && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Технологии</h3>
-              <p className="text-gray-700">{order.stackS}</p>
+              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Технологии</h3>
+              <p className="text-gray-700 dark:text-slate-300">{order.stackS}</p>
             </div>
           )}
           {order.customerName && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Заказчик</h3>
-              <p className="text-gray-700">{order.customerName}</p>
+              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Заказчик</h3>
+              <p className="text-gray-700 dark:text-slate-300">{order.customerName}</p>
             </div>
           )}
         </div>
 
         {!isOrderActive && (
-          <div className="mt-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-            <p className="text-gray-600">
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg">
+            <p className="text-gray-600 dark:text-slate-300">
               Этот заказ неактивен или находится на модерации
             </p>
           </div>
@@ -368,7 +369,7 @@ export default function PerformerOrderDetailPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-orange-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Подтверждение отказа</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение отказа</h2>
           </div>
           
           <div className="space-y-4">
@@ -382,7 +383,7 @@ export default function PerformerOrderDetailPage() {
               </p>
             </div>
             
-            <p className="text-gray-700">
+            <p className="text-gray-700 dark:text-slate-300">
               Это действие нельзя отменить.
             </p>
             
@@ -421,7 +422,7 @@ export default function PerformerOrderDetailPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Подтверждение завершения</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение завершения</h2>
           </div>
           
           <div className="space-y-4">
@@ -435,7 +436,7 @@ export default function PerformerOrderDetailPage() {
                   </p>
                 </div>
             
-            <p className="text-gray-700">
+            <p className="text-gray-700 dark:text-slate-300">
               После завершения вы сможете внести исправления, если заказчик их запросит.
             </p>
             
@@ -474,7 +475,7 @@ export default function PerformerOrderDetailPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Подтверждение удаления</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение удаления</h2>
           </div>
           
           <div className="space-y-4">

@@ -139,7 +139,9 @@ export default function CustomerOrdersPage() {
     
     const searchLower = debouncedSearchTerm.toLowerCase();
     return filtered.filter(order =>
-      order.title?.toLowerCase().includes(searchLower)
+      order.title?.toLowerCase().includes(searchLower) ||
+      order.scope?.toLowerCase().includes(searchLower) ||
+      order.stackS?.toLowerCase().includes(searchLower)
     );
   };
 
@@ -259,7 +261,8 @@ export default function CustomerOrdersPage() {
     }
     if (order.isActived) {
       return (
-        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full">
+        <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
+          <CheckCircle className="w-3 h-3 mr-1" />
           Активен
         </span>
       );
@@ -275,7 +278,7 @@ export default function CustomerOrdersPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Мои заказы</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Мои заказы</h1>
         <button
           onClick={() => navigate('/customer/orders/new')}
           className="btn btn-primary flex items-center"
@@ -287,13 +290,13 @@ export default function CustomerOrdersPage() {
 
       <div className="card">
         {/* Вкладки */}
-        <div className="flex space-x-4 mb-6 border-b border-gray-200">
+        <div className="flex space-x-4 mb-6 border-b border-gray-200 dark:border-slate-700">
           <button
             onClick={() => handleTabChange('all')}
             className={`px-4 py-2 font-medium border-b-2 transition-colors ${
               activeTab === 'all'
                 ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
             }`}
           >
             Все заказы
@@ -303,7 +306,7 @@ export default function CustomerOrdersPage() {
             className={`px-4 py-2 font-medium border-b-2 transition-colors ${
               activeTab === 'in-progress'
                 ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
             }`}
           >
             Заказы в работе
@@ -313,7 +316,7 @@ export default function CustomerOrdersPage() {
             className={`px-4 py-2 font-medium border-b-2 transition-colors ${
               activeTab === 'done'
                 ? 'border-primary-500 text-primary-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700'
+                : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
             }`}
           >
             Выполненные заказы
@@ -325,7 +328,7 @@ export default function CustomerOrdersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Поиск по названию заказа..."
+              placeholder="Поиск по названию, области или технологиям..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10"
@@ -334,7 +337,7 @@ export default function CustomerOrdersPage() {
           
           {/* Подсказка по поиску */}
           {debouncedSearchTerm && (
-            <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="text-sm text-gray-600 dark:text-slate-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
               <span className="font-medium">Поиск:</span> "{debouncedSearchTerm}"
               {displayData.length > 0 ? (
                 <span className="ml-2">— найдено {displayData.length} {displayData.length === 1 ? 'заказ' : displayData.length < 5 ? 'заказа' : 'заказов'}</span>
@@ -349,7 +352,7 @@ export default function CustomerOrdersPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200 gap-4 mb-4">
           <div className="flex items-center gap-4">
             <label className="flex items-center gap-2">
-              <span className="text-sm text-gray-700 font-medium">Сортировка:</span>
+              <span className="text-sm text-gray-700 dark:text-slate-300 font-medium">Сортировка:</span>
               <select
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as SortOrder)}
@@ -370,7 +373,7 @@ export default function CustomerOrdersPage() {
                   onChange={(e) => setShowInactive(e.target.checked)}
                   className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                 />
-                <span className="ml-2 text-sm text-gray-700">
+                <span className="ml-2 text-sm text-gray-700 dark:text-slate-300">
                   Показать неактивные заказы
                 </span>
               </label>
@@ -381,7 +384,7 @@ export default function CustomerOrdersPage() {
                   onChange={(e) => setShowDone(e.target.checked)}
                   className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                 />
-                <span className="ml-2 text-sm text-gray-700">
+                <span className="ml-2 text-sm text-gray-700 dark:text-slate-300">
                   Показать выполненные заказы
                 </span>
               </label>
@@ -411,16 +414,18 @@ export default function CustomerOrdersPage() {
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
+                    {order.publicationTime && (
+                      <p className="text-xs text-gray-500 mb-1">
+                        {format(new Date(order.publicationTime), 'd MMMM yyyy', { locale: ru })}
+                      </p>
+                    )}
                     <div className="flex items-center space-x-3 mb-2">
-                      <h3 className="text-xl font-semibold text-gray-900">{order.title}</h3>
+                      <h3 className="text-xl font-semibold text-gray-900 dark:text-slate-100">{order.title}</h3>
                       {getStatusBadge(order)}
                     </div>
-                    <div className="flex flex-col gap-1 text-sm text-gray-500">
-                      {order.publicationTime && (
-                        <span>
-                          • Опубликован: {format(new Date(order.publicationTime), 'd MMMM yyyy', { locale: ru })}
-                        </span>
-                      )}
+                    <div className="flex flex-col gap-1 text-sm text-gray-500 dark:text-slate-400">
+                      {order.scope && <span>• Область: {order.scope}</span>}
+                      {order.stackS && <span>• Технологии: {order.stackS}</span>}
                       {order.performerId && order.performerName ? (
                         <span>• Исполнитель: {order.performerName}</span>
                       ) : (
@@ -518,7 +523,7 @@ export default function CustomerOrdersPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
               {isPermanentDelete ? 'Подтверждение удаления' : 'Сделать заказ неактивным'}
             </h2>
           </div>
@@ -536,7 +541,7 @@ export default function CustomerOrdersPage() {
               </p>
             </div>
             
-            <p className="text-gray-700">
+            <p className="text-gray-700 dark:text-slate-300">
               {isPermanentDelete 
                 ? 'Вы уверены, что хотите полностью удалить этот заказ?'
                 : 'Вы уверены, что хотите сделать этот заказ неактивным?'

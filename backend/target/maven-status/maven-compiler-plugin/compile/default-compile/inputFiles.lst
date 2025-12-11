@@ -29,6 +29,7 @@
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/dto/RegistrationCustDto.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/dto/ReplyDto.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/dto/RoleDto.java
+/Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/dto/UpdateCustomerPortfolioDto.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/dto/UpdatePortfolioDto.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/dto/UpdateReplyDto.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/dto/WorkExperienceDto.java
@@ -78,9 +79,11 @@
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/CustomerService.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/EmailNotificationService.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/EmailService.java
+/Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/EmailVerificationService.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/MessageService.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/NotificationService.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/OrdersService.java
+/Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/PasswordResetService.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/PerformerService.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/PortfolioService.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/RegistrationService.java
@@ -94,9 +97,11 @@
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/CustomerServiceImpl.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/EmailNotificationServiceImpl.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/EmailServiceImpl.java
+/Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/EmailVerificationServiceImpl.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/MessageServiceImpl.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/NotificationServiceImpl.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/OrdersServiceImpl.java
+/Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/PasswordResetServiceImpl.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/PerformerServiceImpl.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/PortfolioServiceImpl.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/service/impl/RegistrationServiceImpl.java

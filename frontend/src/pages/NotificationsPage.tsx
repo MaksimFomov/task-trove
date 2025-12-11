@@ -100,7 +100,7 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Bell className="w-8 h-8 text-primary-600" />
-          <h1 className="text-3xl font-bold text-gray-900">Уведомления</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Уведомления</h1>
           {unreadCount > 0 && (
             <span className="px-3 py-1 text-sm font-medium bg-red-500 text-white rounded-full">
               {unreadCount} непрочитанных
@@ -156,7 +156,7 @@ export default function NotificationsPage() {
                     <div className="text-2xl">{getNotificationIcon(notification.type)}</div>
                     <div className="flex-1">
                       <h3 className="font-semibold text-lg mb-1">{notification.title}</h3>
-                      <p className="text-gray-700 mb-2">{notification.message}</p>
+                      <p className="text-gray-700 dark:text-slate-300 mb-2">{notification.message}</p>
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <span>{formatDate(notification.createdAt)}</span>
                         {notification.relatedOrderId && (
@@ -196,7 +196,7 @@ export default function NotificationsPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Подтверждение удаления</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение удаления</h2>
           </div>
           
           <div className="space-y-4">
@@ -209,7 +209,7 @@ export default function NotificationsPage() {
               </p>
             </div>
             
-            <p className="text-gray-700">
+            <p className="text-gray-700 dark:text-slate-300">
               Вы уверены, что хотите удалить все уведомления?
             </p>
             

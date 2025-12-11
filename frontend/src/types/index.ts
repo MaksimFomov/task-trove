@@ -97,6 +97,7 @@ export interface Chat {
   orderPerformerId?: number;
   deletedByCustomer?: boolean;
   deletedByPerformer?: boolean;
+  lastMessageTime?: string;
 }
 
 export interface Message {
@@ -131,6 +132,22 @@ export interface UpdatePortfolioDto {
   specializations?: string;
   employment?: string;
   experience?: string;
+}
+
+export interface CustomerPortfolio {
+  id?: number;
+  name?: string;
+  email?: string;
+  age?: number;
+  description?: string;
+  scopeS?: string;
+}
+
+export interface UpdateCustomerPortfolioDto {
+  name: string;
+  age: number;
+  description?: string;
+  scopeS: string;
 }
 
 export interface WorkExperience {

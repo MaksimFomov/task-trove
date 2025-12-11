@@ -14,10 +14,10 @@ export default function HomePage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-slate-100 mb-2">
           Добро пожаловать в TaskTrove, {user?.login}!
         </h1>
-        <p className="text-lg text-gray-600">
+        <p className="text-lg text-gray-600 dark:text-slate-400">
           Платформа для управления задачами и проектами
         </p>
       </div>
@@ -31,7 +31,7 @@ export default function HomePage() {
             >
               <Briefcase className="w-12 h-12 text-primary-600 mb-4" />
               <h3 className="text-xl font-semibold mb-2">Мои заказы</h3>
-              <p className="text-gray-600">Просмотр и управление вашими заказами</p>
+              <p className="text-gray-600 dark:text-slate-400">Просмотр и управление вашими заказами</p>
             </div>
             <div
               onClick={() => navigate('/customer/chats')}

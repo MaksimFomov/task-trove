@@ -33,4 +33,6 @@ public interface CustomerService {
                              String text, MultipartFile document, Boolean isCorrection);
     void refusePerformer(Integer accountId, Integer orderId);
     void deleteChat(Integer accountId, Integer chatId);
+    Customer getPortfolio(Integer accountId);
+    void updatePortfolio(Integer accountId, UpdateCustomerPortfolioDto dto);
 }

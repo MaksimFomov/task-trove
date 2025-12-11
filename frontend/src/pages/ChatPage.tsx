@@ -216,7 +216,7 @@ export default function ChatPage() {
           Назад
         </button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-2xl font-bold dark:text-slate-100">
             {chatInfo?.orderTitle || chatInfo?.roomName || `Чат #${chatId}`}
           </h1>
           {chatInfo && (
@@ -235,8 +235,8 @@ export default function ChatPage() {
 
       <div className="card flex-1 flex flex-col">
         {chatDeletedMessage && (
-          <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-yellow-800 text-sm font-medium">{chatDeletedMessage}</p>
+          <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <p className="text-yellow-800 dark:text-yellow-300 text-sm font-medium">{chatDeletedMessage}</p>
           </div>
         )}
         <div className="flex-1 overflow-y-auto space-y-4 mb-4">
@@ -250,8 +250,8 @@ export default function ChatPage() {
                 <div
                   className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
                     isOwn
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-200 text-gray-900'
+                      ? 'bg-primary-600 text-white dark:bg-primary-500'
+                      : 'bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-slate-100'
                   }`}
                 >
                   <p className="text-sm font-medium mb-1">
@@ -259,7 +259,7 @@ export default function ChatPage() {
                   </p>
                   <p className="text-sm whitespace-pre-wrap">{message.content || message.text}</p>
                   {message.sentAt && (
-                    <p className={`text-xs mt-1 ${isOwn ? 'text-primary-100' : 'text-gray-500'}`}>
+                    <p className={`text-xs mt-1 ${isOwn ? 'text-primary-100' : 'text-gray-500 dark:text-slate-400'}`}>
                       {format(new Date(message.sentAt), 'HH:mm')}
                     </p>
                   )}

@@ -5,9 +5,10 @@ interface ModalProps {
   isOpen: boolean;
   onClose?: () => void;
   children: React.ReactNode;
+  closeOnBackdropClick?: boolean;
 }
 
-export default function Modal({ isOpen, onClose, children }: ModalProps) {
+export default function Modal({ isOpen, onClose, children, closeOnBackdropClick = true }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       // Блокируем скролл body когда модальное окно открыто
@@ -26,7 +27,7 @@ export default function Modal({ isOpen, onClose, children }: ModalProps) {
   return createPortal(
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]"
-      onClick={onClose}
+      onClick={closeOnBackdropClick ? onClose : undefined}
     >
       <div onClick={(e) => e.stopPropagation()}>
         {children}

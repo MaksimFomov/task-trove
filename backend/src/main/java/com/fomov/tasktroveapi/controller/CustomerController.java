@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -321,18 +322,39 @@ public class CustomerController {
     }
 
     @GetMapping("/portfolio")
-    public ResponseEntity<?> getPortfolio(@RequestParam("userId") Integer userId) {
+    public ResponseEntity<?> getPortfolio() {
         try {
-            Integer currentUserId = SecurityUtils.getCurrentUserId();
-            if (currentUserId == null) {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            List<Portfolio> portfolios = portfolioService.findByUserId(userId);
-            Portfolio portfolio = portfolios.isEmpty() ? null : portfolios.get(0);
-            return ResponseEntity.ok(portfolio);
+            Customer customer = customerService.getPortfolio(accountId);
+            return ResponseEntity.ok(customer);
+        } catch (NotFoundException e) {
+            logger.error("Customer not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting portfolio: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PutMapping("/portfolio")
+    public ResponseEntity<?> updatePortfolio(@RequestBody @Validated UpdateCustomerPortfolioDto dto) {
+        try {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            customerService.updatePortfolio(accountId, dto);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            logger.error("Customer not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error updating portfolio: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }

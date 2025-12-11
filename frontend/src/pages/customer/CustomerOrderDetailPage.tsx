@@ -10,6 +10,9 @@ import { createPortal } from 'react-dom';
 import Modal from '../../components/Modal';
 import type { WorkExperience, AddPerformerToOrderDto, Reply, Order, Chat } from '../../types';
 
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+const MAX_FILE_SIZE_KB = Math.floor(MAX_FILE_SIZE / 1024);
+
 // Компонент для отображения отклика с информацией об исполнителе
 function ReplyItem({
   reply,
@@ -352,6 +355,10 @@ export default function CustomerOrderDetailPage() {
       toast.error('Пожалуйста, заполните текст ТЗ или прикрепите файл');
       return;
     }
+    if (emailFile && emailFile.size > MAX_FILE_SIZE) {
+      toast.error(`Файл ТЗ превышает лимит ${MAX_FILE_SIZE_KB} КБ`);
+      return;
+    }
     
     sendEmailMutation.mutate({
       orderId: order.id,
@@ -367,6 +374,10 @@ export default function CustomerOrderDetailPage() {
     // Валидация: нужно хотя бы текст или файл
     if (!correctionsText.trim() && !correctionsFile) {
       toast.error('Пожалуйста, заполните текст исправлений или прикрепите файл');
+      return;
+    }
+    if (correctionsFile && correctionsFile.size > MAX_FILE_SIZE) {
+      toast.error(`Файл с исправлениями превышает лимит ${MAX_FILE_SIZE_KB} КБ`);
       return;
     }
     
@@ -416,32 +427,32 @@ export default function CustomerOrderDetailPage() {
       <div className="card">
         <div className="flex justify-between items-start mb-6">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{order.title}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-2">{order.title}</h1>
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               {order.publicationTime && (
                 <span>
-                  Опубликован: {format(new Date(order.publicationTime), 'd MMMM yyyy', { locale: ru })}
+                  Опубликован: {format(new Date(order.publicationTime), 'd MMMM yyyy HH:mm', { locale: ru })}
                 </span>
               )}
-              {order.howReplies !== undefined && order.howReplies > 0 && (
+              {order.howReplies !== undefined && (
                 <span>Откликов: {order.howReplies}</span>
               )}
             </div>
           </div>
-          <div className="flex flex-col gap-2 items-end">
+          <div className="flex flex-col gap-2 items-end w-[240px]">
             {/* Кнопки показываются только если заказ на проверке (когда исполнитель завершил задачу) */}
             {order.isOnCheck && !order.isDone && (
               <>
                 <button
                   onClick={() => setShowCorrectionsForm(true)}
-                  className="btn btn-secondary min-w-[200px]"
+                  className="btn btn-secondary w-full"
                 >
                   <FileText className="w-4 h-4 mr-2" />
                   Добавить исправления
                 </button>
                 <button
                   onClick={() => setShowCompleteConfirm(true)}
-                  className="btn btn-primary min-w-[200px]"
+                  className="btn btn-primary w-full"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
                   Завершить заказ
@@ -452,7 +463,7 @@ export default function CustomerOrderDetailPage() {
             {!order.isActived && !order.isDone && (
               <button
                 onClick={() => handleDeleteClick(true)}
-                className="btn btn-danger flex items-center"
+                className="btn btn-danger flex items-center w-full"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Удалить
@@ -462,7 +473,7 @@ export default function CustomerOrderDetailPage() {
             {order.isDone && (
               <button
                 onClick={() => handleDeleteClick(true)}
-                className="btn btn-danger flex items-center"
+                className="btn btn-danger flex items-center w-full"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
                 Удалить
@@ -473,23 +484,23 @@ export default function CustomerOrderDetailPage() {
 
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-2">Описание</h3>
-            <p className="text-gray-700 whitespace-pre-wrap">{order.description}</p>
+            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Описание</h3>
+            <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{order.description}</p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold mb-2">Область</h3>
-            <p className="text-gray-700">{order.scope}</p>
+            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Область</h3>
+            <p className="text-gray-700 dark:text-slate-300">{order.scope}</p>
           </div>
           {order.stackS && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Технологии</h3>
-              <p className="text-gray-700">{order.stackS}</p>
+              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Технологии</h3>
+              <p className="text-gray-700 dark:text-slate-300">{order.stackS}</p>
             </div>
           )}
           {order.performerName && (
             <div>
-              <h3 className="text-lg font-semibold mb-2">Исполнитель</h3>
-              <p className="text-gray-700">{order.performerName}</p>
+              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Исполнитель</h3>
+              <p className="text-gray-700 dark:text-slate-300">{order.performerName}</p>
             </div>
           )}
         </div>
@@ -498,7 +509,7 @@ export default function CustomerOrderDetailPage() {
       {/* Исполнитель или Отклики */}
       {order.performerId ? (
         <div className="card">
-          <h2 className="text-2xl font-bold mb-4">Исполнитель</h2>
+          <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">Исполнитель</h2>
           <div className="border border-gray-200 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <div className="flex-1">
@@ -548,7 +559,7 @@ export default function CustomerOrderDetailPage() {
       ) : (
         order.replies && order.replies.length > 0 && (
           <div className="card">
-            <h2 className="text-2xl font-bold mb-4">Отклики</h2>
+            <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">Отклики</h2>
             <div className="space-y-4">
               {order.replies.map((reply) => (
                 <ReplyItem
@@ -586,10 +597,10 @@ export default function CustomerOrderDetailPage() {
             className="card max-w-2xl w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold mb-4">Отправить техническое задание</h2>
+            <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">Отправить техническое задание</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Текст ТЗ</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Текст ТЗ</label>
                 <textarea
                   value={emailText}
                   onChange={(e) => setEmailText(e.target.value)}
@@ -598,7 +609,7 @@ export default function CustomerOrderDetailPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Документ (опционально)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Документ (опционально)</label>
                 <div className="flex items-center gap-2">
                   <input
                     ref={fileInputRef}
@@ -606,6 +617,11 @@ export default function CustomerOrderDetailPage() {
                     id="file-input-email"
                     onChange={(e) => {
                       const file = e.target.files?.[0] || null;
+                      if (file && file.size > MAX_FILE_SIZE) {
+                        toast.error(`Файл слишком большой. Максимум ${MAX_FILE_SIZE_KB} КБ.`);
+                        e.target.value = '';
+                        return;
+                      }
                       setEmailFile(file);
                       if (file) {
                         toast.success(`Файл "${file.name}" выбран`);
@@ -624,7 +640,7 @@ export default function CustomerOrderDetailPage() {
                   {emailFile && (
                     <div className="flex items-center gap-2 flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                       <FileText className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm text-gray-700 flex-1 truncate">{emailFile.name}</span>
+                      <span className="text-sm text-gray-700 dark:text-slate-300 flex-1 truncate">{emailFile.name}</span>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -645,7 +661,12 @@ export default function CustomerOrderDetailPage() {
                 </div>
                 {emailFile && (
                   <p className="mt-2 text-sm text-gray-500">
-                    Размер файла: {(emailFile.size / 1024).toFixed(2)} KB
+                    Размер файла: {(emailFile.size / 1024).toFixed(2)} KB (лимит {MAX_FILE_SIZE_KB} КБ)
+                  </p>
+                )}
+                {!emailFile && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    Максимальный размер файла: {MAX_FILE_SIZE_KB} КБ
                   </p>
                 )}
               </div>
@@ -703,10 +724,10 @@ export default function CustomerOrderDetailPage() {
             className="card max-w-2xl w-full mx-4"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold mb-4">Добавить исправления</h2>
+            <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">Добавить исправления</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Текст исправлений</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Текст исправлений</label>
                 <textarea
                   value={correctionsText}
                   onChange={(e) => setCorrectionsText(e.target.value)}
@@ -716,7 +737,7 @@ export default function CustomerOrderDetailPage() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Документ (опционально)</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">Документ (опционально)</label>
                 <div className="flex items-center gap-2">
                   <input
                     ref={correctionsFileInputRef}
@@ -724,6 +745,11 @@ export default function CustomerOrderDetailPage() {
                     id="file-input-corrections"
                     onChange={(e) => {
                       const file = e.target.files?.[0] || null;
+                      if (file && file.size > MAX_FILE_SIZE) {
+                        toast.error(`Файл слишком большой. Максимум ${MAX_FILE_SIZE_KB} КБ.`);
+                        e.target.value = '';
+                        return;
+                      }
                       setCorrectionsFile(file);
                       if (file) {
                         toast.success(`Файл "${file.name}" выбран`);
@@ -742,7 +768,7 @@ export default function CustomerOrderDetailPage() {
                   {correctionsFile && (
                     <div className="flex items-center gap-2 flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
                       <FileText className="w-4 h-4 text-gray-600" />
-                      <span className="text-sm text-gray-700 flex-1 truncate">{correctionsFile.name}</span>
+                      <span className="text-sm text-gray-700 dark:text-slate-300 flex-1 truncate">{correctionsFile.name}</span>
                       <button
                         type="button"
                         onClick={(e) => {
@@ -763,7 +789,12 @@ export default function CustomerOrderDetailPage() {
                 </div>
                 {correctionsFile && (
                   <p className="mt-2 text-sm text-gray-500">
-                    Размер файла: {(correctionsFile.size / 1024).toFixed(2)} KB
+                    Размер файла: {(correctionsFile.size / 1024).toFixed(2)} KB (лимит {MAX_FILE_SIZE_KB} КБ)
+                  </p>
+                )}
+                {!correctionsFile && (
+                  <p className="mt-2 text-sm text-gray-500">
+                    Максимальный размер файла: {MAX_FILE_SIZE_KB} КБ
                   </p>
                 )}
               </div>
@@ -809,7 +840,7 @@ export default function CustomerOrderDetailPage() {
           <div className="card max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center mb-4">
               <Star className="w-8 h-8 text-yellow-500 mr-3" />
-              <h2 className="text-2xl font-bold text-gray-900">Оставить отзыв</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Оставить отзыв</h2>
             </div>
             
             <div className="space-y-4">
@@ -823,7 +854,7 @@ export default function CustomerOrderDetailPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Оценка
                 </label>
                 <div className="flex items-center space-x-2">
@@ -850,7 +881,7 @@ export default function CustomerOrderDetailPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                   Комментарий
                 </label>
                 <textarea
@@ -910,14 +941,14 @@ export default function CustomerOrderDetailPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold">Профиль исполнителя</h2>
+              <h2 className="text-2xl font-bold dark:text-slate-100">Профиль исполнителя</h2>
               <button
                 onClick={() => {
                   setShowPerformerProfile(false);
                   setSelectedPerformerId(null);
                   setProfileTab('portfolio');
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"
               >
                 <X className="w-6 h-6" />
               </button>
@@ -972,37 +1003,37 @@ export default function CustomerOrderDetailPage() {
                     <div className="space-y-4">
                       {portfolio.name && (
                         <div>
-                          <h3 className="font-semibold mb-2">Имя</h3>
-                          <p className="text-gray-700">{portfolio.name}</p>
+                          <h3 className="font-semibold mb-2 dark:text-slate-100">Имя</h3>
+                          <p className="text-gray-700 dark:text-slate-300">{portfolio.name}</p>
                         </div>
                       )}
                       {portfolio.email && (
                         <div>
-                          <h3 className="font-semibold mb-2">Email</h3>
+                          <h3 className="font-semibold mb-2 dark:text-slate-100">Email</h3>
                           <p className="text-gray-700">{portfolio.email}</p>
                         </div>
                       )}
                       {portfolio.phone && (
                         <div>
-                          <h3 className="font-semibold mb-2">Телефон</h3>
+                          <h3 className="font-semibold mb-2 dark:text-slate-100">Телефон</h3>
                           <p className="text-gray-700">{portfolio.phone}</p>
                         </div>
                       )}
                       {portfolio.specializations && (
                         <div>
-                          <h3 className="font-semibold mb-2">Специализации</h3>
+                          <h3 className="font-semibold mb-2 dark:text-slate-100">Специализации</h3>
                           <p className="text-gray-700">{portfolio.specializations}</p>
                         </div>
                       )}
                       {portfolio.experience && (
                         <div>
-                          <h3 className="font-semibold mb-2">Опыт</h3>
+                          <h3 className="font-semibold mb-2 dark:text-slate-100">Опыт</h3>
                           <p className="text-gray-700">{portfolio.experience}</p>
                         </div>
                       )}
                       {portfolio.employment && (
                         <div>
-                          <h3 className="font-semibold mb-2">Занятость</h3>
+                          <h3 className="font-semibold mb-2 dark:text-slate-100">Занятость</h3>
                           <p className="text-gray-700">{portfolio.employment}</p>
                         </div>
                       )}
@@ -1037,7 +1068,6 @@ export default function CustomerOrderDetailPage() {
                       {doneOrdersData.orders.map((order) => (
                         <div key={order.id} className="border border-gray-200 rounded-lg p-4">
                           <h3 className="font-semibold text-lg mb-2">{order.title}</h3>
-                          <p className="text-sm text-gray-600 mb-2">{order.description}</p>
                           <div className="flex flex-wrap gap-2 text-sm text-gray-500">
                             {order.scope && <span>Область: {order.scope}</span>}
                             {order.stackS && <span>• Технологии: {order.stackS}</span>}
@@ -1070,10 +1100,9 @@ export default function CustomerOrderDetailPage() {
                         <div key={review.id} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <h3 className="font-semibold">{review.name}</h3>
-                              {review.customerName && (
-                                <p className="text-sm text-gray-500">От: {review.customerName}</p>
-                              )}
+                              <h3 className="font-semibold">
+                                {review.text || 'Отзыв без текста'}
+                              </h3>
                             </div>
                             <div className="flex items-center">
                               {Array.from({ length: 5 }).map((_, i) => (
@@ -1082,15 +1111,18 @@ export default function CustomerOrderDetailPage() {
                                   className={`w-4 h-4 ${
                                     i < (review.mark || 0)
                                       ? 'text-yellow-400 fill-current'
-                                      : 'text-gray-300'
+                                      : 'text-gray-300 dark:text-slate-600'
                                   }`}
                                 />
                               ))}
                               <span className="ml-2 font-semibold">{review.mark}</span>
                             </div>
                           </div>
-                          {review.text && (
-                            <p className="text-gray-700 mt-2">{review.text}</p>
+                          {review.customerName && (
+                            <p className="text-sm text-gray-600 mt-2">{review.customerName}</p>
+                          )}
+                          {review.name && (
+                            <p className="text-sm text-gray-500 mt-1">{review.name}</p>
                           )}
                           {review.createdAt && (
                             <p className="text-xs text-gray-400 mt-2">
@@ -1118,7 +1150,7 @@ export default function CustomerOrderDetailPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-orange-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Подтверждение отказа</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение отказа</h2>
           </div>
           
           <div className="space-y-4">
@@ -1132,7 +1164,7 @@ export default function CustomerOrderDetailPage() {
               </p>
             </div>
             
-            <p className="text-gray-700">
+            <p className="text-gray-700 dark:text-slate-300">
               Это действие нельзя отменить.
             </p>
             
@@ -1169,7 +1201,7 @@ export default function CustomerOrderDetailPage() {
         <div className="card max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
           <div className="flex items-center mb-4">
             <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">Завершение заказа</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Завершение заказа</h2>
           </div>
           
           <div className="space-y-4">
@@ -1184,14 +1216,14 @@ export default function CustomerOrderDetailPage() {
 
             {/* Форма отзыва (необязательно) */}
             <div className="border-t border-gray-200 pt-4">
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
+              <h3 className="text-lg font-semibold mb-3 flex items-center dark:text-slate-100">
                 <Star className="w-5 h-5 mr-2 text-yellow-500" />
                 Оставить отзыв (необязательно)
               </h3>
               
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                     Оценка
                   </label>
                   <div className="flex items-center space-x-2">
@@ -1206,19 +1238,19 @@ export default function CustomerOrderDetailPage() {
                           className={`w-8 h-8 ${
                             rating <= completeReviewData.mark
                               ? 'fill-yellow-400 text-yellow-400'
-                              : 'text-gray-300'
+                              : 'text-gray-300 dark:text-slate-600'
                           }`}
                         />
                       </button>
                     ))}
-                    <span className="ml-2 text-sm text-gray-600">
+                    <span className="ml-2 text-sm text-gray-600 dark:text-slate-400">
                       {completeReviewData.mark} из 5
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
                     Комментарий
                   </label>
                   <textarea
@@ -1291,7 +1323,7 @@ export default function CustomerOrderDetailPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
               {isPermanentDelete ? 'Подтверждение удаления' : 'Сделать заказ неактивным'}
             </h2>
           </div>
@@ -1309,7 +1341,7 @@ export default function CustomerOrderDetailPage() {
               </p>
             </div>
             
-            <p className="text-gray-700">
+            <p className="text-gray-700 dark:text-slate-300">
               {isPermanentDelete 
                 ? 'Вы уверены, что хотите полностью удалить этот заказ?'
                 : 'Вы уверены, что хотите сделать этот заказ неактивным?'

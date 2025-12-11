@@ -640,4 +640,28 @@ public class CustomerServiceImpl implements CustomerService {
                                   String customerName, String orderTitle) {
         emailNotificationService.sendPerformerRefusalEmail(performer, performerName, customerName, orderTitle);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Customer getPortfolio(Integer accountId) {
+        return repository.findByAccountId(accountId)
+                .orElseThrow(() -> new NotFoundException("Customer", accountId));
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updatePortfolio(Integer accountId, UpdateCustomerPortfolioDto dto) {
+        Customer customer = repository.findByAccountId(accountId)
+                .orElseThrow(() -> new NotFoundException("Customer", accountId));
+        
+        // Обновляем только разрешенные поля
+        // name и email не обновляются - они берутся из Account при регистрации и остаются неизменными
+        // customer.setName(...) - не обновляем
+        customer.setAge(dto.getAge());
+        customer.setDescription(dto.getDescription());
+        customer.setScopeS(dto.getScopeS());
+        
+        repository.save(customer);
+        logger.info("Customer portfolio updated for accountId: {}", accountId);
+    }
 }

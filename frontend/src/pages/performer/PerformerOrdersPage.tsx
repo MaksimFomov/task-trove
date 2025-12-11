@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { performerApi } from '../../services/api';
 import { Search, Eye, CheckCircle, Clock, X, AlertTriangle, Loader2, Trash2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
 import Modal from '../../components/Modal';
 import type { Order, Reply, UpdateReplyDto, Chat } from '../../types';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
@@ -125,7 +126,7 @@ export default function PerformerOrdersPage() {
       return (
         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
           <CheckCircle className="w-3 h-3 mr-1" />
-          Завершено
+          Выполнен
         </span>
       );
     }
@@ -149,7 +150,7 @@ export default function PerformerOrdersPage() {
     }
     // Ожидает утверждения заказчика
     return (
-      <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-800 rounded-full flex items-center">
+      <span className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 rounded-full flex items-center">
         <Clock className="w-3 h-3 mr-1" />
         Ожидает
       </span>
@@ -209,9 +210,9 @@ export default function PerformerOrdersPage() {
       // Поиск по новым заказам
       return (filtered as Order[]).filter((order) =>
         order.title?.toLowerCase().includes(searchLower) ||
-        order.description?.toLowerCase().includes(searchLower) ||
         order.scope?.toLowerCase().includes(searchLower) ||
-        order.stackS?.toLowerCase().includes(searchLower)
+        order.stackS?.toLowerCase().includes(searchLower) ||
+        order.description?.toLowerCase().includes(searchLower)
       );
     } else {
       // Поиск по откликам
@@ -242,7 +243,7 @@ export default function PerformerOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Заказы</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Заказы</h1>
 
       <div className="card">
         {/* Вкладки */}
@@ -294,7 +295,7 @@ export default function PerformerOrdersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Поиск по названию, описанию, области или технологиям..."
+              placeholder="Поиск по названию, области или технологиям..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10"
@@ -305,7 +306,7 @@ export default function PerformerOrdersPage() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2">
-                  <span className="text-sm text-gray-700 font-medium">Сортировка:</span>
+                  <span className="text-sm text-gray-700 dark:text-slate-300 font-medium">Сортировка:</span>
                   <select
                     value={sortOrder}
                     onChange={(e) => setSortOrder(e.target.value as SortOrder)}
@@ -326,7 +327,7 @@ export default function PerformerOrdersPage() {
                       onChange={(e) => setShowOnlyWithoutReplies(e.target.checked)}
                       className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                     />
-                    <span className="ml-2 text-sm text-gray-700">
+                    <span className="ml-2 text-sm text-gray-700 dark:text-slate-300">
                       Только заказы без моих откликов
                     </span>
                   </label>
@@ -336,7 +337,7 @@ export default function PerformerOrdersPage() {
             
             {/* Подсказка по поиску */}
             {debouncedSearchTerm && (
-              <div className="text-sm text-gray-600 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="text-sm text-gray-600 dark:text-slate-300 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                 <span className="font-medium">Поиск:</span> "{debouncedSearchTerm}"
                 {filteredData.length > 0 ? (
                   <span className="ml-2">— найдено {filteredData.length} {filteredData.length === 1 ? 'заказ' : filteredData.length < 5 ? 'заказа' : 'заказов'}</span>
@@ -359,24 +360,20 @@ export default function PerformerOrdersPage() {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
+                      {reply.orderPublicationTime && (
+                        <p className="text-xs text-gray-500 mb-1">
+                          {format(new Date(reply.orderPublicationTime), 'd MMMM yyyy', { locale: ru })}
+                        </p>
+                      )}
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-xl font-semibold text-gray-900">
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
                           {reply.orderNameByOrder || reply.orderName}
                         </h3>
                         {getStatusBadge(reply)}
                       </div>
-                      {reply.orderDescription && (
-                        <p className="text-gray-600 mb-2 line-clamp-2">{reply.orderDescription}</p>
-                      )}
-                      <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                        {reply.orderScope && <span>Область: {reply.orderScope}</span>}
+                      <div className="flex flex-col gap-1 text-sm text-gray-500">
+                        {reply.orderScope && <span>• Область: {reply.orderScope}</span>}
                         {reply.orderStackS && <span>• Технологии: {reply.orderStackS}</span>}
-                        {reply.orderPublicationTime && (
-                          <span>
-                            • Опубликован:{' '}
-                            {format(new Date(reply.orderPublicationTime), 'dd MMM yyyy')}
-                          </span>
-                        )}
                         {/* Показываем количество откликов только для вкладки "Мои отклики" (pending) */}
                         {activeTab === 'pending' && reply.orderHowReplies !== undefined && (
                           <span>• Откликов: {reply.orderHowReplies}</span>
@@ -463,23 +460,21 @@ export default function PerformerOrdersPage() {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
+                      {order.publicationTime && (
+                        <p className="text-xs text-gray-500 mb-1">
+                          {format(new Date(order.publicationTime), 'd MMMM yyyy', { locale: ru })}
+                        </p>
+                      )}
                       <div className="flex items-center space-x-3 mb-2">
-                        <h3 className="text-xl font-semibold text-gray-900">{order.title}</h3>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-slate-100">{order.title}</h3>
                         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
                           <CheckCircle className="w-3 h-3 mr-1" />
                           Активен
                         </span>
                       </div>
-                      <p className="text-gray-600 mb-2 line-clamp-2">{order.description}</p>
-                      <div className="flex flex-wrap gap-2 text-sm text-gray-500">
-                        <span>Область: {order.scope}</span>
+                      <div className="flex flex-col gap-1 text-sm text-gray-500">
+                        <span>• Область: {order.scope}</span>
                         {order.stackS && <span>• Технологии: {order.stackS}</span>}
-                        {order.publicationTime && (
-                          <span>
-                            • Опубликован:{' '}
-                            {format(new Date(order.publicationTime), 'dd MMM yyyy')}
-                          </span>
-                        )}
                         {/* Показываем количество откликов для новых заказов */}
                         {order.howReplies !== undefined && <span>• Откликов: {order.howReplies}</span>}
                       </div>

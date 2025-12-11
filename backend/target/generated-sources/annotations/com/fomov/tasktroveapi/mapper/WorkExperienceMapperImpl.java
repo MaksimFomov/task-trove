@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-12-03T21:46:30+0300",
+    date = "2025-12-11T18:01:20+0300",
     comments = "version: 1.6.3, compiler: javac, environment: Java 25 (Homebrew)"
 )
 @Component
@@ -24,6 +24,7 @@ public class WorkExperienceMapperImpl implements WorkExperienceMapper {
         workExperienceDto.setId( workExperience.getId() );
         workExperienceDto.setName( workExperience.getName() );
         workExperienceDto.setRate( workExperience.getRate() );
+        workExperienceDto.setText( workExperience.getText() );
         workExperienceDto.setCreatedAt( workExperience.getCreatedAt() );
         workExperienceDto.setUpdatedAt( workExperience.getUpdatedAt() );
 
@@ -41,6 +42,7 @@ public class WorkExperienceMapperImpl implements WorkExperienceMapper {
 
         WorkExperience workExperience = new WorkExperience();
 
+        workExperience.setText( workExperienceDto.getText() );
         workExperience.setName( workExperienceDto.getName() );
         workExperience.setRate( workExperienceDto.getRate() );
 

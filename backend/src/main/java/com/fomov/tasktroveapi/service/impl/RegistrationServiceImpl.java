@@ -59,21 +59,29 @@ public class RegistrationServiceImpl implements RegistrationService {
     }
 
     @Override
-    @Transactional
+    @Transactional(readOnly = true)
     public boolean emailExists(String email) {
-        return accountRepository.findByEmail(email).isPresent() ||
-               customerRepository.findByEmail(email).isPresent() ||
-               performerRepository.findByEmail(email).isPresent();
+        if (email == null || email.trim().isEmpty()) {
+            return false;
+        }
+        // Нормализуем email: trim и lowercase для консистентности
+        String normalizedEmail = email.trim().toLowerCase();
+        // Проверяем email в Account, так как email уникален в таблице accounts
+        // и Customer/Performer всегда связаны с Account через OneToOne
+        // Это более эффективно, чем проверять все три репозитория
+        return accountRepository.findByEmail(normalizedEmail).isPresent();
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Customer registerCustomer(RegistrationCustDto dto) {
-        logger.info("Registering new customer with email: {}", dto.getEmail());
+        // Нормализуем email
+        String normalizedEmail = dto.getEmail() != null ? dto.getEmail().trim().toLowerCase() : null;
+        logger.info("Registering new customer with email: {}", normalizedEmail);
         
         // Проверяем email
-        if (emailExists(dto.getEmail())) {
-            throw new RepetitiveEmailException("Email already exists: " + dto.getEmail());
+        if (emailExists(normalizedEmail)) {
+            throw new RepetitiveEmailException("Email already exists: " + normalizedEmail);
         }
         
         // Получаем роль Customer
@@ -82,8 +90,8 @@ public class RegistrationServiceImpl implements RegistrationService {
         
         // Создаем Account
         Account account = new Account();
-        account.setLogin(dto.getEmail());
-        account.setEmail(dto.getEmail());
+        account.setLogin(normalizedEmail);
+        account.setEmail(normalizedEmail);
         account.setPassword(passwordEncoder.encode(dto.getPasswordUser()));
         account.setRole(customerRole);
         Account savedAccount = accountRepository.save(account);
@@ -100,11 +108,13 @@ public class RegistrationServiceImpl implements RegistrationService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Performer registerPerformer(RegistrationAccDto dto) {
-        logger.info("Registering new performer with email: {}", dto.getEmail());
+        // Нормализуем email
+        String normalizedEmail = dto.getEmail() != null ? dto.getEmail().trim().toLowerCase() : null;
+        logger.info("Registering new performer with email: {}", normalizedEmail);
         
         // Проверяем email
-        if (emailExists(dto.getEmail())) {
-            throw new RepetitiveEmailException("Email already exists: " + dto.getEmail());
+        if (emailExists(normalizedEmail)) {
+            throw new RepetitiveEmailException("Email already exists: " + normalizedEmail);
         }
         
         // Получаем роль Performer
@@ -113,8 +123,8 @@ public class RegistrationServiceImpl implements RegistrationService {
         
         // Создаем Account
         Account account = new Account();
-        account.setLogin(dto.getEmail());
-        account.setEmail(dto.getEmail());
+        account.setLogin(normalizedEmail);
+        account.setEmail(normalizedEmail);
         account.setPassword(passwordEncoder.encode(dto.getPasswordUser()));
         account.setRole(performerRole);
         Account savedAccount = accountRepository.save(account);
@@ -128,7 +138,7 @@ public class RegistrationServiceImpl implements RegistrationService {
         Portfolio portfolio = new Portfolio();
         portfolio.setPerformer(saved);
         portfolio.setName(dto.getName());
-        portfolio.setEmail(dto.getEmail());
+        portfolio.setEmail(normalizedEmail);
         portfolio.setPhone(dto.getPhone());
         portfolio.setTownCountry(dto.getTownCountry());
         portfolio.setSpecializations(dto.getSpecializations());

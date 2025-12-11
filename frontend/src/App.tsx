@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from './store/authStore';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import GuestRoute from './components/GuestRoute';
 import ErrorBoundary from './components/ErrorBoundary';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -11,6 +12,7 @@ import CustomerOrdersPage from './pages/customer/CustomerOrdersPage';
 import CustomerOrderCreatePage from './pages/customer/CustomerOrderCreatePage';
 import CustomerOrderDetailPage from './pages/customer/CustomerOrderDetailPage';
 import CustomerChatsPage from './pages/customer/CustomerChatsPage';
+import CustomerPortfolioPage from './pages/customer/CustomerPortfolioPage';
 import PerformerOrdersPage from './pages/performer/PerformerOrdersPage';
 import PerformerOrderDetailPage from './pages/performer/PerformerOrderDetailPage';
 import PerformerChatsPage from './pages/performer/PerformerChatsPage';
@@ -25,6 +27,14 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // Initialize theme
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    if (savedTheme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+
     const initializeApp = async () => {
       try {
         await initialize();
@@ -66,8 +76,22 @@ function App() {
       <BrowserRouter>
         <Layout>
           <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route 
+            path="/login" 
+            element={
+              <GuestRoute>
+                <LoginPage />
+              </GuestRoute>
+            } 
+          />
+          <Route 
+            path="/register" 
+            element={
+              <GuestRoute>
+                <RegisterPage />
+              </GuestRoute>
+            } 
+          />
           <Route
             path="/"
             element={
@@ -106,6 +130,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['Customer']}>
                 <CustomerChatsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/customer/portfolio"
+            element={
+              <ProtectedRoute allowedRoles={['Customer']}>
+                <CustomerPortfolioPage />
               </ProtectedRoute>
             }
           />

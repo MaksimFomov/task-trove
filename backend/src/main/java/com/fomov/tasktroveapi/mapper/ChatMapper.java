@@ -55,6 +55,7 @@ public class ChatMapper {
         // Добавляем информацию об удалении
         dto.setDeletedByCustomer(entity.getDeletedByCustomer());
         dto.setDeletedByPerformer(entity.getDeletedByPerformer());
+        dto.setLastMessageTime(entity.getLastMessageTime());
         
         return dto;
     }

@@ -65,7 +65,9 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/h2-console/**", "/api/auth/**", "/ws/**", "/chat/**").permitAll()
+                        .requestMatchers("/h2-console/**", "/api/auth/login", "/api/auth/register/**", "/api/auth/check-email", "/api/auth/send-verification", "/api/auth/verify-email", "/api/auth/forgot-password-public", "/api/auth/reset-password-public", "/ws/**", "/chat/**").permitAll()
+                        .requestMatchers("/api/auth/forgot-password", "/api/auth/reset-password").authenticated()
+                        .requestMatchers("/api/auth/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .headers(h -> h.frameOptions(fr -> fr.disable()));

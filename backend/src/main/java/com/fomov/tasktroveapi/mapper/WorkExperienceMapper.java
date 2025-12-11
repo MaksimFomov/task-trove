@@ -11,7 +11,6 @@ public interface WorkExperienceMapper {
     
     @Mapping(target = "customerName", expression = "java(workExperience.getCustomer() != null ? workExperience.getCustomer().getName() : null)")
     @Mapping(target = "performerName", expression = "java(workExperience.getPerformer() != null ? workExperience.getPerformer().getName() : null)")
-    @Mapping(target = "text", ignore = true)
     @Mapping(target = "orderId", ignore = true)
     @Mapping(target = "customerId", ignore = true)
     @Mapping(target = "performerId", ignore = true)
@@ -22,5 +21,6 @@ public interface WorkExperienceMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "text", source = "text")
     WorkExperience toEntity(WorkExperienceDto workExperienceDto);
 }

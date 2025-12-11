@@ -53,7 +53,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900">Управление пользователями</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Управление пользователями</h1>
 
       <div className="card">
         {data && data.length > 0 ? (
@@ -61,22 +61,22 @@ export default function AdminUsersPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     ID
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Логин
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Email
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Роль
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Статус
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Действия
                   </th>
                 </tr>
@@ -84,17 +84,17 @@ export default function AdminUsersPage() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {data.map((user) => (
                   <tr key={user.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.id}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">{user.id}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-slate-100">
                       {user.login}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email || '-'}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">{user.email || '-'}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
                         {user.role?.name || 'USER'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
                       {portfolioData?.status === 'ACTIVE' ? (
                         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
                           Активен
@@ -132,7 +132,7 @@ export default function AdminUsersPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Пользователей не найдено</p>
+            <p className="text-gray-500 dark:text-slate-400 text-lg">Пользователей не найдено</p>
           </div>
         )}
       </div>
@@ -142,14 +142,14 @@ export default function AdminUsersPage() {
         {portfolioData && (
           <div className="card max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-2xl font-bold">Портфолио</h2>
-              <button onClick={() => setShowPortfolio(false)} className="text-gray-500 hover:text-gray-700">
+              <h2 className="text-2xl font-bold dark:text-slate-100">Портфолио</h2>
+              <button onClick={() => setShowPortfolio(false)} className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300">
                 ✕
               </button>
             </div>
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-gray-500">Имя</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-slate-400">Имя</p>
                 <p className="text-lg">{portfolioData.name || '-'}</p>
               </div>
               <div>

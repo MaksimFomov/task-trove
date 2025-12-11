@@ -31,6 +31,9 @@ public class WorkExperience {
     
     @Column(nullable = false)
     private Integer rate;
+
+    @Column(columnDefinition = "TEXT")
+    private String text;
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

@@ -74,6 +74,14 @@ export const authApi = {
   login: (data: LoginRequest) => api.post('/auth/login', data),
   registerCustomer: (data: RegisterCustomerRequest) => api.post('/auth/register/customer', data),
   registerPerformer: (data: RegisterPerformerRequest) => api.post('/auth/register/perf', data),
+  checkEmailExists: (email: string) => api.get('/auth/check-email', { params: { email } }),
+  sendEmailVerification: (email: string) => api.post('/auth/send-verification', { email }),
+  verifyEmailCode: (email: string, code: string) => api.post('/auth/verify-email', { email, code }),
+  changePassword: (oldPassword: string, newPassword: string) => api.put('/auth/change-password', { oldPassword, newPassword }),
+  forgotPassword: () => api.post('/auth/forgot-password'),
+  resetPassword: (code: string, newPassword: string) => api.post('/auth/reset-password', { code, newPassword }),
+  forgotPasswordPublic: (email: string) => api.post('/auth/forgot-password-public', { email }),
+  resetPasswordPublic: (email: string, code: string, newPassword: string) => api.post('/auth/reset-password-public', { email, code, newPassword }),
 };
 
 // Customer API
@@ -107,7 +115,8 @@ export const customerApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-  getPortfolio: (userId: number) => api.get<Portfolio>('/customers/portfolio', { params: { userId } }),
+  getPortfolio: () => api.get<CustomerPortfolio>('/customers/portfolio'),
+  updatePortfolio: (data: UpdateCustomerPortfolioDto) => api.put('/customers/portfolio', data),
   getInfo: (userId: number) => api.get<Account>('/customers/info', { params: { userId } }),
   getPerformerDoneOrders: (performerId: number) => api.get<{ orders: Order[] }>(`/customers/performer/${performerId}/done-orders`),
   getPerformerReviews: (performerId: number) => api.get<{ reviews: WorkExperience[] }>(`/customers/performer/${performerId}/reviews`),
