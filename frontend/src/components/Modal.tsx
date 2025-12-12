@@ -8,7 +8,7 @@ interface ModalProps {
   closeOnBackdropClick?: boolean;
 }
 
-export default function Modal({ isOpen, onClose, children, closeOnBackdropClick = true }: ModalProps) {
+export default function Modal({ isOpen, onClose, children, closeOnBackdropClick = false }: ModalProps) {
   useEffect(() => {
     if (isOpen) {
       // Блокируем скролл body когда модальное окно открыто

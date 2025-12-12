@@ -1,5 +1,6 @@
 package com.fomov.tasktroveapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.proxy.HibernateProxy;
@@ -26,13 +27,21 @@ public class Customer {
     @JoinColumn(name = "account_id", nullable = false, unique = true,
                 foreignKey = @ForeignKey(name = "fk_customers_account"))
     @ToString.Exclude
+    @JsonIgnore
     private Account account;
     
-    @Column(nullable = false)
-    private Integer age;
     
-    @Column(nullable = false, length = 100)
-    private String name;
+    @Column(name = "last_name", length = 50)
+    private String lastName;
+    
+    @Column(name = "first_name", length = 50)
+    private String firstName;
+    
+    @Column(name = "middle_name", length = 50)
+    private String middleName;
+    
+    @Column(length = 50)
+    private String phone;
     
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -42,14 +51,17 @@ public class Customer {
     
     @OneToMany(mappedBy = "customer", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
     @ToString.Exclude
+    @JsonIgnore
     private List<Chat> chats = new ArrayList<>();
     
     @OneToMany(mappedBy = "customer", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
     @ToString.Exclude
+    @JsonIgnore
     private List<Orders> orders = new ArrayList<>();
     
     @OneToMany(mappedBy = "customer", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
     @ToString.Exclude
+    @JsonIgnore
     private List<WorkExperience> workExperiences = new ArrayList<>();
     
     // Методы для работы со связанными сущностями
@@ -89,6 +101,26 @@ public class Customer {
      */
     public String getEmail() {
         return account != null ? account.getEmail() : null;
+    }
+    
+    /**
+     * Получает полное имя в формате ФИО
+     * @return полное имя или null если не заполнено
+     */
+    public String getFullName() {
+        StringBuilder fullName = new StringBuilder();
+        if (lastName != null && !lastName.trim().isEmpty()) {
+            fullName.append(lastName.trim());
+        }
+        if (firstName != null && !firstName.trim().isEmpty()) {
+            if (fullName.length() > 0) fullName.append(" ");
+            fullName.append(firstName.trim());
+        }
+        if (middleName != null && !middleName.trim().isEmpty()) {
+            if (fullName.length() > 0) fullName.append(" ");
+            fullName.append(middleName.trim());
+        }
+        return fullName.length() > 0 ? fullName.toString() : null;
     }
 
     @Override

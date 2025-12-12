@@ -28,6 +28,14 @@ public interface WorkExperienceRepository extends JpaRepository<WorkExperience, 
     @Query("SELECT we FROM WorkExperience we LEFT JOIN FETCH we.customer LEFT JOIN FETCH we.performer WHERE we.performer.id = :performerId ORDER BY we.createdAt DESC")
     List<WorkExperience> findByPerformerIdOrderByCreatedAtDescWithRelations(@Param("performerId") Integer performerId);
     
+    // Отзывы О заказчике от исполнителей (reviewerType = PERFORMER)
+    @Query("SELECT we FROM WorkExperience we LEFT JOIN FETCH we.customer c LEFT JOIN FETCH c.account ca LEFT JOIN FETCH we.performer p LEFT JOIN FETCH p.account pa LEFT JOIN FETCH we.order WHERE we.customer.id = :customerId AND we.reviewerType = 'PERFORMER' ORDER BY we.createdAt DESC")
+    List<WorkExperience> findReviewsAboutCustomerWithRelations(@Param("customerId") Integer customerId);
+    
+    // Отзывы О исполнителе от заказчиков (reviewerType = CUSTOMER)
+    @Query("SELECT we FROM WorkExperience we LEFT JOIN FETCH we.customer c LEFT JOIN FETCH c.account ca LEFT JOIN FETCH we.performer p LEFT JOIN FETCH p.account pa LEFT JOIN FETCH we.order WHERE we.performer.id = :performerId AND we.reviewerType = 'CUSTOMER' ORDER BY we.createdAt DESC")
+    List<WorkExperience> findReviewsAboutPerformerWithRelations(@Param("performerId") Integer performerId);
+    
     @Query("SELECT we FROM WorkExperience we LEFT JOIN FETCH we.customer LEFT JOIN FETCH we.performer WHERE we.id = :id")
     Optional<WorkExperience> findByIdWithRelations(@Param("id") Integer id);
     

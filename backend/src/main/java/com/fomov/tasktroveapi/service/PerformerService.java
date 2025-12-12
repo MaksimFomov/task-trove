@@ -22,6 +22,7 @@ public interface PerformerService {
     Map<String, Object> getMyReplies(Integer accountId, String tab);
     Map<String, Object> getMyChats(Integer accountId, String tab);
     Map<String, Object> getChatMessages(Integer accountId, Integer chatId);
+    void markChatAsRead(Integer accountId, Integer chatId);
     Integer createReply(Integer accountId, ReplyDto dto);
     void updateTaskStatus(Integer accountId, UpdateReplyDto dto);
     void updatePortfolio(Integer accountId, UpdatePortfolioDto dto);
@@ -31,4 +32,5 @@ public interface PerformerService {
     Map<String, Object> getPerformerInfo(Integer accountId);
     Map<String, Object> getMyReviews(Integer accountId);
     void deleteChat(Integer accountId, Integer chatId);
+    void addReview(Integer accountId, WorkExperienceDto dto);
 }

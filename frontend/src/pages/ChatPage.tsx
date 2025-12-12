@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { customerApi, performerApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
 import { Send, ArrowLeft } from 'lucide-react';
@@ -14,7 +14,7 @@ export default function ChatPage() {
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  // const queryClient = useQueryClient();
+  const queryClient = useQueryClient();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isConnected, setIsConnected] = useState(false);
@@ -39,6 +39,14 @@ export default function ChatPage() {
       return null;
     },
     enabled: !!chatId && (isCustomer || isPerformer),
+    // При загрузке информации о чате сразу обновляем список чатов для обновления счетчика
+    onSuccess: () => {
+      if (isCustomer) {
+        queryClient.invalidateQueries({ queryKey: ['customerChats'] });
+      } else if (isPerformer) {
+        queryClient.invalidateQueries({ queryKey: ['performerChats'] });
+      }
+    },
   });
 
   const { data: initialMessages } = useQuery({
@@ -52,7 +60,70 @@ export default function ChatPage() {
       return Promise.resolve([]);
     },
     enabled: !!chatId && (isCustomer || isPerformer),
+    refetchOnMount: true, // Всегда загружаем при монтировании (открытии чата)
+    refetchOnWindowFocus: true, // Обновляем при возврате на вкладку
+    refetchInterval: 5000, // Автоматическое обновление каждые 5 секунд для синхронизации
+    // При каждом запросе getChatMessages бэкенд автоматически обновляет lastCheckedTime,
+    // что помечает все сообщения как прочитанные и обновляет счетчик непрочитанных
+    onSuccess: () => {
+      // Сразу обновляем список чатов после успешной загрузки сообщений
+      // Это обновит счетчик непрочитанных немедленно
+      if (isCustomer) {
+        queryClient.invalidateQueries({ queryKey: ['customerChats'] });
+      } else if (isPerformer) {
+        queryClient.invalidateQueries({ queryKey: ['performerChats'] });
+      }
+    },
   });
+
+  // Немедленное обновление счетчика непрочитанных при открытии чата
+  useEffect(() => {
+    if (!chatId) return;
+    
+    // Оптимистично обновляем кэш чатов, устанавливая unreadCount = 0 для текущего чата
+    // Это делает счетчик непрочитанных равным 0 сразу, до загрузки данных с бэкенда
+    if (isCustomer) {
+      queryClient.setQueryData(['customerChats'], (oldData: any) => {
+        if (!oldData) return oldData;
+        // В кэше хранится массив чатов напрямую (из queryFn: res.data.chats)
+        if (!Array.isArray(oldData)) return oldData;
+        
+        return oldData.map((chat: any) => 
+          chat.id === Number(chatId) ? { ...chat, unreadCount: 0 } : chat
+        );
+      });
+      
+      // Сразу вызываем API для обновления lastCheckedTime на бэкенде
+      customerApi.markChatAsRead(Number(chatId))
+        .then(() => {
+          // После успешного обновления на бэкенде обновляем список чатов
+          queryClient.invalidateQueries({ queryKey: ['customerChats'] });
+        })
+        .catch((error) => {
+          console.error('Error marking chat as read:', error);
+        });
+    } else if (isPerformer) {
+      queryClient.setQueryData(['performerChats'], (oldData: any) => {
+        if (!oldData) return oldData;
+        // В кэше хранится массив чатов напрямую (из queryFn: res.data.chats)
+        if (!Array.isArray(oldData)) return oldData;
+        
+        return oldData.map((chat: any) => 
+          chat.id === Number(chatId) ? { ...chat, unreadCount: 0 } : chat
+        );
+      });
+      
+      // Сразу вызываем API для обновления lastCheckedTime на бэкенде
+      performerApi.markChatAsRead(Number(chatId))
+        .then(() => {
+          // После успешного обновления на бэкенде обновляем список чатов
+          queryClient.invalidateQueries({ queryKey: ['performerChats'] });
+        })
+        .catch((error) => {
+          console.error('Error marking chat as read:', error);
+        });
+    }
+  }, [chatId, isCustomer, isPerformer, queryClient]);
 
   useEffect(() => {
     if (initialMessages) {
@@ -109,15 +180,38 @@ export default function ChatPage() {
           console.log('Received message:', data);
           
           if (data.type === 'CHAT' && data.content) {
-            setMessages((prev) => [...prev, {
-              id: Date.now(),
+            // Добавляем сообщение в локальное состояние
+            const newMessage: Message = {
+              id: data.messageId || Date.now(), // Используем ID из бэкенда, если есть
               content: data.content,
               text: data.content,
               sender: data.sender,
               fromWho: data.sender,
               authorUserId: data.senderId,
-              sentAt: new Date().toISOString(),
-            } as Message]);
+              sentAt: data.createdAt || new Date().toISOString(),
+            };
+            
+            setMessages((prev) => {
+              // Проверяем, нет ли уже такого сообщения (избегаем дубликатов)
+              const exists = prev.some(m => 
+                m.id === newMessage.id || 
+                (m.content === newMessage.content && 
+                 m.authorUserId === newMessage.authorUserId &&
+                 Math.abs(new Date(m.sentAt).getTime() - new Date(newMessage.sentAt).getTime()) < 1000)
+              );
+              if (exists) return prev;
+              return [...prev, newMessage];
+            });
+
+            // Инвалидируем запрос сообщений, чтобы при следующей загрузке данные были актуальными
+            queryClient.invalidateQueries({ queryKey: ['chatMessages', chatId] });
+            
+            // Обновляем список чатов для обновления счетчика непрочитанных
+            if (isCustomer) {
+              queryClient.invalidateQueries({ queryKey: ['customerChats'] });
+            } else if (isPerformer) {
+              queryClient.invalidateQueries({ queryKey: ['performerChats'] });
+            }
           }
         } catch (error) {
           console.error('Error parsing message:', error);
@@ -196,6 +290,18 @@ export default function ChatPage() {
         body: JSON.stringify(message),
       });
       setNewMessage('');
+      
+      // Инвалидируем запрос сообщений после отправки, чтобы данные обновились
+      // Это гарантирует, что при возврате на страницу сообщение будет в списке
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['chatMessages', chatId] });
+        // Также обновляем список чатов, чтобы обновилось время последнего сообщения
+        if (isCustomer) {
+          queryClient.invalidateQueries({ queryKey: ['customerChats'] });
+        } else if (isPerformer) {
+          queryClient.invalidateQueries({ queryKey: ['performerChats'] });
+        }
+      }, 500); // Небольшая задержка, чтобы бэкенд успел сохранить сообщение
     } catch (error) {
       console.error('Error sending message:', error);
     }
@@ -209,8 +315,8 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-200px)]">
-      <div className="flex items-center mb-4">
+    <div className="flex flex-col h-[calc(100vh-180px)] max-h-[calc(100vh-180px)] overflow-hidden">
+      <div className="flex items-center mb-4 flex-shrink-0">
         <button onClick={() => navigate(-1)} className="btn btn-secondary flex items-center mr-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
           Назад
@@ -226,20 +332,15 @@ export default function ChatPage() {
             </p>
           )}
         </div>
-        <div className="ml-4">
-          <span className={`inline-flex items-center px-2 py-1 rounded text-xs ${isConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-            {isConnected ? '● Подключено' : '○ Отключено'}
-          </span>
-        </div>
       </div>
 
-      <div className="card flex-1 flex flex-col">
+      <div className="card flex-1 flex flex-col min-h-0 overflow-hidden">
         {chatDeletedMessage && (
-          <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-950/40 border border-yellow-200 dark:border-yellow-800 rounded-lg flex-shrink-0">
             <p className="text-yellow-800 dark:text-yellow-300 text-sm font-medium">{chatDeletedMessage}</p>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+        <div className="flex-1 overflow-y-auto space-y-4 mb-4 min-h-0 px-1">
           {messages.map((message) => {
             const isOwn = message.authorUserId === user?.id;
             return (
@@ -270,7 +371,7 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 flex-shrink-0 pt-2 border-t border-gray-200 dark:border-slate-700">
           <input
             type="text"
             value={newMessage}

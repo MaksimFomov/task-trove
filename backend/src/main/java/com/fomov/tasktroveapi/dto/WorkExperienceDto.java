@@ -29,12 +29,16 @@ public class WorkExperienceDto {
     @JsonProperty("orderId")
     private Integer orderId;
     
+    @JsonProperty("reviewerType")
+    private String reviewerType; // "CUSTOMER" or "PERFORMER"
+    
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Integer customerId;
     
-    @NotNull(message = "Performer ID is required")
     private Integer performerId;
     private String customerName;
+    private String customerEmail;
     private String performerName;
+    private String performerEmail;
 }

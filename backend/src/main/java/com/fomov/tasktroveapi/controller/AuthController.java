@@ -58,6 +58,10 @@ public class AuthController {
         if (!passwordEncoder.matches(dto.getPassword(), acc.getPassword())) {
             return ResponseEntity.status(401).body(Map.of("error", "Неправильный логин или пароль"));
         }
+        // Проверяем, активен ли аккаунт
+        if (acc.getIsActive() == null || !acc.getIsActive()) {
+            return ResponseEntity.status(403).body(Map.of("error", "Ваш аккаунт заблокирован"));
+        }
         String roleName = acc.getRole() != null ? acc.getRole().getName() : "USER";
         String token = tokenService.createToken(acc.getId(), roleName, Map.of());
         return ResponseEntity.ok(Map.of(

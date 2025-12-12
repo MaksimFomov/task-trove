@@ -19,6 +19,6 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.account WHERE c.account.id = :accountId")
     Optional<Customer> findByAccountId(@Param("accountId") Integer accountId);
     
-    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.account WHERE c.id = :id")
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.account LEFT JOIN FETCH c.account.role WHERE c.id = :id")
     Optional<Customer> findByIdWithAccount(@Param("id") Integer id);
 }

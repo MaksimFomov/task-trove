@@ -152,4 +152,52 @@ public class NotificationServiceImpl implements NotificationService {
         // Это уведомление для заказчика, когда исполнитель отказывается от работы
         createRefusedNotification(customerAccountId, performerId, orderId, orderTitle, performerName);
     }
+
+    @Override
+    public void createOrderReviewNotification(Integer adminAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+        Notification notification = new Notification(
+            adminAccountId,
+            "Administrator",
+            "ORDER_REVIEW",
+            "Новый заказ на рассмотрении",
+            String.format("Заказчик %s создал заказ \"%s\", который требует проверки и одобрения", customerName, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedCustomerId(customerId);
+        save(notification);
+        logger.info("Created ORDER_REVIEW notification for admin accountId={}, orderId={}", adminAccountId, orderId);
+    }
+
+    @Override
+    public void createOrderApprovedNotification(Integer customerAccountId, Integer orderId, String orderTitle) {
+        Notification notification = new Notification(
+            customerAccountId,
+            "Customer",
+            "ORDER_APPROVED",
+            "Заказ одобрен",
+            String.format("Ваш заказ \"%s\" был одобрен администратором и теперь доступен для исполнителей", orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        save(notification);
+        logger.info("Created ORDER_APPROVED notification for customer accountId={}, orderId={}", customerAccountId, orderId);
+    }
+
+    @Override
+    public void createOrderRejectedNotification(Integer customerAccountId, Integer orderId, String orderTitle, String reason) {
+        String message = String.format("Ваш заказ \"%s\" не прошел проверку администратором", orderTitle);
+        if (reason != null && !reason.trim().isEmpty()) {
+            message += String.format(". Причина: %s", reason);
+        }
+        
+        Notification notification = new Notification(
+            customerAccountId,
+            "Customer",
+            "ORDER_REJECTED",
+            "Заказ не прошел проверку",
+            message
+        );
+        notification.setRelatedOrderId(orderId);
+        save(notification);
+        logger.info("Created ORDER_REJECTED notification for customer accountId={}, orderId={}", customerAccountId, orderId);
+    }
 }

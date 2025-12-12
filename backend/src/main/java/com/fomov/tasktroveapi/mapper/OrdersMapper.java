@@ -19,11 +19,15 @@ public interface OrdersMapper {
     @Mapping(target = "isInProcess", ignore = true)
     @Mapping(target = "isOnCheck", ignore = true)
     @Mapping(target = "isDone", ignore = true)
+    @Mapping(target = "isOnReview", ignore = true)
+    @Mapping(target = "isRejected", ignore = true)
     @Mapping(target = "techStack", ignore = true)
     Orders toEntity(AddOrderDto dto);
     
     @Mapping(target = "customerName", ignore = true)
     @Mapping(target = "performerName", ignore = true)
+    @Mapping(target = "customerEmail", ignore = true)
+    @Mapping(target = "performerEmail", ignore = true)
     @Mapping(target = "replies", ignore = true)
     @Mapping(target = "custOfOrder", ignore = true)
     @Mapping(target = "howReplies", ignore = true)
@@ -32,6 +36,8 @@ public interface OrdersMapper {
     @Mapping(target = "inProcess", source = "isInProcess")
     @Mapping(target = "onCheck", source = "isOnCheck")
     @Mapping(target = "done", source = "isDone")
+    @Mapping(target = "onReview", source = "isOnReview")
+    @Mapping(target = "rejected", source = "isRejected")
     AddOrderDto toDto(Orders entity);
     
     @AfterMapping
@@ -55,6 +61,9 @@ public interface OrdersMapper {
         if (orders.getIsDone() == null) {
             orders.setIsDone(false);
         }
+        if (orders.getIsOnReview() == null) {
+            orders.setIsOnReview(false);
+        }
         // Маппинг stackS -> techStack
         if (dto.getStackS() != null && orders.getTechStack() == null) {
             orders.setTechStack(dto.getStackS());
@@ -63,19 +72,45 @@ public interface OrdersMapper {
     
     @AfterMapping
     default void afterMappingToDto(@MappingTarget AddOrderDto dto, Orders orders) {
-        // Заполняем имена из связанных сущностей
+        // Заполняем ФИО и email из связанных сущностей
         try {
             if (orders.getCustomer() != null) {
-                dto.setCustomerName(orders.getCustomer().getName());
-                dto.setCustomerId(orders.getCustomer().getId());
+                // Используем ФИО для customerName
+                String customerFullName = orders.getCustomer().getFullName();
+                dto.setCustomerName(customerFullName != null ? customerFullName : "");
+                // Используем email из связанного Account
+                String customerEmail = null;
+                if (orders.getCustomer().getAccount() != null) {
+                    customerEmail = orders.getCustomer().getAccount().getEmail();
+                }
+                dto.setCustomerEmail(customerEmail != null ? customerEmail : "");
+                // Используем accountId вместо customerId для правильной работы getUserDetails
+                if (orders.getCustomer().getAccount() != null) {
+                    dto.setCustomerId(orders.getCustomer().getAccount().getId());
+                } else {
+                    dto.setCustomerId(orders.getCustomer().getId());
+                }
             }
         } catch (Exception e) {
             // Lazy loading exception - игнорируем
         }
         try {
             if (orders.getPerformer() != null) {
-                dto.setPerformerName(orders.getPerformer().getName());
-                dto.setPerformerId(orders.getPerformer().getId());
+                // Используем ФИО для performerName
+                String performerFullName = orders.getPerformer().getFullName();
+                dto.setPerformerName(performerFullName != null ? performerFullName : "");
+                // Используем email из связанного Account
+                String performerEmail = null;
+                if (orders.getPerformer().getAccount() != null) {
+                    performerEmail = orders.getPerformer().getAccount().getEmail();
+                }
+                dto.setPerformerEmail(performerEmail != null ? performerEmail : "");
+                // Используем accountId вместо performerId для правильной работы getUserDetails
+                if (orders.getPerformer().getAccount() != null) {
+                    dto.setPerformerId(orders.getPerformer().getAccount().getId());
+                } else {
+                    dto.setPerformerId(orders.getPerformer().getId());
+                }
             }
         } catch (Exception e) {
             // Lazy loading exception - игнорируем
@@ -108,6 +143,12 @@ public interface OrdersMapper {
         }
         if (orders.getIsDone() != null) {
             dto.setDone(orders.getIsDone());
+        }
+        if (orders.getIsOnReview() != null) {
+            dto.setOnReview(orders.getIsOnReview());
+        }
+        if (orders.getIsRejected() != null) {
+            dto.setRejected(orders.getIsRejected());
         }
     }
 }

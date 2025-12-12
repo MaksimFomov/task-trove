@@ -70,4 +70,18 @@ public class WorkExperienceServiceImpl implements WorkExperienceService {
     public List<WorkExperience> findByPerformerIdOrderByCreatedAtDesc(Integer performerId) {
         return repository.findByPerformerIdOrderByCreatedAtDescWithRelations(performerId);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkExperience> findReviewsAboutCustomer(Integer customerId) {
+        // Получаем отзывы О заказчике от исполнителей (reviewerType = PERFORMER)
+        return repository.findReviewsAboutCustomerWithRelations(customerId);
+    }
+    
+    @Override
+    @Transactional(readOnly = true)
+    public List<WorkExperience> findReviewsAboutPerformer(Integer performerId) {
+        // Получаем отзывы О исполнителе от заказчиков (reviewerType = CUSTOMER)
+        return repository.findReviewsAboutPerformerWithRelations(performerId);
+    }
 }

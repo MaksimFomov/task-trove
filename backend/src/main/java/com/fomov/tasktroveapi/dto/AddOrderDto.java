@@ -35,6 +35,10 @@ public class AddOrderDto {
     private boolean isOnCheck;
     @JsonProperty("isDone")
     private boolean isDone;
+    @JsonProperty("isOnReview")
+    private boolean isOnReview;
+    @JsonProperty("isRejected")
+    private boolean isRejected;
     @JsonProperty("publicationTime")
     private OffsetDateTime publicationTime;
     private OffsetDateTime startTime;
@@ -51,6 +55,12 @@ public class AddOrderDto {
     
     @JsonProperty("performerName")
     private String performerName;
+    
+    @JsonProperty("customerEmail")
+    private String customerEmail;
+    
+    @JsonProperty("performerEmail")
+    private String performerEmail;
     
     // Replies для фронтенда
     @JsonProperty("replies")
@@ -82,6 +92,10 @@ public class AddOrderDto {
     public void setOnCheck(boolean onCheck) { isOnCheck = onCheck; }
     public boolean isDone() { return isDone; }
     public void setDone(boolean done) { isDone = done; }
+    public boolean isOnReview() { return isOnReview; }
+    public void setOnReview(boolean onReview) { isOnReview = onReview; }
+    public boolean isRejected() { return isRejected; }
+    public void setRejected(boolean rejected) { isRejected = rejected; }
     public OffsetDateTime getPublicationTime() { return publicationTime; }
     public void setPublicationTime(OffsetDateTime publicationTime) { this.publicationTime = publicationTime; }
     public OffsetDateTime getStartTime() { return startTime; }
@@ -102,6 +116,10 @@ public class AddOrderDto {
     public void setCustomerName(String customerName) { this.customerName = customerName; }
     public String getPerformerName() { return performerName; }
     public void setPerformerName(String performerName) { this.performerName = performerName; }
+    public String getCustomerEmail() { return customerEmail; }
+    public void setCustomerEmail(String customerEmail) { this.customerEmail = customerEmail; }
+    public String getPerformerEmail() { return performerEmail; }
+    public void setPerformerEmail(String performerEmail) { this.performerEmail = performerEmail; }
     public java.util.List<ReplyDto> getReplies() { return replies; }
     public void setReplies(java.util.List<ReplyDto> replies) { this.replies = replies; }
     public Boolean getHasReplied() { return hasReplied; }

@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-12-11T18:01:20+0300",
+    date = "2025-12-12T22:44:50+0300",
     comments = "version: 1.6.3, compiler: javac, environment: Java 25 (Homebrew)"
 )
 @Component
@@ -56,6 +56,12 @@ public class OrdersMapperImpl implements OrdersMapper {
         }
         if ( entity.getIsDone() != null ) {
             addOrderDto.setDone( entity.getIsDone() );
+        }
+        if ( entity.getIsOnReview() != null ) {
+            addOrderDto.setOnReview( entity.getIsOnReview() );
+        }
+        if ( entity.getIsRejected() != null ) {
+            addOrderDto.setRejected( entity.getIsRejected() );
         }
         addOrderDto.setId( entity.getId() );
         addOrderDto.setTitle( entity.getTitle() );

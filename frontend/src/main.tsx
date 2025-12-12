@@ -8,8 +8,10 @@ import { Toaster } from 'react-hot-toast'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true, // Обновлять при возврате на вкладку
+      refetchOnMount: true, // Обновлять при монтировании компонента
       retry: 1,
+      staleTime: 30000, // Данные считаются устаревшими через 30 секунд
     },
   },
 })

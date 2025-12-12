@@ -5,9 +5,16 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public class UpdatePortfolioDto {
-    @NotBlank(message = "Name is required")
-    @Size(max = 100, message = "Name must not exceed 100 characters")
-    private String name;
+    @NotBlank(message = "Last name is required")
+    @Size(max = 50, message = "Last name must not exceed 50 characters")
+    private String lastName;
+    
+    @NotBlank(message = "First name is required")
+    @Size(max = 50, message = "First name must not exceed 50 characters")
+    private String firstName;
+    
+    @Size(max = 50, message = "Middle name must not exceed 50 characters")
+    private String middleName;
     
     @Size(max = 20, message = "Phone must not exceed 20 characters")
     private String phone;
@@ -20,8 +27,12 @@ public class UpdatePortfolioDto {
     private String employment;
     private String experience;
 
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public String getMiddleName() { return middleName; }
+    public void setMiddleName(String middleName) { this.middleName = middleName; }
 
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }

@@ -56,6 +56,7 @@
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Performer.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Portfolio.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Reply.java
+/Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/ReviewerType.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Role.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/WorkExperience.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/repository/AccountRepository.java

@@ -1,6 +1,6 @@
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, MessageSquare, Users, CheckCircle } from 'lucide-react';
+import { Briefcase, MessageSquare, Users, CheckCircle, BarChart3 } from 'lucide-react';
 
 export default function HomePage() {
   const { user } = useAuthStore();
@@ -10,6 +10,7 @@ export default function HomePage() {
   const isCustomer = role === 'Customer';
   const isPerformer = role === 'Performer';
   const isAdmin = role === 'Administrator';
+  const isSuperAdmin = role === 'SuperAdministrator';
 
   return (
     <div className="space-y-8">
@@ -81,15 +82,33 @@ export default function HomePage() {
           </>
         )}
 
-        {isAdmin && (
+        {(isAdmin || isSuperAdmin) && (
+          <>
           <div
             onClick={() => navigate('/admin/users')}
             className="card cursor-pointer hover:shadow-lg transition-shadow"
           >
             <Users className="w-12 h-12 text-primary-600 mb-4" />
             <h3 className="text-xl font-semibold mb-2">Пользователи</h3>
-            <p className="text-gray-600">Управление пользователями системы</p>
+              <p className="text-gray-600 dark:text-slate-400">Управление пользователями системы</p>
+            </div>
+            <div
+              onClick={() => navigate('/admin/orders')}
+              className="card cursor-pointer hover:shadow-lg transition-shadow"
+            >
+              <Briefcase className="w-12 h-12 text-primary-600 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Заказы</h3>
+              <p className="text-gray-600 dark:text-slate-400">Просмотр и управление всеми заказами</p>
+            </div>
+            <div
+              onClick={() => navigate('/admin/statistics')}
+              className="card cursor-pointer hover:shadow-lg transition-shadow"
+            >
+              <BarChart3 className="w-12 h-12 text-primary-600 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">Статистика</h3>
+              <p className="text-gray-600 dark:text-slate-400">Аналитика и статистика системы</p>
           </div>
+          </>
         )}
       </div>
     </div>

@@ -29,7 +29,7 @@ function ReplyItem({
     queryKey: ['performerPortfolio', reply.performerId],
     queryFn: async () => {
       try {
-        const response = await customerApi.getPortfolio(reply.performerId);
+        const response = await customerApi.getPerformerPortfolio(reply.performerId);
         return response.data;
       } catch (error) {
         console.error('Error fetching portfolio:', error);
@@ -118,6 +118,7 @@ export default function CustomerOrderDetailPage() {
   const { data: order, isLoading } = useQuery({
     queryKey: ['customerOrder', id],
     queryFn: () => customerApi.getOrder(Number(id)).then((res) => res.data),
+    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
   });
 
   // Получаем имя текущего пользователя из localStorage
@@ -138,7 +139,7 @@ export default function CustomerOrderDetailPage() {
     queryFn: async () => {
       if (!order?.performerId) return null;
       try {
-        const response = await customerApi.getPortfolio(order.performerId);
+        const response = await customerApi.getPerformerPortfolio(order.performerId);
         return response.data;
       } catch (error) {
         console.error('Error fetching approved performer portfolio:', error);
@@ -165,7 +166,7 @@ export default function CustomerOrderDetailPage() {
     queryKey: ['performerPortfolio', selectedPerformerId],
     queryFn: async () => {
       try {
-        const response = await customerApi.getPortfolio(selectedPerformerId!);
+        const response = await customerApi.getPerformerPortfolio(selectedPerformerId!);
         console.log('Portfolio response:', response.data);
         return response.data;
       } catch (error) {
@@ -283,26 +284,33 @@ export default function CustomerOrderDetailPage() {
 
   const addReviewMutation = useMutation({
     mutationFn: (data: WorkExperience) => customerApi.addReview(data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       toast.success('Отзыв добавлен');
       setShowReviewForm(false);
       setReviewData({ mark: 5, text: '', performerId: 0 });
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (orderId: number) => customerApi.deleteOrder(orderId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['customerOrder', id] });
-      toast.success('Заказ сделан неактивным');
-      setShowDeleteConfirm(false);
-      navigate('/customer/orders');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Не удалось сделать заказ неактивным');
-      setShowDeleteConfirm(false);
+      // Оптимистично обновляем список отзывов для текущего профиля
+      if (selectedPerformerId) {
+        queryClient.setQueryData(['performerReviews', selectedPerformerId], (oldData: any) => {
+          if (!oldData) return oldData;
+          const newReview: WorkExperience = {
+            ...variables,
+            id: Date.now(), // Временный ID
+            reviewerType: 'CUSTOMER',
+            customerName: currentUserName,
+            createdAt: new Date().toISOString(),
+          };
+          return {
+            ...oldData,
+            reviews: [...(oldData.reviews || []), newReview],
+          };
+        });
+      }
+      // Инвалидируем все запросы отзывов исполнителей для обновления всех открытых профилей
+      queryClient.invalidateQueries({ queryKey: ['performerReviews'] });
+      // Также инвалидируем собственные отзывы исполнителя (если он смотрит свой профиль)
+      queryClient.invalidateQueries({ queryKey: ['performerOwnReviews'] });
+      // Инвалидируем собственные отзывы заказчика (если он смотрит свой профиль)
+      queryClient.invalidateQueries({ queryKey: ['customerOwnReviews'] });
     },
   });
 
@@ -321,19 +329,15 @@ export default function CustomerOrderDetailPage() {
     },
   });
 
-  const handleDeleteClick = (permanent: boolean = false) => {
+  const handleDeleteClick = () => {
     if (!order) return;
-    setIsPermanentDelete(permanent);
+    setIsPermanentDelete(true);
     setShowDeleteConfirm(true);
   };
 
   const handleConfirmDelete = () => {
     if (!order) return;
-    if (isPermanentDelete) {
-      permanentDeleteMutation.mutate(order.id);
-    } else {
-      deleteMutation.mutate(order.id);
-    }
+    permanentDeleteMutation.mutate(order.id);
   };
 
   const handleCancelDelete = () => {
@@ -459,20 +463,20 @@ export default function CustomerOrderDetailPage() {
                 </button>
               </>
             )}
-            {/* Кнопка удаления для неактивных заказов */}
-            {!order.isActived && !order.isDone && (
+            {/* Кнопка удаления для активных заказов без исполнителя */}
+            {order.isActived && !order.isDone && !order.performerId && (
               <button
-                onClick={() => handleDeleteClick(true)}
+                onClick={handleDeleteClick}
                 className="btn btn-danger flex items-center w-full"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Удалить
+                Удалить заказ
               </button>
             )}
-            {/* Кнопка удаления для завершенных заказов */}
-            {order.isDone && (
+            {/* Кнопка удаления для неактивных заказов */}
+            {!order.isActived && !order.isDone && (
               <button
-                onClick={() => handleDeleteClick(true)}
+                onClick={handleDeleteClick}
                 className="btn btn-danger flex items-center w-full"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
@@ -497,12 +501,6 @@ export default function CustomerOrderDetailPage() {
               <p className="text-gray-700 dark:text-slate-300">{order.stackS}</p>
             </div>
           )}
-          {order.performerName && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Исполнитель</h3>
-              <p className="text-gray-700 dark:text-slate-300">{order.performerName}</p>
-            </div>
-          )}
         </div>
       </div>
 
@@ -516,6 +514,11 @@ export default function CustomerOrderDetailPage() {
                 <p className="font-semibold text-lg">
                   {approvedPerformerPortfolio?.name || order.performerName || 'Исполнитель'}
                 </p>
+                {(approvedPerformerPortfolio?.email || order.performerEmail) && (
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
+                    {approvedPerformerPortfolio?.email || order.performerEmail}
+                  </p>
+                )}
               </div>
               <div className="ml-4 flex flex-col gap-2">
                 <button
@@ -1068,7 +1071,15 @@ export default function CustomerOrderDetailPage() {
                       {doneOrdersData.orders.map((order) => (
                         <div key={order.id} className="border border-gray-200 rounded-lg p-4">
                           <h3 className="font-semibold text-lg mb-2">{order.title}</h3>
-                          <div className="flex flex-wrap gap-2 text-sm text-gray-500">
+                          {order.customerName && (
+                            <div className="mb-2">
+                              <p className="font-medium text-gray-900 dark:text-slate-100">{order.customerName}</p>
+                              {order.customerEmail && (
+                                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">{order.customerEmail}</p>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-2 text-sm text-gray-500 mt-2">
                             {order.scope && <span>Область: {order.scope}</span>}
                             {order.stackS && <span>• Технологии: {order.stackS}</span>}
                             {order.endTime && (
@@ -1118,10 +1129,18 @@ export default function CustomerOrderDetailPage() {
                               <span className="ml-2 font-semibold">{review.mark}</span>
                             </div>
                           </div>
-                          {review.customerName && (
-                            <p className="text-sm text-gray-600 mt-2">{review.customerName}</p>
+                          {review.reviewerType === 'CUSTOMER' && review.customerName && (
+                            <div className="mt-2">
+                              <p className="text-sm font-medium text-gray-900 dark:text-slate-100">{review.customerName}</p>
+                              {review.customerEmail && (
+                                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">{review.customerEmail}</p>
+                              )}
+                            </div>
                           )}
-                          {review.name && (
+                          {review.reviewerType === 'PERFORMER' && review.performerName && (
+                            <p className="text-sm text-gray-600 mt-2">От исполнителя: {review.performerName}</p>
+                          )}
+                          {review.name && !review.customerName && !review.performerName && (
                             <p className="text-sm text-gray-500 mt-1">{review.name}</p>
                           )}
                           {review.createdAt && (
@@ -1324,51 +1343,45 @@ export default function CustomerOrderDetailPage() {
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-              {isPermanentDelete ? 'Подтверждение удаления' : 'Сделать заказ неактивным'}
+              Подтверждение удаления
             </h2>
           </div>
           
           <div className="space-y-4">
-            <div className={`border rounded-lg p-4 ${isPermanentDelete ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
-              <p className={`font-semibold mb-2 ${isPermanentDelete ? 'text-red-800' : 'text-orange-800'}`}>
-                {isPermanentDelete ? '⚠️ Внимание: заказ будет удален навсегда!' : '⚠️ Внимание!'}
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-red-800 dark:text-red-200 font-semibold mb-2">
+                ⚠️ Внимание: заказ будет удален навсегда!
               </p>
-              <p className={`text-sm ${isPermanentDelete ? 'text-red-700' : 'text-orange-700'}`}>
-                {isPermanentDelete 
-                  ? 'Заказ будет полностью удален из базы данных. Это действие нельзя отменить.'
-                  : 'Заказ будет помечен как неактивный. Вы сможете активировать его позже.'
-                }
+              <p className="text-red-700 dark:text-red-300 text-sm">
+                Заказ будет полностью удален из базы данных. Это действие нельзя отменить.
               </p>
             </div>
             
             <p className="text-gray-700 dark:text-slate-300">
-              {isPermanentDelete 
-                ? 'Вы уверены, что хотите полностью удалить этот заказ?'
-                : 'Вы уверены, что хотите сделать этот заказ неактивным?'
-              }
+              Вы уверены, что хотите удалить этот заказ?
             </p>
             
             <div className="flex space-x-2 pt-4">
               <button
                 onClick={handleConfirmDelete}
-                disabled={deleteMutation.isPending || permanentDeleteMutation.isPending}
-                className={`btn flex items-center flex-1 ${isPermanentDelete ? 'btn-danger' : 'btn-primary'}`}
+                disabled={permanentDeleteMutation.isPending}
+                className="btn btn-danger flex items-center flex-1"
               >
-                {deleteMutation.isPending || permanentDeleteMutation.isPending ? (
+                {permanentDeleteMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isPermanentDelete ? 'Удаление...' : 'Деактивация...'}
+                    Удаление...
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
-                    {isPermanentDelete ? 'Да, удалить' : 'Да, сделать неактивным'}
+                    Да, удалить
                   </>
                 )}
               </button>
               <button
                 onClick={handleCancelDelete}
-                disabled={deleteMutation.isPending || permanentDeleteMutation.isPending}
+                disabled={permanentDeleteMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
                 Отмена

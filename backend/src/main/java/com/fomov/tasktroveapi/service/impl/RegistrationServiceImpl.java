@@ -94,6 +94,7 @@ public class RegistrationServiceImpl implements RegistrationService {
         account.setEmail(normalizedEmail);
         account.setPassword(passwordEncoder.encode(dto.getPasswordUser()));
         account.setRole(customerRole);
+        account.setIsActive(true);
         Account savedAccount = accountRepository.save(account);
         
         // Создаем Customer и связываем с Account
@@ -127,6 +128,7 @@ public class RegistrationServiceImpl implements RegistrationService {
         account.setEmail(normalizedEmail);
         account.setPassword(passwordEncoder.encode(dto.getPasswordUser()));
         account.setRole(performerRole);
+        account.setIsActive(true);
         Account savedAccount = accountRepository.save(account);
         
         // Создаем Performer и связываем с Account
@@ -137,7 +139,20 @@ public class RegistrationServiceImpl implements RegistrationService {
         // Создаем Portfolio для исполнителя
         Portfolio portfolio = new Portfolio();
         portfolio.setPerformer(saved);
-        portfolio.setName(dto.getName());
+        // Формируем имя из ФИО для Portfolio
+        StringBuilder fullName = new StringBuilder();
+        if (dto.getLastName() != null && !dto.getLastName().trim().isEmpty()) {
+            fullName.append(dto.getLastName().trim());
+        }
+        if (dto.getFirstName() != null && !dto.getFirstName().trim().isEmpty()) {
+            if (fullName.length() > 0) fullName.append(" ");
+            fullName.append(dto.getFirstName().trim());
+        }
+        if (dto.getMiddleName() != null && !dto.getMiddleName().trim().isEmpty()) {
+            if (fullName.length() > 0) fullName.append(" ");
+            fullName.append(dto.getMiddleName().trim());
+        }
+        portfolio.setName(fullName.length() > 0 ? fullName.toString() : "");
         portfolio.setEmail(normalizedEmail);
         portfolio.setPhone(dto.getPhone());
         portfolio.setTownCountry(dto.getTownCountry());

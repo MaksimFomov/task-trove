@@ -44,9 +44,11 @@ export default function CustomerOrderCreatePage() {
       return customerApi.addOrder(data);
     },
     onSuccess: async () => {
-      toast.success('Заказ создан');
-      // Инвалидируем и обновляем кэш заказов
+      toast.success('Заказ отправлен на рассмотрение администратору. После одобрения он станет доступен для исполнителей.');
+      // Немедленное обновление всех связанных запросов
       await queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
+      await queryClient.invalidateQueries({ queryKey: ['adminOrders'] });
+      await queryClient.invalidateQueries({ queryKey: ['adminOrdersOnReview'] });
       // Переходим на страницу заказов - данные обновятся автоматически
       navigate('/customer/orders');
     },

@@ -17,7 +17,7 @@ import java.util.Objects;
     @Index(name = "idx_orders_customer_id", columnList = "customer_id"),
     @Index(name = "idx_orders_performer_id", columnList = "performer_id"),
     @Index(name = "idx_orders_publication_time", columnList = "publication_time"),
-    @Index(name = "idx_orders_status", columnList = "is_actived,is_in_process,is_on_check,is_done"),
+    @Index(name = "idx_orders_status", columnList = "is_actived,is_in_process,is_on_check,is_done,is_on_review,is_rejected"),
     @Index(name = "idx_orders_title", columnList = "title")
 })
 @Getter
@@ -66,6 +66,12 @@ public class Orders {
     @Column(name = "is_done", nullable = false)
     private Boolean isDone = false;
     
+    @Column(name = "is_on_review", nullable = false)
+    private Boolean isOnReview = false;
+    
+    @Column(name = "is_rejected", nullable = false)
+    private Boolean isRejected = false;
+    
     @Column(name = "is_deleted_by_customer", nullable = false)
     private Boolean isDeletedByCustomer = false;
     
@@ -112,6 +118,9 @@ public class Orders {
         if (this.isDone == null) {
             this.isDone = false;
         }
+        if (this.isOnReview == null) {
+            this.isOnReview = false;
+        }
         if (this.isDeletedByCustomer == null) {
             this.isDeletedByCustomer = false;
         }
@@ -129,6 +138,8 @@ public class Orders {
         this.isInProcess = false;
         this.isOnCheck = false;
         this.isDone = false;
+        this.isOnReview = false;
+        this.isRejected = false;
         this.isDeletedByCustomer = false;
     }
     

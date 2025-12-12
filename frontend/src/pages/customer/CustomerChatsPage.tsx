@@ -8,19 +8,34 @@ import Modal from '../../components/Modal';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import type { Chat } from '../../types';
+import { saveState, loadState } from '../../utils/stateStorage';
+
+const PAGE_KEY = 'customerChats';
 
 export default function CustomerChatsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => loadState<string>(PAGE_KEY, 'searchTerm', ''));
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
+  const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>(() => {
+    return loadState<'newest' | 'oldest'>(PAGE_KEY, 'sortOrder', 'newest');
+  });
+
+  // Сохранение состояния в localStorage
+  useEffect(() => {
+    saveState(PAGE_KEY, 'searchTerm', searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    saveState(PAGE_KEY, 'sortOrder', sortOrder);
+  }, [sortOrder]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['customerChats'],
     queryFn: () => customerApi.getChats().then((res) => res.data.chats),
+    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
   });
 
   useEffect(() => {
@@ -31,7 +46,9 @@ export default function CustomerChatsPage() {
   const deleteChatMutation = useMutation({
     mutationFn: (chatId: number) => customerApi.deleteChat(chatId),
     onSuccess: () => {
+      // Немедленное обновление всех связанных запросов
       queryClient.invalidateQueries({ queryKey: ['customerChats'] });
+      queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
       toast.success('Чат удален');
       setShowDeleteConfirm(false);
       setChatToDelete(null);
@@ -118,11 +135,10 @@ export default function CustomerChatsPage() {
             />
           </div>
           <div className="flex items-center gap-3">
-            <label className="text-sm text-gray-700 dark:text-slate-300 font-medium">Сортировка:</label>
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as 'newest' | 'oldest')}
-              className="input text-sm py-1 px-3 max-w-xs"
+              className="px-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="newest">Сначала новые</option>
               <option value="oldest">Сначала старые</option>

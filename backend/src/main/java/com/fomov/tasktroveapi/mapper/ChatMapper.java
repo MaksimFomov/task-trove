@@ -30,12 +30,12 @@ public class ChatMapper {
         dto.setCustomerId(entity.getCustomerId());
         dto.setPerformerId(entity.getPerformerId());
         
-        // Добавляем имена
+        // Добавляем имена (используем getFullName для получения ФИО)
         if (entity.getCustomer() != null) {
-            dto.setCustomerName(entity.getCustomer().getName());
+            dto.setCustomerName(entity.getCustomer().getFullName());
         }
         if (entity.getPerformer() != null) {
-            dto.setPerformerName(entity.getPerformer().getName());
+            dto.setPerformerName(entity.getPerformer().getFullName());
         }
         
         // Извлекаем название заказа из roomName

@@ -133,6 +133,8 @@ public class ChatWebSocketController {
         chatMessage.setSenderType(userRole);
         chatMessage.setSender(senderName);
         chatMessage.setType(ChatMessage.MessageType.CHAT);
+        chatMessage.setMessageId(savedMessage.getId());
+        chatMessage.setCreatedAt(savedMessage.getCreated());
         
         // Отправляем сообщение только участникам чата
         String destination = "/topic/chat." + chatMessage.getChatId();
@@ -191,12 +193,12 @@ public class ChatWebSocketController {
         if ("Customer".equals(userRole) && chat.getCustomer() != null) {
             if (chat.getCustomer().getAccount() != null && 
                 chat.getCustomer().getAccount().getId().equals(userId)) {
-                return chat.getCustomer().getName();
+                return chat.getCustomer().getFullName();
             }
         } else if ("Performer".equals(userRole) && chat.getPerformer() != null) {
             if (chat.getPerformer().getAccount() != null && 
                 chat.getPerformer().getAccount().getId().equals(userId)) {
-                return chat.getPerformer().getName();
+                return chat.getPerformer().getFullName();
             }
         }
         return "Пользователь";
@@ -210,6 +212,8 @@ public class ChatWebSocketController {
         private Integer senderId;
         private String senderType;
         private MessageType type;
+        private Integer messageId;
+        private OffsetDateTime createdAt;
 
         public enum MessageType {
             CHAT, JOIN, LEAVE, ERROR
@@ -269,6 +273,22 @@ public class ChatWebSocketController {
 
         public void setType(MessageType type) {
             this.type = type;
+        }
+
+        public Integer getMessageId() {
+            return messageId;
+        }
+
+        public void setMessageId(Integer messageId) {
+            this.messageId = messageId;
+        }
+
+        public OffsetDateTime getCreatedAt() {
+            return createdAt;
+        }
+
+        public void setCreatedAt(OffsetDateTime createdAt) {
+            this.createdAt = createdAt;
         }
     }
 }

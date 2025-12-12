@@ -1,10 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { Save, User, Mail, Calendar, FileText, Building, AlertTriangle, Loader2, AlertCircle } from 'lucide-react';
+import { Save, User, Mail, Phone, FileText, Building, AlertTriangle, Loader2, AlertCircle, Star } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
-import type { CustomerPortfolio, UpdateCustomerPortfolioDto } from '../../types';
+import { format } from 'date-fns';
+import { ru } from 'date-fns/locale';
+import type { CustomerPortfolio, UpdateCustomerPortfolioDto, WorkExperience } from '../../types';
 
 // Список областей деятельности для заказчиков
 const BUSINESS_AREAS = [
@@ -28,8 +30,10 @@ const BUSINESS_AREAS = [
 export default function CustomerPortfolioPage() {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<UpdateCustomerPortfolioDto>({
-    name: '',
-    age: 18,
+    lastName: '',
+    firstName: '',
+    middleName: '',
+    phone: '',
     description: '',
     scopeS: '',
   });
@@ -51,6 +55,20 @@ export default function CustomerPortfolioPage() {
       } catch (error) {
         console.error('Error fetching customer portfolio:', error);
         return null;
+      }
+    },
+  });
+
+  const { data: reviewsData, isLoading: isLoadingReviews } = useQuery({
+    queryKey: ['customerOwnReviews'],
+    queryFn: async () => {
+      try {
+        const response = await customerApi.getMyReviews();
+        console.log('Reviews response:', response.data);
+        return response.data;
+      } catch (error) {
+        console.error('Error fetching reviews:', error);
+        return { reviews: [] };
       }
     },
   });
@@ -88,8 +106,10 @@ export default function CustomerPortfolioPage() {
       setSelectedBusinessAreas(businessAreasArray);
       
       setFormData({
-        name: portfolio.name || '',
-        age: portfolio.age || 18,
+        lastName: portfolio.lastName || '',
+        firstName: portfolio.firstName || '',
+        middleName: portfolio.middleName || '',
+        phone: portfolio.phone || '',
         description: portfolio.description || '',
         scopeS: scopeSStr,
       });
@@ -142,18 +162,28 @@ export default function CustomerPortfolioPage() {
   const validateFormData = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Name validation (readonly, but check anyway)
-    if (!formData.name || formData.name.trim() === '') {
-      newErrors.name = 'Имя обязательно для заполнения';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Имя должно содержать минимум 2 символа';
+    // Last name validation
+    if (!formData.lastName || formData.lastName.trim() === '') {
+      newErrors.lastName = 'Фамилия обязательна для заполнения';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Фамилия должна содержать минимум 2 символа';
     }
 
-    // Age validation
-    if (!formData.age) {
-      newErrors.age = 'Возраст обязателен для заполнения';
-    } else if (formData.age < 18 || formData.age > 120) {
-      newErrors.age = 'Возраст должен быть от 18 до 120 лет';
+    // First name validation
+    if (!formData.firstName || formData.firstName.trim() === '') {
+      newErrors.firstName = 'Имя обязательно для заполнения';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'Имя должно содержать минимум 2 символа';
+    }
+
+    // Middle name validation (optional)
+    if (formData.middleName && formData.middleName.trim().length > 0 && formData.middleName.trim().length < 2) {
+      newErrors.middleName = 'Отчество должно содержать минимум 2 символа';
+    }
+
+    // Phone validation (optional)
+    if (formData.phone && !/^[\+]?[0-9\s\-\(\)]{10,}$/.test(formData.phone)) {
+      newErrors.phone = 'Введите корректный номер телефона';
     }
 
     // Description validation
@@ -213,21 +243,74 @@ export default function CustomerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Имя
+              Фамилия <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
-              value={formData.name}
-              readOnly
-              disabled
-              className="input bg-gray-100 cursor-not-allowed"
+              value={formData.lastName}
+              onChange={(e) => {
+                setFormData({ ...formData, lastName: e.target.value });
+                if (errors.lastName) {
+                  setErrors({ ...errors, lastName: '' });
+                }
+              }}
+              className={`input ${errors.lastName ? 'border-red-500 focus:border-red-500' : ''}`}
+              placeholder="Введите вашу фамилию"
             />
-            <p className="mt-1 text-xs text-gray-500">Имя нельзя изменить</p>
-            {errors.name && (
+            {errors.lastName && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
                 <AlertCircle className="w-4 h-4 mr-1" />
-                {errors.name}
+                {errors.lastName}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              <User className="w-4 h-4 inline mr-2" />
+              Имя <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.firstName}
+              onChange={(e) => {
+                setFormData({ ...formData, firstName: e.target.value });
+                if (errors.firstName) {
+                  setErrors({ ...errors, firstName: '' });
+                }
+              }}
+              className={`input ${errors.firstName ? 'border-red-500 focus:border-red-500' : ''}`}
+              placeholder="Введите ваше имя"
+            />
+            {errors.firstName && (
+              <p className="mt-1 text-sm text-red-600 flex items-center">
+                <AlertCircle className="w-4 h-4 mr-1" />
+                {errors.firstName}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              <User className="w-4 h-4 inline mr-2" />
+              Отчество
+            </label>
+            <input
+              type="text"
+              value={formData.middleName || ''}
+              onChange={(e) => {
+                setFormData({ ...formData, middleName: e.target.value });
+                if (errors.middleName) {
+                  setErrors({ ...errors, middleName: '' });
+                }
+              }}
+              className={`input ${errors.middleName ? 'border-red-500 focus:border-red-500' : ''}`}
+              placeholder="Введите ваше отчество"
+            />
+            {errors.middleName && (
+              <p className="mt-1 text-sm text-red-600 flex items-center">
+                <AlertCircle className="w-4 h-4 mr-1" />
+                {errors.middleName}
               </p>
             )}
           </div>
@@ -248,28 +331,25 @@ export default function CustomerPortfolioPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-              <Calendar className="w-4 h-4 inline mr-2" />
-              Возраст <span className="text-red-500">*</span>
+              <Phone className="w-4 h-4 inline mr-2" />
+              Номер телефона
             </label>
             <input
-              type="number"
-              required
-              min={18}
-              max={120}
-              value={formData.age}
+              type="tel"
+              value={formData.phone || ''}
               onChange={(e) => {
-                setFormData({ ...formData, age: parseInt(e.target.value) || 18 });
-                if (errors.age) {
-                  setErrors({ ...errors, age: '' });
+                setFormData({ ...formData, phone: e.target.value });
+                if (errors.phone) {
+                  setErrors({ ...errors, phone: '' });
                 }
               }}
-              className={`input ${errors.age ? 'border-red-500 focus:border-red-500' : ''}`}
-              placeholder="18-120 лет"
+              className={`input ${errors.phone ? 'border-red-500 focus:border-red-500' : ''}`}
+              placeholder="+375291234567"
             />
-            {errors.age && (
+            {errors.phone && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
                 <AlertCircle className="w-4 h-4 mr-1" />
-                {errors.age}
+                {errors.phone}
               </p>
             )}
           </div>
@@ -339,6 +419,69 @@ export default function CustomerPortfolioPage() {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Раздел с отзывами */}
+      <div className="card">
+        <div className="flex items-center mb-6">
+          <Star className="w-6 h-6 text-yellow-500 mr-3" />
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Мои отзывы</h2>
+        </div>
+
+        {isLoadingReviews ? (
+          <div className="text-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto text-gray-400 mb-2" />
+            <p className="text-gray-600 dark:text-slate-400">Загрузка отзывов...</p>
+          </div>
+        ) : reviewsData?.reviews && reviewsData.reviews.length > 0 ? (
+          <div className="space-y-4">
+            {reviewsData.reviews.map((review) => (
+              <div key={review.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <h3 className="font-semibold text-lg">
+                      {review.text || 'Отзыв без текста'}
+                    </h3>
+                  </div>
+                  <div className="flex items-center">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-5 h-5 ${
+                          i < (review.mark || 0)
+                            ? 'text-yellow-400 fill-current'
+                            : 'text-gray-300'
+                        }`}
+                      />
+                    ))}
+                    <span className="ml-2 font-semibold text-lg">{review.mark}</span>
+                  </div>
+                </div>
+                {review.performerName && (
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600 dark:text-slate-400 font-medium">{review.performerName}</p>
+                    {review.performerEmail && (
+                      <p className="text-sm text-gray-500 mt-1">{review.performerEmail}</p>
+                    )}
+                  </div>
+                )}
+                {review.createdAt && (
+                  <p className="text-xs text-gray-400 mt-2">
+                    {format(new Date(review.createdAt), 'd MMMM yyyy', { locale: ru })}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Star className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <p className="text-gray-500 text-lg mb-2">У вас пока нет отзывов</p>
+            <p className="text-gray-400 text-sm">
+              Отзывы от исполнителей будут отображаться здесь после завершения заказов
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Диалог подтверждения обновления */}

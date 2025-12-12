@@ -8,8 +8,22 @@ import jakarta.validation.constraints.Size;
 
 public class RegistrationAccDto {
     @NotBlank
+    @Size(max = 50, message = "Last name must not exceed 50 characters")
+    @JsonProperty("lastName")
+    private String lastName;
+    
+    @NotBlank
+    @Size(max = 50, message = "First name must not exceed 50 characters")
+    @JsonProperty("firstName")
+    private String firstName;
+    
+    @Size(max = 50, message = "Middle name must not exceed 50 characters")
+    @JsonProperty("middleName")
+    private String middleName;
+    
+    @Deprecated
     @JsonProperty("name")
-    private String name;
+    private String name; // Для обратной совместимости
     
     @Email
     @NotBlank
@@ -42,6 +56,12 @@ public class RegistrationAccDto {
     @JsonProperty("experience")
     private String experience;
 
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public String getMiddleName() { return middleName; }
+    public void setMiddleName(String middleName) { this.middleName = middleName; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getEmail() { return email; }

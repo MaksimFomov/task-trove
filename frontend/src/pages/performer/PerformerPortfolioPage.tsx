@@ -35,7 +35,9 @@ const SPECIALIZATIONS = [
 export default function PerformerPortfolioPage() {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<UpdatePortfolioDto>({
-    name: '',
+    lastName: '',
+    firstName: '',
+    middleName: '',
     email: '',
     phone: '',
     townCountry: '',
@@ -117,16 +119,9 @@ export default function PerformerPortfolioPage() {
       setSelectedSpecializations(specializationsArray);
       
       setFormData({
-        name: portfolio.name || '',
-        email: portfolio.email || '',
-        phone: portfolio.phone || '',
-        townCountry: portfolio.townCountry || '',
-        specializations: specializationsStr,
-        employment: portfolio.employment || '',
-        experience: portfolio.experience || '',
-      });
-      console.log('Form data set:', {
-        name: portfolio.name || '',
+        lastName: portfolio.lastName || '',
+        firstName: portfolio.firstName || '',
+        middleName: portfolio.middleName || '',
         email: portfolio.email || '',
         phone: portfolio.phone || '',
         townCountry: portfolio.townCountry || '',
@@ -177,11 +172,23 @@ export default function PerformerPortfolioPage() {
   const validateFormData = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    // Name validation (readonly, but check anyway)
-    if (!formData.name || formData.name.trim() === '') {
-      newErrors.name = 'Имя обязательно для заполнения';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'Имя должно содержать минимум 2 символа';
+    // Last name validation
+    if (!formData.lastName || formData.lastName.trim() === '') {
+      newErrors.lastName = 'Фамилия обязательна для заполнения';
+    } else if (formData.lastName.trim().length < 2) {
+      newErrors.lastName = 'Фамилия должна содержать минимум 2 символа';
+    }
+
+    // First name validation
+    if (!formData.firstName || formData.firstName.trim() === '') {
+      newErrors.firstName = 'Имя обязательно для заполнения';
+    } else if (formData.firstName.trim().length < 2) {
+      newErrors.firstName = 'Имя должно содержать минимум 2 символа';
+    }
+
+    // Middle name validation (optional)
+    if (formData.middleName && formData.middleName.trim().length > 0 && formData.middleName.trim().length < 2) {
+      newErrors.middleName = 'Отчество должно содержать минимум 2 символа';
     }
 
     // Email validation (readonly, but check anyway)
@@ -248,21 +255,74 @@ export default function PerformerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Имя
+              Фамилия <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               required
-              value={formData.name}
-              readOnly
-              disabled
-              className="input bg-gray-100 cursor-not-allowed"
+              value={formData.lastName}
+              onChange={(e) => {
+                setFormData({ ...formData, lastName: e.target.value });
+                if (errors.lastName) {
+                  setErrors({ ...errors, lastName: '' });
+                }
+              }}
+              className={`input ${errors.lastName ? 'border-red-500 focus:border-red-500' : ''}`}
+              placeholder="Введите вашу фамилию"
             />
-            <p className="mt-1 text-xs text-gray-500">Имя нельзя изменить</p>
-            {errors.name && (
+            {errors.lastName && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
                 <AlertCircle className="w-4 h-4 mr-1" />
-                {errors.name}
+                {errors.lastName}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              <User className="w-4 h-4 inline mr-2" />
+              Имя <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={formData.firstName}
+              onChange={(e) => {
+                setFormData({ ...formData, firstName: e.target.value });
+                if (errors.firstName) {
+                  setErrors({ ...errors, firstName: '' });
+                }
+              }}
+              className={`input ${errors.firstName ? 'border-red-500 focus:border-red-500' : ''}`}
+              placeholder="Введите ваше имя"
+            />
+            {errors.firstName && (
+              <p className="mt-1 text-sm text-red-600 flex items-center">
+                <AlertCircle className="w-4 h-4 mr-1" />
+                {errors.firstName}
+              </p>
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              <User className="w-4 h-4 inline mr-2" />
+              Отчество
+            </label>
+            <input
+              type="text"
+              value={formData.middleName || ''}
+              onChange={(e) => {
+                setFormData({ ...formData, middleName: e.target.value });
+                if (errors.middleName) {
+                  setErrors({ ...errors, middleName: '' });
+                }
+              }}
+              className={`input ${errors.middleName ? 'border-red-500 focus:border-red-500' : ''}`}
+              placeholder="Введите ваше отчество"
+            />
+            {errors.middleName && (
+              <p className="mt-1 text-sm text-red-600 flex items-center">
+                <AlertCircle className="w-4 h-4 mr-1" />
+                {errors.middleName}
               </p>
             )}
           </div>
@@ -321,6 +381,7 @@ export default function PerformerPortfolioPage() {
               value={formData.townCountry}
               onChange={(e) => setFormData({ ...formData, townCountry: e.target.value })}
               className="input"
+              placeholder="Минск, Беларусь"
             />
           </div>
           <div>
@@ -435,10 +496,12 @@ export default function PerformerPortfolioPage() {
                   </div>
                 </div>
                 {review.customerName && (
-                  <p className="text-sm text-gray-600 dark:text-slate-400 mt-3">{review.customerName}</p>
+                  <div className="mt-3">
+                    <p className="text-sm text-gray-600 dark:text-slate-400 font-medium">{review.customerName}</p>
+                    {review.customerEmail && (
+                      <p className="text-sm text-gray-500 mt-1">{review.customerEmail}</p>
                 )}
-                {review.name && (
-                  <p className="text-sm text-gray-500 mt-1">{review.name}</p>
+                  </div>
                 )}
                 {review.createdAt && (
                   <p className="text-xs text-gray-400 mt-2">

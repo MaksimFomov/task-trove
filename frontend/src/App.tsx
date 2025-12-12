@@ -10,6 +10,7 @@ import RegisterPage from './pages/RegisterPage';
 import HomePage from './pages/HomePage';
 import CustomerOrdersPage from './pages/customer/CustomerOrdersPage';
 import CustomerOrderCreatePage from './pages/customer/CustomerOrderCreatePage';
+import CustomerOrderEditPage from './pages/customer/CustomerOrderEditPage';
 import CustomerOrderDetailPage from './pages/customer/CustomerOrderDetailPage';
 import CustomerChatsPage from './pages/customer/CustomerChatsPage';
 import CustomerPortfolioPage from './pages/customer/CustomerPortfolioPage';
@@ -18,6 +19,8 @@ import PerformerOrderDetailPage from './pages/performer/PerformerOrderDetailPage
 import PerformerChatsPage from './pages/performer/PerformerChatsPage';
 import PerformerPortfolioPage from './pages/performer/PerformerPortfolioPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
+import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminStatisticsPage from './pages/admin/AdminStatisticsPage';
 import ChatPage from './pages/ChatPage';
 import NotificationsPage from './pages/NotificationsPage';
 import { Loader2 } from 'lucide-react';
@@ -118,6 +121,14 @@ function App() {
             }
           />
           <Route
+            path="/customer/orders/edit/:id"
+            element={
+              <ProtectedRoute allowedRoles={['Customer']}>
+                <CustomerOrderEditPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
             path="/customer/orders/:id"
             element={
               <ProtectedRoute allowedRoles={['Customer']}>
@@ -178,8 +189,24 @@ function App() {
           <Route
             path="/admin/users"
             element={
-              <ProtectedRoute allowedRoles={['Administrator']}>
+              <ProtectedRoute allowedRoles={['Administrator', 'SuperAdministrator']}>
                 <AdminUsersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/orders"
+            element={
+              <ProtectedRoute allowedRoles={['Administrator', 'SuperAdministrator']}>
+                <AdminOrdersPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/statistics"
+            element={
+              <ProtectedRoute allowedRoles={['Administrator', 'SuperAdministrator']}>
+                <AdminStatisticsPage />
               </ProtectedRoute>
             }
           />

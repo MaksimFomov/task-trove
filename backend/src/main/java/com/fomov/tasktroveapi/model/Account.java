@@ -1,5 +1,6 @@
 package com.fomov.tasktroveapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -31,9 +32,13 @@ public class Account {
     @Column(name = "password", nullable = false, length = 255)
     private String password;
 
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "role_id", nullable = false, 
                 foreignKey = @ForeignKey(name = "fk_accounts_role"))
+    @JsonIgnore
     private Role role;
 
     @Override

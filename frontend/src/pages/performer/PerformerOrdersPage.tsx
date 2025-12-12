@@ -8,9 +8,12 @@ import { ru } from 'date-fns/locale';
 import Modal from '../../components/Modal';
 import type { Order, Reply, UpdateReplyDto, Chat } from '../../types';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
+import { saveState, loadState } from '../../utils/stateStorage';
 
 type TabType = 'new' | 'pending' | 'active' | 'completed';
 type SortOrder = 'newest' | 'oldest';
+
+const PAGE_KEY = 'performerOrders';
 
 export default function PerformerOrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,34 +25,58 @@ export default function PerformerOrdersPage() {
     const tabFromUrl = searchParams.get('tab') as TabType;
     if (tabFromUrl) return tabFromUrl;
     
-    const savedTab = localStorage.getItem('performerOrdersTab') as TabType;
-    return savedTab || 'new';
+    return loadState<TabType>(PAGE_KEY, 'tab', 'new');
   };
   
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const urlSearch = searchParams.get('search');
+    return urlSearch || loadState<string>(PAGE_KEY, 'searchTerm', '');
+  });
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [page, setPage] = useState(1);
-  const [showOnlyWithoutReplies, setShowOnlyWithoutReplies] = useState(false);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [showOnlyWithoutReplies, setShowOnlyWithoutReplies] = useState(() => {
+    const urlValue = searchParams.get('showOnlyWithoutReplies') === 'true';
+    return urlValue || loadState<boolean>(PAGE_KEY, 'showOnlyWithoutReplies', false);
+  });
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
+    const urlSort = searchParams.get('sortOrder') as SortOrder;
+    return urlSort || loadState<SortOrder>(PAGE_KEY, 'sortOrder', 'newest');
+  });
 
-  // Синхронизация вкладки с URL
+  // Сохранение состояния в localStorage
   useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as TabType;
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-      localStorage.setItem('performerOrdersTab', tabFromUrl);
-    } else if (!tabFromUrl && activeTab) {
-      // Если в URL нет параметра, добавляем текущую вкладку
-      setSearchParams({ tab: activeTab }, { replace: true });
-    }
-  }, [searchParams]);
+    saveState(PAGE_KEY, 'tab', activeTab);
+  }, [activeTab]);
 
-  // Обновление URL и localStorage при смене вкладки
+  useEffect(() => {
+    saveState(PAGE_KEY, 'searchTerm', searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    saveState(PAGE_KEY, 'showOnlyWithoutReplies', showOnlyWithoutReplies);
+  }, [showOnlyWithoutReplies]);
+
+  useEffect(() => {
+    saveState(PAGE_KEY, 'sortOrder', sortOrder);
+  }, [sortOrder]);
+
+  // Синхронизация фильтров и сортировки с URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', activeTab);
+    if (searchTerm) params.set('search', searchTerm);
+    else params.delete('search');
+    if (showOnlyWithoutReplies) params.set('showOnlyWithoutReplies', 'true');
+    else params.delete('showOnlyWithoutReplies');
+    if (sortOrder !== 'newest') params.set('sortOrder', sortOrder);
+    else params.delete('sortOrder');
+    setSearchParams(params, { replace: true });
+  }, [activeTab, searchTerm, showOnlyWithoutReplies, sortOrder, setSearchParams, searchParams]);
+
+  // Обновление вкладки
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-    setSearchParams({ tab });
-    localStorage.setItem('performerOrdersTab', tab);
   };
 
   // Debounce для поиска - обновление происходит через 500мс после остановки ввода
@@ -72,6 +99,7 @@ export default function PerformerOrdersPage() {
     enabled: activeTab === 'new',
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
   });
 
   // Запрос для откликов (используется для вкладок: pending, active, completed)
@@ -85,6 +113,7 @@ export default function PerformerOrdersPage() {
       return performerApi.getReplies(tab || undefined).then((res) => res.data.reply);
     },
     enabled: activeTab === 'pending' || activeTab === 'completed' || activeTab === 'active',
+    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
   });
 
   // Запрос чатов для отображения кнопки чата в списке
@@ -92,6 +121,7 @@ export default function PerformerOrdersPage() {
     queryKey: ['performerChats'],
     queryFn: () => performerApi.getChats().then((res) => res.data.chats),
     enabled: activeTab === 'active' || activeTab === 'completed',
+    refetchInterval: 15000, // Автоматическое обновление каждые 15 секунд
   });
 
   const isLoading = activeTab === 'new' ? isLoadingNew : isLoadingReplies;
@@ -100,7 +130,9 @@ export default function PerformerOrdersPage() {
   const deleteReplyMutation = useMutation({
     mutationFn: (id: number) => performerApi.deleteReply(id),
     onSuccess: () => {
+      // Немедленное обновление всех связанных запросов
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
+      queryClient.invalidateQueries({ queryKey: ['performerOrders'] });
       showSuccessToast('Отклик успешно отменен');
     },
     onError: (error) => {
@@ -111,7 +143,9 @@ export default function PerformerOrdersPage() {
   const deleteCompletedReplyMutation = useMutation({
     mutationFn: (id: number) => performerApi.deleteCompletedReply(id),
     onSuccess: () => {
+      // Немедленное обновление всех связанных запросов
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
+      queryClient.invalidateQueries({ queryKey: ['performerChats'] });
       showSuccessToast('Выполненный заказ успешно удален из истории');
     },
     onError: (error) => {
@@ -305,17 +339,14 @@ export default function PerformerOrdersPage() {
           <div className="flex flex-col gap-4 pb-4 border-b border-gray-200">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2">
-                  <span className="text-sm text-gray-700 dark:text-slate-300 font-medium">Сортировка:</span>
-                  <select
-                    value={sortOrder}
-                    onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                    className="input text-sm py-1 px-3"
-                  >
-                    <option value="newest">Сначала новые</option>
-                    <option value="oldest">Сначала старые</option>
-                  </select>
-                </label>
+                <select
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+                  className="px-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="newest">Сначала новые</option>
+                  <option value="oldest">Сначала старые</option>
+                </select>
               </div>
               
               {activeTab === 'new' && (

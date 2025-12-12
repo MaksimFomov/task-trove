@@ -8,9 +8,12 @@ import { ru } from 'date-fns/locale';
 import Modal from '../../components/Modal';
 import type { Order, Chat } from '../../types';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
+import { saveState, loadState } from '../../utils/stateStorage';
 
 type SortOrder = 'newest' | 'oldest';
 type TabType = 'all' | 'in-progress' | 'done';
+
+const PAGE_KEY = 'customerOrders';
 
 export default function CustomerOrdersPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -20,39 +23,62 @@ export default function CustomerOrdersPage() {
   // Получаем вкладку из URL или localStorage, по умолчанию 'all'
   const getInitialTab = (): TabType => {
     const tabFromUrl = searchParams.get('tab') as TabType;
-    if (tabFromUrl) return tabFromUrl;
+    if (tabFromUrl && ['all', 'in-progress', 'done'].includes(tabFromUrl)) return tabFromUrl;
     
-    const savedTab = localStorage.getItem('customerOrdersTab') as TabType;
-    return savedTab || 'all';
+    return loadState<TabType>(PAGE_KEY, 'tab', 'all');
   };
   
   const [activeTab, setActiveTab] = useState<TabType>(getInitialTab());
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(() => {
+    const urlSearch = searchParams.get('search');
+    return urlSearch || loadState<string>(PAGE_KEY, 'searchTerm', '');
+  });
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
-  const [showInactive, setShowInactive] = useState(false);
-  const [showDone, setShowDone] = useState(false);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+  const [statusFilter, setStatusFilter] = useState<string>(() => {
+    const urlStatus = searchParams.get('status');
+    return urlStatus || loadState<string>(PAGE_KEY, 'statusFilter', 'all');
+  });
+  const [sortOrder, setSortOrder] = useState<SortOrder>(() => {
+    const urlSort = searchParams.get('sortOrder') as SortOrder;
+    return urlSort || loadState<SortOrder>(PAGE_KEY, 'sortOrder', 'newest');
+  });
+
+  // Сохранение состояния в localStorage
+  useEffect(() => {
+    saveState(PAGE_KEY, 'tab', activeTab);
+  }, [activeTab]);
+
+  useEffect(() => {
+    saveState(PAGE_KEY, 'searchTerm', searchTerm);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    saveState(PAGE_KEY, 'statusFilter', statusFilter);
+  }, [statusFilter]);
+
+  useEffect(() => {
+    saveState(PAGE_KEY, 'sortOrder', sortOrder);
+  }, [sortOrder]);
+
+  // Синхронизация фильтров и сортировки с URL
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    params.set('tab', activeTab);
+    if (searchTerm) params.set('search', searchTerm);
+    else params.delete('search');
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    else params.delete('status');
+    if (sortOrder !== 'newest') params.set('sortOrder', sortOrder);
+    else params.delete('sortOrder');
+    setSearchParams(params, { replace: true });
+  }, [activeTab, searchTerm, statusFilter, sortOrder, setSearchParams, searchParams]);
   const [deleteOrderId, setDeleteOrderId] = useState<number | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isPermanentDelete, setIsPermanentDelete] = useState(false);
 
-  // Синхронизация вкладки с URL
-  useEffect(() => {
-    const tabFromUrl = searchParams.get('tab') as TabType;
-    if (tabFromUrl && tabFromUrl !== activeTab) {
-      setActiveTab(tabFromUrl);
-      localStorage.setItem('customerOrdersTab', tabFromUrl);
-    } else if (!tabFromUrl && activeTab) {
-      // Если в URL нет параметра, добавляем текущую вкладку
-      setSearchParams({ tab: activeTab }, { replace: true });
-    }
-  }, [searchParams]);
-
-  // Обновление URL и localStorage при смене вкладки
+  // Обновление вкладки
   const handleTabChange = (tab: TabType) => {
     setActiveTab(tab);
-    setSearchParams({ tab });
-    localStorage.setItem('customerOrdersTab', tab);
   };
 
   // Debounce для поиска - обновление происходит через 500мс после остановки ввода
@@ -74,6 +100,7 @@ export default function CustomerOrdersPage() {
     },
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
   });
 
   const { data: doneOrders, isLoading: isLoadingDone } = useQuery({
@@ -90,6 +117,7 @@ export default function CustomerOrdersPage() {
     },
     refetchOnWindowFocus: true,
     refetchOnMount: true,
+    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
     enabled: true, // Всегда загружаем выполненные заказы
   });
 
@@ -97,11 +125,36 @@ export default function CustomerOrdersPage() {
   const { data: chatsData } = useQuery({
     queryKey: ['customerChats'],
     queryFn: () => customerApi.getChats().then((res) => res.data.chats),
+    refetchInterval: 15000, // Автоматическое обновление каждые 15 секунд
   });
 
   // Определяем какие данные использовать в зависимости от вкладки
   const isLoading = activeTab === 'done' ? isLoadingDone : isLoadingAll;
   
+  // Функция для определения статуса заказа
+  const getOrderStatus = (order: Order) => {
+    // Приоритет: На рассмотрении > Отклонен > Выполнен > На проверке > В процессе > Активен > Неактивен
+    if (order.isOnReview) {
+      return { label: 'На рассмотрении', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
+    }
+    if (order.isRejected) {
+      return { label: 'Отклонен', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+    }
+    if (order.isDone) {
+      return { label: 'Выполнен', className: 'bg-purple-100 text-purple-800' };
+    }
+    if (order.isOnCheck) {
+      return { label: 'На проверке', className: 'bg-yellow-100 text-yellow-800' };
+    }
+    if (order.isInProcess) {
+      return { label: 'В процессе', className: 'bg-blue-100 text-blue-800' };
+    }
+    if (order.isActived) {
+      return { label: 'Активен', className: 'bg-green-100 text-green-800' };
+    }
+    return { label: 'Неактивен', className: 'bg-gray-100 text-gray-800' };
+  };
+
   // Фильтруем заказы в зависимости от активной вкладки
   const getFilteredOrders = (): Order[] => {
     if (activeTab === 'done') {
@@ -120,19 +173,23 @@ export default function CustomerOrdersPage() {
       );
     }
     
-    // Все заказы - применяем фильтр по выполненным, если нужно скрыть их
-    if (activeTab === 'all' && !showDone) {
-      return allOrders.filter(order => !order.isDone);
-    }
-    
-    // Все заказы
-    return allOrders;
+    // Все заказы (исключаем отклоненные из основного списка)
+    return allOrders.filter(order => !order.isRejected || activeTab === 'all');
   };
 
-  // Применяем поиск к отфильтрованным заказам
+  // Применяем поиск и фильтр по статусу к отфильтрованным заказам
   const getFilteredAndSearchedOrders = (): Order[] => {
-    const filtered = getFilteredOrders();
+    let filtered = getFilteredOrders();
     
+    // Фильтр по статусу (только для вкладки "Все заказы")
+    if (statusFilter !== 'all' && activeTab === 'all') {
+      filtered = filtered.filter(order => {
+        const status = getOrderStatus(order);
+        return status.label.toLowerCase() === statusFilter.toLowerCase();
+      });
+    }
+    
+    // Применяем поиск
     if (!debouncedSearchTerm) {
       return filtered;
     }
@@ -148,27 +205,13 @@ export default function CustomerOrdersPage() {
   const displayData = getFilteredAndSearchedOrders();
 
 
-  const deleteMutation = useMutation({
-    mutationFn: (id: number) => customerApi.deleteOrder(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
-      showSuccessToast('Заказ сделан неактивным');
-      setShowDeleteConfirm(false);
-      setDeleteOrderId(null);
-    },
-    onError: (error) => {
-      showErrorToast(error, 'Не удалось сделать заказ неактивным. Попробуйте еще раз.');
-      setShowDeleteConfirm(false);
-      setDeleteOrderId(null);
-    },
-  });
-
   const permanentDeleteMutation = useMutation({
     mutationFn: (id: number) => customerApi.permanentlyDeleteOrder(id),
     onSuccess: () => {
+      // Немедленное обновление всех связанных запросов
       queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
       queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
+      queryClient.invalidateQueries({ queryKey: ['customerChats'] });
       showSuccessToast('Заказ полностью удален');
       setShowDeleteConfirm(false);
       setDeleteOrderId(null);
@@ -180,31 +223,15 @@ export default function CustomerOrdersPage() {
     },
   });
 
-  const activateMutation = useMutation({
-    mutationFn: (id: number) => customerApi.activateOrder(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
-      showSuccessToast('Заказ активирован');
-    },
-    onError: (error) => {
-      showErrorToast(error, 'Не удалось активировать заказ. Попробуйте еще раз.');
-    },
-  });
-
-  const handleDeleteClick = (orderId: number, permanent: boolean = false) => {
+  const handleDeleteClick = (orderId: number) => {
     setDeleteOrderId(orderId);
-    setIsPermanentDelete(permanent);
+    setIsPermanentDelete(true);
     setShowDeleteConfirm(true);
   };
 
   const handleConfirmDelete = () => {
     if (deleteOrderId) {
-      if (isPermanentDelete) {
-        permanentDeleteMutation.mutate(deleteOrderId);
-      } else {
-        deleteMutation.mutate(deleteOrderId);
-      }
+      permanentDeleteMutation.mutate(deleteOrderId);
     }
   };
 
@@ -235,42 +262,10 @@ export default function CustomerOrdersPage() {
   };
 
   const getStatusBadge = (order: Order) => {
-    if (order.isDone) {
-      return (
-        <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
-          <CheckCircle className="w-3 h-3 mr-1" />
-          Выполнен
-        </span>
-      );
-    }
-    if (order.isOnCheck) {
-      return (
-        <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center">
-          <Clock className="w-3 h-3 mr-1" />
-          На проверке
-        </span>
-      );
-    }
-    if (order.isInProcess) {
-      return (
-        <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full flex items-center">
-          <Clock className="w-3 h-3 mr-1" />
-          В работе
-        </span>
-      );
-    }
-    if (order.isActived) {
-      return (
-        <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
-          <CheckCircle className="w-3 h-3 mr-1" />
-          Активен
-        </span>
-      );
-    }
+    const status = getOrderStatus(order);
     return (
-      <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full flex items-center">
-        <XCircle className="w-3 h-3 mr-1" />
-        Неактивен
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${status.className}`}>
+        {status.label}
       </span>
     );
   };
@@ -348,46 +343,34 @@ export default function CustomerOrdersPage() {
           )}
         </div>
 
-        {/* Фильтры: сортировка и показ неактивных - показываем всегда */}
+        {/* Фильтры: сортировка и статус */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-4 border-b border-gray-200 gap-4 mb-4">
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2">
-              <span className="text-sm text-gray-700 dark:text-slate-300 font-medium">Сортировка:</span>
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value as SortOrder)}
-                className="input text-sm py-1 px-3"
-              >
-                <option value="newest">Сначала новые</option>
-                <option value="oldest">Сначала старые</option>
-              </select>
-            </label>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as SortOrder)}
+              className="px-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="newest">Сначала новые</option>
+              <option value="oldest">Сначала старые</option>
+            </select>
           </div>
           
           {activeTab === 'all' && (
             <div className="flex flex-wrap items-center gap-4">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showInactive}
-                  onChange={(e) => setShowInactive(e.target.checked)}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-slate-300">
-                  Показать неактивные заказы
-                </span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showDone}
-                  onChange={(e) => setShowDone(e.target.checked)}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                />
-                <span className="ml-2 text-sm text-gray-700 dark:text-slate-300">
-                  Показать выполненные заказы
-                </span>
-              </label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="all">Все статусы</option>
+                <option value="На рассмотрении">На рассмотрении</option>
+                <option value="Отклонен">Отклонен</option>
+                <option value="Выполнен">Выполнен</option>
+                <option value="На проверке">На проверке</option>
+                <option value="В процессе">В процессе</option>
+                <option value="Активен">Активен</option>
+              </select>
             </div>
           )}
         </div>
@@ -399,14 +382,6 @@ export default function CustomerOrdersPage() {
         ) : displayData && displayData.length > 0 ? (
           <div className="space-y-4">
             {sortOrders(displayData)
-              .filter((order) => {
-                // Для вкладки "Все заказы" применяем фильтр по активности
-                if (activeTab === 'all') {
-                  return showInactive || order.isActived;
-                }
-                // Для других вкладок показываем все отфильтрованные заказы
-                return true;
-              })
               .map((order) => (
               <div
                 key={order.id}
@@ -459,36 +434,41 @@ export default function CustomerOrdersPage() {
                       ) : null;
                     })()}
                     
-                    {/* Для активных незавершенных заказов БЕЗ исполнителя - кнопка "Сделать неактивным" */}
+                    {/* Для активных незавершенных заказов БЕЗ исполнителя - кнопка "Удалить заказ" */}
                     {order.isActived && !order.isDone && !order.performerId && (
                       <button
-                        onClick={() => handleDeleteClick(order.id, false)}
+                        onClick={() => handleDeleteClick(order.id)}
                         className="btn btn-danger flex items-center"
                       >
-                        <XCircle className="w-4 h-4 mr-1" />
-                        Сделать неактивным
+                        <Trash2 className="w-4 h-4 mr-1" />
+                        Удалить заказ
                       </button>
                     )}
                     
-                    {/* Для неактивных заказов - кнопка "Активировать" */}
-                    {!order.isActived && !order.isDone && (
+                    {/* Информация о статусе модерации для неактивных заказов */}
+                    {!order.isActived && !order.isDone && order.isOnReview && (
+                      <div className="mt-2 px-3 py-2 bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-md">
+                        <p className="text-sm text-orange-800 dark:text-orange-200 flex items-center">
+                          <Clock className="w-4 h-4 mr-2" />
+                          Заказ находится на рассмотрении у администратора
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* Информация о статусе отклонения */}
+                    {order.isRejected && (
+                      <div className="mt-2 px-3 py-2 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-md">
+                        <p className="text-sm text-red-800 dark:text-red-200 flex items-center mb-2">
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Заказ отклонен администратором
+                        </p>
                       <button
-                        onClick={() => activateMutation.mutate(order.id)}
-                        disabled={activateMutation.isPending}
-                        className="btn bg-green-600 hover:bg-green-700 text-white flex items-center"
-                      >
-                        {activateMutation.isPending ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                            Активация...
-                          </>
-                        ) : (
-                          <>
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Сделать активным
-                          </>
-                        )}
+                          onClick={() => navigate(`/customer/orders/edit/${order.id}`)}
+                          className="btn btn-primary text-sm py-1 px-3"
+                        >
+                          Редактировать и отправить повторно
                       </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -496,17 +476,10 @@ export default function CustomerOrdersPage() {
             ))}
             
             {/* Сообщение если все заказы скрыты фильтром */}
-            {activeTab === 'all' && sortOrders(displayData).filter((order) => showInactive || order.isActived).length === 0 && getFilteredOrders().length > 0 && (
+            {activeTab === 'all' && sortOrders(displayData).length === 0 && getFilteredOrders().length > 0 && (
               <div className="text-center py-12">
                 <p className="text-gray-500 text-lg">
-                  {!showInactive && !showDone 
-                    ? 'Нет активных незавершенных заказов. Включите фильтры для просмотра других заказов.'
-                    : !showInactive
-                    ? 'Нет активных заказов. Включите фильтр "Показать неактивные заказы" для просмотра всех заказов.'
-                    : !showDone
-                    ? 'Нет незавершенных заказов. Включите фильтр "Показать выполненные заказы" для просмотра выполненных заказов.'
-                    : 'Нет заказов, соответствующих выбранным фильтрам.'
-                  }
+                  Нет заказов со статусом "{statusFilter !== 'all' ? statusFilter : 'с указанными фильтрами'}". Попробуйте выбрать другой статус.
                 </p>
               </div>
             )}
@@ -524,51 +497,45 @@ export default function CustomerOrdersPage() {
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-              {isPermanentDelete ? 'Подтверждение удаления' : 'Сделать заказ неактивным'}
+              Подтверждение удаления
             </h2>
           </div>
           
           <div className="space-y-4">
-            <div className={`border rounded-lg p-4 ${isPermanentDelete ? 'bg-red-50 border-red-200' : 'bg-orange-50 border-orange-200'}`}>
-              <p className={`font-semibold mb-2 ${isPermanentDelete ? 'text-red-800' : 'text-orange-800'}`}>
-                {isPermanentDelete ? '⚠️ Внимание: заказ будет удален навсегда!' : '⚠️ Внимание!'}
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <p className="text-red-800 dark:text-red-200 font-semibold mb-2">
+                ⚠️ Внимание: заказ будет удален навсегда!
               </p>
-              <p className={`text-sm ${isPermanentDelete ? 'text-red-700' : 'text-orange-700'}`}>
-                {isPermanentDelete 
-                  ? 'Заказ будет полностью удален из базы данных. Это действие нельзя отменить.'
-                  : 'Заказ будет помечен как неактивный. Вы сможете активировать его позже.'
-                }
+              <p className="text-red-700 dark:text-red-300 text-sm">
+                Заказ будет полностью удален из базы данных. Это действие нельзя отменить.
               </p>
             </div>
             
             <p className="text-gray-700 dark:text-slate-300">
-              {isPermanentDelete 
-                ? 'Вы уверены, что хотите полностью удалить этот заказ?'
-                : 'Вы уверены, что хотите сделать этот заказ неактивным?'
-              }
+              Вы уверены, что хотите удалить этот заказ?
             </p>
             
             <div className="flex space-x-2 pt-4">
               <button
                 onClick={handleConfirmDelete}
-                disabled={deleteMutation.isPending || permanentDeleteMutation.isPending}
+                disabled={permanentDeleteMutation.isPending}
                 className="btn btn-danger flex items-center flex-1"
               >
-                {(deleteMutation.isPending || permanentDeleteMutation.isPending) ? (
+                {permanentDeleteMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {isPermanentDelete ? 'Удаление...' : 'Деактивация...'}
+                    Удаление...
                   </>
                 ) : (
                   <>
-                    {isPermanentDelete ? <Trash2 className="w-4 h-4 mr-2" /> : <XCircle className="w-4 h-4 mr-2" />}
-                    {isPermanentDelete ? 'Да, удалить' : 'Да, сделать неактивным'}
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Да, удалить
                   </>
                 )}
               </button>
               <button
                 onClick={handleCancelDelete}
-                disabled={deleteMutation.isPending}
+                disabled={permanentDeleteMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
                 Отмена

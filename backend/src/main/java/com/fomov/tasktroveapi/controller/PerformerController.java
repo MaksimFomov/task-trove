@@ -3,6 +3,8 @@ package com.fomov.tasktroveapi.controller;
 import com.fomov.tasktroveapi.dto.*;
 import com.fomov.tasktroveapi.exception.NotFoundException;
 import com.fomov.tasktroveapi.mapper.PerformerMapper;
+import com.fomov.tasktroveapi.mapper.OrdersMapper;
+import com.fomov.tasktroveapi.mapper.WorkExperienceMapper;
 import com.fomov.tasktroveapi.model.*;
 import com.fomov.tasktroveapi.security.SecurityUtils;
 import com.fomov.tasktroveapi.service.*;
@@ -14,6 +16,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/performers")
@@ -25,13 +28,28 @@ public class PerformerController {
     private final PerformerService service;
     private final PerformerMapper mapper;
     private final PortfolioService portfolioService;
+    private final CustomerService customerService;
+    private final OrdersService ordersService;
+    private final WorkExperienceService workExperienceService;
+    private final OrdersMapper ordersMapper;
+    private final WorkExperienceMapper workExperienceMapper;
 
     public PerformerController(PerformerService service, 
                               PerformerMapper mapper,
-                              PortfolioService portfolioService) {
+                              PortfolioService portfolioService,
+                              CustomerService customerService,
+                              OrdersService ordersService,
+                              WorkExperienceService workExperienceService,
+                              OrdersMapper ordersMapper,
+                              WorkExperienceMapper workExperienceMapper) {
         this.service = service;
         this.mapper = mapper;
         this.portfolioService = portfolioService;
+        this.customerService = customerService;
+        this.ordersService = ordersService;
+        this.workExperienceService = workExperienceService;
+        this.ordersMapper = ordersMapper;
+        this.workExperienceMapper = workExperienceMapper;
     }
 
     @GetMapping("/{id}")
@@ -189,6 +207,28 @@ public class PerformerController {
         }
     }
 
+    @PutMapping("/chats/{chatId}/read")
+    public ResponseEntity<?> markChatAsRead(@PathVariable Integer chatId) {
+        try {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            service.markChatAsRead(accountId, chatId);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            logger.error("Chat or performer not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            logger.error("Access denied: {}", e.getMessage());
+            return ResponseEntity.status(403).build();
+        } catch (Exception e) {
+            logger.error("Error marking chat as read: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @PostMapping("/addreply")
     public ResponseEntity<?> createReply(@RequestBody ReplyDto dto) {
         try {
@@ -307,6 +347,7 @@ public class PerformerController {
     }
 
     @GetMapping("/portfolio")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<?> getPortfolio() {
         try {
             Integer accountId = SecurityUtils.getCurrentUserId();
@@ -319,7 +360,27 @@ public class PerformerController {
             
             java.util.List<Portfolio> portfolios = portfolioService.findByUserId(performer.getId());
             Portfolio portfolio = portfolios.isEmpty() ? null : portfolios.get(0);
-            return ResponseEntity.ok(portfolio);
+            
+            // Создаем Map с данными портфолио и добавляем ФИО из Performer
+            // Используем простые геттеры, чтобы избежать ленивой загрузки
+            Map<String, Object> portfolioData = new java.util.HashMap<>();
+            if (portfolio != null) {
+                portfolioData.put("id", portfolio.getId());
+                portfolioData.put("name", portfolio.getName());
+                portfolioData.put("phone", portfolio.getPhone());
+                portfolioData.put("email", portfolio.getEmail());
+                portfolioData.put("townCountry", portfolio.getTownCountry());
+                portfolioData.put("specializations", portfolio.getSpecializations());
+                portfolioData.put("employment", portfolio.getEmployment());
+                portfolioData.put("experience", portfolio.getExperience());
+                portfolioData.put("isActive", portfolio.getIsActive());
+            }
+            // Добавляем ФИО из Performer (простые поля, не ленивые связи)
+            portfolioData.put("lastName", performer.getLastName());
+            portfolioData.put("firstName", performer.getFirstName());
+            portfolioData.put("middleName", performer.getMiddleName());
+            
+            return ResponseEntity.ok(portfolioData);
         } catch (Exception e) {
             logger.error("Error getting portfolio", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get portfolio"));
@@ -355,6 +416,177 @@ public class PerformerController {
         } catch (Exception e) {
             logger.error("Error getting reviews", e);
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get reviews"));
+        }
+    }
+
+    @GetMapping("/customer/{accountId}/info")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<?> getCustomerInfo(@PathVariable Integer accountId) {
+        try {
+            Integer currentAccountId = SecurityUtils.getCurrentUserId();
+            if (currentAccountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            // Ищем заказчика по accountId (так как в DTO приходит accountId)
+            Optional<Customer> customerOpt = customerService.findByAccountId(accountId);
+            if (customerOpt.isEmpty()) {
+                logger.error("Customer not found for accountId: {}", accountId);
+                return ResponseEntity.notFound().build();
+            }
+            
+            Customer customer = customerOpt.get();
+            
+            if (customer.getAccount() == null) {
+                logger.error("Customer account is null for accountId: {}", accountId);
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Загружаем Role явно, чтобы избежать проблем с lazy loading
+            Account account = customer.getAccount();
+            Role role = account.getRole();
+            
+            // Создаем простой DTO для ответа, чтобы избежать проблем с сериализацией
+            Map<String, Object> accountInfo = new java.util.HashMap<>();
+            accountInfo.put("id", account.getId());
+            accountInfo.put("login", account.getLogin() != null ? account.getLogin() : "");
+            accountInfo.put("email", account.getEmail() != null ? account.getEmail() : "");
+            
+            if (role != null) {
+                Map<String, Object> roleInfo = new java.util.HashMap<>();
+                roleInfo.put("id", role.getId());
+                roleInfo.put("name", role.getName() != null ? role.getName() : "");
+                accountInfo.put("role", roleInfo);
+            } else {
+                accountInfo.put("role", new java.util.HashMap<>());
+            }
+            
+            return ResponseEntity.ok(accountInfo);
+        } catch (NotFoundException e) {
+            logger.error("Customer not found for accountId: {}", accountId);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error getting customer info: {}", e.getMessage(), e);
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get customer info: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/customer/{accountId}/portfolio")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<?> getCustomerPortfolio(@PathVariable Integer accountId) {
+        try {
+            Integer currentAccountId = SecurityUtils.getCurrentUserId();
+            if (currentAccountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            // Ищем заказчика по accountId (так как в DTO приходит accountId)
+            Customer customer = customerService.findByAccountId(accountId)
+                    .orElseThrow(() -> new NotFoundException("Customer with accountId", accountId));
+            
+            // Преобразуем Customer в CustomerPortfolio DTO
+            Map<String, Object> portfolio = new java.util.HashMap<>();
+            portfolio.put("id", customer.getId());
+            portfolio.put("name", customer.getFullName() != null ? customer.getFullName() : "");
+            portfolio.put("lastName", customer.getLastName());
+            portfolio.put("firstName", customer.getFirstName());
+            portfolio.put("middleName", customer.getMiddleName());
+            portfolio.put("email", customer.getEmail() != null ? customer.getEmail() : "");
+            portfolio.put("phone", customer.getPhone() != null ? customer.getPhone() : "");
+            portfolio.put("description", customer.getDescription() != null ? customer.getDescription() : "");
+            portfolio.put("scopeS", customer.getScopeS() != null ? customer.getScopeS() : "");
+            
+            return ResponseEntity.ok(portfolio);
+        } catch (NotFoundException e) {
+            logger.error("Customer not found for accountId: {}", accountId);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error getting customer portfolio: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get customer portfolio"));
+        }
+    }
+
+    @GetMapping("/customer/{accountId}/done-orders")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getCustomerDoneOrders(@PathVariable Integer accountId) {
+        try {
+            Integer currentAccountId = SecurityUtils.getCurrentUserId();
+            if (currentAccountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            // Ищем заказчика по accountId (так как в DTO приходит accountId)
+            Customer customer = customerService.findByAccountId(accountId)
+                    .orElseThrow(() -> new NotFoundException("Customer with accountId", accountId));
+            
+            java.util.List<Orders> orders = ordersService.findByCustomerId(customer.getId());
+            java.util.List<AddOrderDto> doneOrders = orders.stream()
+                    .filter(o -> Boolean.TRUE.equals(o.getIsDone()))
+                    .map(ordersMapper::toDto)
+                    .toList();
+            
+            return ResponseEntity.ok(Map.of("orders", doneOrders));
+        } catch (NotFoundException e) {
+            logger.error("Customer not found for accountId: {}", accountId);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error getting customer done orders: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/customer/{accountId}/reviews")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getCustomerReviews(@PathVariable Integer accountId) {
+        try {
+            Integer currentAccountId = SecurityUtils.getCurrentUserId();
+            if (currentAccountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            // Ищем заказчика по accountId (так как в DTO приходит accountId)
+            Customer customer = customerService.findByAccountId(accountId)
+                    .orElseThrow(() -> new NotFoundException("Customer with accountId", accountId));
+            
+            // Получаем accountId заказчика, о котором отзыв
+            Integer customerAccountId = null;
+            if (customer.getAccount() != null) {
+                customerAccountId = customer.getAccount().getId();
+            }
+            
+            // Получаем только отзывы О заказчике от исполнителей (reviewerType = PERFORMER)
+            java.util.List<WorkExperience> reviews = workExperienceService.findReviewsAboutCustomer(customer.getId());
+            java.util.List<WorkExperienceDto> reviewDtos = reviews.stream()
+                    .map(workExperienceMapper::toDto)
+                    .toList();
+            
+            return ResponseEntity.ok(Map.of("reviews", reviewDtos));
+        } catch (NotFoundException e) {
+            logger.error("Customer not found for accountId: {}", accountId);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error getting customer reviews: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/addreview")
+    public ResponseEntity<?> addReview(@RequestBody @Validated WorkExperienceDto dto) {
+        try {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            service.addReview(accountId, dto);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            logger.error("Performer or customer not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error adding review: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 

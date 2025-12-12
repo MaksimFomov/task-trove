@@ -58,17 +58,21 @@ export default function RegisterPage() {
 
   // Customer fields
   const [customerData, setCustomerData] = useState({
-    name: '',
+    lastName: '',
+    firstName: '',
+    middleName: '',
     email: '',
     passwordUser: '',
-    age: '',
+    phone: '',
     description: '',
     scopeS: '',
   });
 
   // Performer fields
   const [performerData, setPerformerData] = useState({
-    name: '',
+    lastName: '',
+    firstName: '',
+    middleName: '',
     email: '',
     passwordUser: '',
     age: '',
@@ -154,6 +158,9 @@ export default function RegisterPage() {
       ...prev,
       [type]: { ...prev[type], loading: true }
     }));
+    // Очищаем ошибки кода при отправке нового кода
+    setVerificationErrors(prev => ({ ...prev, [type]: '' }));
+    setVerificationCodes(prev => ({ ...prev, [type]: '' }));
 
     try {
       await authApi.sendEmailVerification(email);
@@ -191,13 +198,55 @@ export default function RegisterPage() {
         ...prev,
         [type]: { step: 'verified', email, loading: false }
       }));
+      
+      // Очищаем ошибки кода после успешного подтверждения
+      setVerificationErrors(prev => ({
+        ...prev,
+        [type]: ''
+      }));
+      
+      // Очищаем ошибку email после успешного подтверждения
+      if (type === 'customer') {
+        setCustomerErrors(prev => {
+          const newErrors = { ...prev };
+          if (newErrors.email === 'Подтвердите email адрес' && customerData.email === email) {
+            delete newErrors.email;
+          }
+          return newErrors;
+        });
+      } else {
+        setPerformerErrors(prev => {
+          const newErrors = { ...prev };
+          if (newErrors.email === 'Подтвердите email адрес' && performerData.email === email) {
+            delete newErrors.email;
+          }
+          return newErrors;
+        });
+      }
+      
       showSuccessToast('Email успешно подтвержден!');
-    } catch (error) {
+    } catch (error: any) {
       setEmailVerificationState(prev => ({
         ...prev,
         [type]: { ...prev[type], loading: false }
       }));
-      showErrorToast(error, 'Неверный код подтверждения');
+      
+      // Устанавливаем понятное сообщение об ошибке кода
+      const errorMessage = error.response?.data?.error || 'Неверный код подтверждения';
+      if (errorMessage.includes('код') || errorMessage.includes('Код') || errorMessage.includes('code') || 
+          errorMessage.includes('подтвержден') || errorMessage.includes('истек')) {
+        setVerificationErrors(prev => ({
+          ...prev,
+          [type]: 'Неправильный код подтверждения'
+        }));
+        showErrorToast('Неправильный код подтверждения');
+      } else {
+        setVerificationErrors(prev => ({
+          ...prev,
+          [type]: errorMessage
+        }));
+        showErrorToast(error, errorMessage);
+      }
     }
   };
 
@@ -223,6 +272,15 @@ export default function RegisterPage() {
   });
   
   const [verificationCodes, setVerificationCodes] = useState<{
+    customer: string,
+    performer: string
+  }>({
+    customer: '',
+    performer: ''
+  });
+  
+  // Ошибки кодов подтверждения
+  const [verificationErrors, setVerificationErrors] = useState<{
     customer: string,
     performer: string
   }>({
@@ -299,10 +357,20 @@ export default function RegisterPage() {
   const validateCustomerData = () => {
     const errors: Record<string, string> = {};
 
-    if (!customerData.name.trim()) {
-      errors.name = 'Имя обязательно для заполнения';
-    } else if (customerData.name.trim().length < 2) {
-      errors.name = 'Имя должно содержать минимум 2 символа';
+    if (!customerData.lastName.trim()) {
+      errors.lastName = 'Фамилия обязательна для заполнения';
+    } else if (customerData.lastName.trim().length < 2) {
+      errors.lastName = 'Фамилия должна содержать минимум 2 символа';
+    }
+
+    if (!customerData.firstName.trim()) {
+      errors.firstName = 'Имя обязательно для заполнения';
+    } else if (customerData.firstName.trim().length < 2) {
+      errors.firstName = 'Имя должно содержать минимум 2 символа';
+    }
+
+    if (customerData.middleName && customerData.middleName.trim().length > 0 && customerData.middleName.trim().length < 2) {
+      errors.middleName = 'Отчество должно содержать минимум 2 символа';
     }
 
     if (!customerData.email.trim()) {
@@ -321,11 +389,8 @@ export default function RegisterPage() {
       errors.passwordUser = 'Пароль должен содержать минимум 8 символов';
     }
 
-    const age = parseInt(customerData.age);
-    if (!customerData.age) {
-      errors.age = 'Возраст обязателен для заполнения';
-    } else if (isNaN(age) || age < 18 || age > 120) {
-      errors.age = 'Возраст должен быть от 18 до 120 лет';
+    if (customerData.phone && !/^[\+]?[0-9\s\-\(\)]{10,}$/.test(customerData.phone)) {
+      errors.phone = 'Введите корректный номер телефона';
     }
 
     if (customerData.description.trim() && customerData.description.trim().length < 10) {
@@ -343,10 +408,20 @@ export default function RegisterPage() {
   const validatePerformerData = () => {
     const errors: Record<string, string> = {};
 
-    if (!performerData.name.trim()) {
-      errors.name = 'Имя обязательно для заполнения';
-    } else if (performerData.name.trim().length < 2) {
-      errors.name = 'Имя должно содержать минимум 2 символа';
+    if (!performerData.lastName.trim()) {
+      errors.lastName = 'Фамилия обязательна для заполнения';
+    } else if (performerData.lastName.trim().length < 2) {
+      errors.lastName = 'Фамилия должна содержать минимум 2 символа';
+    }
+
+    if (!performerData.firstName.trim()) {
+      errors.firstName = 'Имя обязательно для заполнения';
+    } else if (performerData.firstName.trim().length < 2) {
+      errors.firstName = 'Имя должно содержать минимум 2 символа';
+    }
+
+    if (performerData.middleName && performerData.middleName.trim().length > 0 && performerData.middleName.trim().length < 2) {
+      errors.middleName = 'Отчество должно содержать минимум 2 символа';
     }
 
     if (!performerData.email.trim()) {
@@ -406,8 +481,14 @@ export default function RegisterPage() {
 
     try {
       const response = await authApi.registerCustomer({
-        ...customerData,
-        age: parseInt(customerData.age),
+        lastName: customerData.lastName,
+        firstName: customerData.firstName,
+        middleName: customerData.middleName || undefined,
+        email: customerData.email,
+        passwordUser: customerData.passwordUser,
+        phone: customerData.phone || undefined,
+        description: customerData.description,
+        scopeS: customerData.scopeS,
       });
       const { token, role, id, login } = response.data;
       
@@ -443,8 +524,17 @@ export default function RegisterPage() {
 
     try {
       const response = await authApi.registerPerformer({
-        ...performerData,
+        lastName: performerData.lastName,
+        firstName: performerData.firstName,
+        middleName: performerData.middleName || undefined,
+        email: performerData.email,
+        passwordUser: performerData.passwordUser,
         age: parseInt(performerData.age),
+        phone: performerData.phone || undefined,
+        townCountry: performerData.townCountry || undefined,
+        specializations: performerData.specializations || undefined,
+        employment: performerData.employment || undefined,
+        experience: performerData.experience || undefined,
       });
       const { token, role, id, login } = response.data;
       
@@ -542,25 +632,74 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <User className="w-4 h-4 inline mr-2" />
+                  Фамилия <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customerData.lastName}
+                  onChange={(e) => {
+                    setCustomerData({ ...customerData, lastName: e.target.value });
+                    if (customerErrors.lastName) {
+                      setCustomerErrors({ ...customerErrors, lastName: '' });
+                    }
+                  }}
+                  className={`input ${customerErrors.lastName ? 'border-red-500 focus:border-red-500' : ''}`}
+                  placeholder="Введите вашу фамилию"
+                />
+                {customerErrors.lastName && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {customerErrors.lastName}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  <User className="w-4 h-4 inline mr-2" />
                   Имя <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  value={customerData.name}
+                  value={customerData.firstName}
                   onChange={(e) => {
-                    setCustomerData({ ...customerData, name: e.target.value });
-                    if (customerErrors.name) {
-                      setCustomerErrors({ ...customerErrors, name: '' });
+                    setCustomerData({ ...customerData, firstName: e.target.value });
+                    if (customerErrors.firstName) {
+                      setCustomerErrors({ ...customerErrors, firstName: '' });
                     }
                   }}
-                  className={`input ${customerErrors.name ? 'border-red-500 focus:border-red-500' : ''}`}
+                  className={`input ${customerErrors.firstName ? 'border-red-500 focus:border-red-500' : ''}`}
                   placeholder="Введите ваше имя"
                 />
-                {customerErrors.name && (
+                {customerErrors.firstName && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
                     <AlertCircle className="w-4 h-4 mr-1" />
-                    {customerErrors.name}
+                    {customerErrors.firstName}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  <User className="w-4 h-4 inline mr-2" />
+                  Отчество
+                </label>
+                <input
+                  type="text"
+                  value={customerData.middleName}
+                  onChange={(e) => {
+                    setCustomerData({ ...customerData, middleName: e.target.value });
+                    if (customerErrors.middleName) {
+                      setCustomerErrors({ ...customerErrors, middleName: '' });
+                    }
+                  }}
+                  className={`input ${customerErrors.middleName ? 'border-red-500 focus:border-red-500' : ''}`}
+                  placeholder="Введите ваше отчество"
+                />
+                {customerErrors.middleName && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {customerErrors.middleName}
                   </p>
                 )}
               </div>
@@ -633,9 +772,14 @@ export default function RegisterPage() {
                         <input
                           type="text"
                           value={verificationCodes.customer}
-                          onChange={(e) => setVerificationCodes({ ...verificationCodes, customer: e.target.value })}
+                          onChange={(e) => {
+                            setVerificationCodes({ ...verificationCodes, customer: e.target.value });
+                            if (verificationErrors.customer) {
+                              setVerificationErrors(prev => ({ ...prev, customer: '' }));
+                            }
+                          }}
                           placeholder="Введите код из письма"
-                          className="input flex-1"
+                          className={`input flex-1 ${verificationErrors.customer ? 'border-red-500' : ''}`}
                           maxLength={6}
                         />
                         <button
@@ -651,6 +795,12 @@ export default function RegisterPage() {
                           )}
                         </button>
                       </div>
+                      {verificationErrors.customer && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {verificationErrors.customer}
+                        </p>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleResendCode('customer')}
@@ -704,28 +854,25 @@ export default function RegisterPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-2" />
-                  Возраст <span className="text-red-500">*</span>
+                  <Phone className="w-4 h-4 inline mr-2" />
+                  Номер телефона
                 </label>
                 <input
-                  type="number"
-                  required
-                  min={18}
-                  max={120}
-                  value={customerData.age}
+                  type="tel"
+                  value={customerData.phone}
                   onChange={(e) => {
-                    setCustomerData({ ...customerData, age: e.target.value });
-                    if (customerErrors.age) {
-                      setCustomerErrors({ ...customerErrors, age: '' });
+                    setCustomerData({ ...customerData, phone: e.target.value });
+                    if (customerErrors.phone) {
+                      setCustomerErrors({ ...customerErrors, phone: '' });
                     }
                   }}
-                  className={`input ${customerErrors.age ? 'border-red-500 focus:border-red-500' : ''}`}
-                  placeholder="18-120 лет"
+                  className={`input ${customerErrors.phone ? 'border-red-500 focus:border-red-500' : ''}`}
+                  placeholder="+375291234567"
                 />
-                {customerErrors.age && (
+                {customerErrors.phone && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
                     <AlertCircle className="w-4 h-4 mr-1" />
-                    {customerErrors.age}
+                    {customerErrors.phone}
                   </p>
                 )}
               </div>
@@ -817,25 +964,74 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <User className="w-4 h-4 inline mr-2" />
+                  Фамилия <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={performerData.lastName}
+                  onChange={(e) => {
+                    setPerformerData({ ...performerData, lastName: e.target.value });
+                    if (performerErrors.lastName) {
+                      setPerformerErrors({ ...performerErrors, lastName: '' });
+                    }
+                  }}
+                  className={`input ${performerErrors.lastName ? 'border-red-500 focus:border-red-500' : ''}`}
+                  placeholder="Введите вашу фамилию"
+                />
+                {performerErrors.lastName && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {performerErrors.lastName}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  <User className="w-4 h-4 inline mr-2" />
                   Имя <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   required
-                  value={performerData.name}
+                  value={performerData.firstName}
                   onChange={(e) => {
-                    setPerformerData({ ...performerData, name: e.target.value });
-                    if (performerErrors.name) {
-                      setPerformerErrors({ ...performerErrors, name: '' });
+                    setPerformerData({ ...performerData, firstName: e.target.value });
+                    if (performerErrors.firstName) {
+                      setPerformerErrors({ ...performerErrors, firstName: '' });
                     }
                   }}
-                  className={`input ${performerErrors.name ? 'border-red-500 focus:border-red-500' : ''}`}
+                  className={`input ${performerErrors.firstName ? 'border-red-500 focus:border-red-500' : ''}`}
                   placeholder="Введите ваше имя"
                 />
-                {performerErrors.name && (
+                {performerErrors.firstName && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
                     <AlertCircle className="w-4 h-4 mr-1" />
-                    {performerErrors.name}
+                    {performerErrors.firstName}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  <User className="w-4 h-4 inline mr-2" />
+                  Отчество
+                </label>
+                <input
+                  type="text"
+                  value={performerData.middleName}
+                  onChange={(e) => {
+                    setPerformerData({ ...performerData, middleName: e.target.value });
+                    if (performerErrors.middleName) {
+                      setPerformerErrors({ ...performerErrors, middleName: '' });
+                    }
+                  }}
+                  className={`input ${performerErrors.middleName ? 'border-red-500 focus:border-red-500' : ''}`}
+                  placeholder="Введите ваше отчество"
+                />
+                {performerErrors.middleName && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {performerErrors.middleName}
                   </p>
                 )}
               </div>
@@ -908,9 +1104,14 @@ export default function RegisterPage() {
                         <input
                           type="text"
                           value={verificationCodes.performer}
-                          onChange={(e) => setVerificationCodes({ ...verificationCodes, performer: e.target.value })}
+                          onChange={(e) => {
+                            setVerificationCodes({ ...verificationCodes, performer: e.target.value });
+                            if (verificationErrors.performer) {
+                              setVerificationErrors(prev => ({ ...prev, performer: '' }));
+                            }
+                          }}
                           placeholder="Введите код из письма"
-                          className="input flex-1"
+                          className={`input flex-1 ${verificationErrors.performer ? 'border-red-500' : ''}`}
                           maxLength={6}
                         />
                         <button
@@ -926,6 +1127,12 @@ export default function RegisterPage() {
                           )}
                         </button>
                       </div>
+                      {verificationErrors.performer && (
+                        <p className="mt-1 text-sm text-red-600 flex items-center">
+                          <AlertCircle className="w-4 h-4 mr-1" />
+                          {verificationErrors.performer}
+                        </p>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleResendCode('performer')}

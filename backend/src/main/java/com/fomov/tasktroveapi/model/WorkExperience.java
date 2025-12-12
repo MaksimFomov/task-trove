@@ -14,7 +14,9 @@ import java.util.Objects;
 @Table(name = "work_experiences", indexes = {
     @Index(name = "idx_work_experiences_customer_id", columnList = "customer_id"),
     @Index(name = "idx_work_experiences_performer_id", columnList = "performer_id"),
-    @Index(name = "idx_work_experiences_created_at", columnList = "created_at")
+    @Index(name = "idx_work_experiences_created_at", columnList = "created_at"),
+    @Index(name = "idx_work_experiences_order_id", columnList = "order_id"),
+    @Index(name = "idx_work_experiences_reviewer_type", columnList = "reviewer_type")
 })
 @Getter
 @Setter
@@ -34,6 +36,16 @@ public class WorkExperience {
 
     @Column(columnDefinition = "TEXT")
     private String text;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reviewer_type", length = 20)
+    private ReviewerType reviewerType;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = true,
+                foreignKey = @ForeignKey(name = "fk_work_experiences_order"))
+    @ToString.Exclude
+    private Orders order;
     
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;

@@ -190,11 +190,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.error || 'Ошибка при восстановлении пароля';
-      toast.error(errorMessage);
       
-      // Если ошибка связана с кодом, показываем ошибку в поле кода
-      if (errorMessage.includes('код') || errorMessage.includes('Код') || errorMessage.includes('code')) {
-        setResetErrors({ ...resetErrors, code: errorMessage });
+      // Если ошибка связана с кодом, показываем понятное сообщение в поле кода
+      if (errorMessage.includes('код') || errorMessage.includes('Код') || errorMessage.includes('code') || 
+          errorMessage.includes('восстановлен') || errorMessage.includes('истек')) {
+        setResetErrors({ ...resetErrors, code: 'Неправильный код восстановления' });
+        toast.error('Неправильный код восстановления');
+      } else {
+        toast.error(errorMessage);
       }
     },
   });
@@ -332,7 +335,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} closeOnBackdropClick={false}>
+    <Modal isOpen={isOpen} onClose={onClose}>
       <div className="card max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col dark:bg-slate-900 dark:text-slate-100">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Настройки</h2>

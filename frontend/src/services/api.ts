@@ -91,10 +91,11 @@ export const customerApi = {
   getDoneOrders: () => api.get<{ orders: Order[] }>('/customers/done'),
   getChats: (tab?: string) => api.get<{ chats: Chat[] }>('/customers/chats', { params: { tab } }),
   getMessages: (chatId: number) => api.get<{ messages: Message[] }>('/customers/messages', { params: { chatId } }),
+  markChatAsRead: (chatId: number) => api.put(`/customers/chats/${chatId}/read`),
   addOrder: (data: Partial<Order>) => api.post('/customers/addorder', data),
+  updateOrder: (orderId: number, data: Partial<Order>) => api.put(`/customers/orders/${orderId}`, data),
   deleteOrder: (orderId: number) => api.post('/customers/deleteorder', null, { params: { orderId } }),
   permanentlyDeleteOrder: (orderId: number) => api.delete(`/customers/deleteorder/${orderId}`),
-  activateOrder: (orderId: number) => api.post(`/customers/activateorder/${orderId}`),
   addPerformerToOrder: (data: AddPerformerToOrderDto) => api.post('/customers/addperformertoorder', data),
   updateTaskStatus: (data: ReadyOrderDto) => api.put('/customers/readytask', data),
   addReview: (data: WorkExperience) => api.post('/customers/addreview', data),
@@ -117,9 +118,11 @@ export const customerApi = {
   },
   getPortfolio: () => api.get<CustomerPortfolio>('/customers/portfolio'),
   updatePortfolio: (data: UpdateCustomerPortfolioDto) => api.put('/customers/portfolio', data),
+  getMyReviews: () => api.get<{ reviews: WorkExperience[] }>('/customers/reviews'),
   getInfo: (userId: number) => api.get<Account>('/customers/info', { params: { userId } }),
   getPerformerDoneOrders: (performerId: number) => api.get<{ orders: Order[] }>(`/customers/performer/${performerId}/done-orders`),
   getPerformerReviews: (performerId: number) => api.get<{ reviews: WorkExperience[] }>(`/customers/performer/${performerId}/reviews`),
+  getPerformerPortfolio: (performerId: number) => api.get<Portfolio>(`/customers/performer/${performerId}/portfolio`),
   refusePerformer: (orderId: number) => api.post(`/customers/refuse-performer/${orderId}`),
   deleteChat: (chatId: number) => api.delete(`/customers/chats/${chatId}`),
 };
@@ -137,6 +140,7 @@ export const performerApi = {
   getReplies: (tab?: string) => api.get<{ reply: Reply[] }>('/performers/replies', { params: { tab } }),
   getChats: (tab?: string) => api.get<{ chats: Chat[] }>('/performers/chats', { params: { tab } }),
   getMessages: (chatId: number) => api.get<{ messages: Message[] }>('/performers/messages', { params: { chatId } }),
+  markChatAsRead: (chatId: number) => api.put(`/performers/chats/${chatId}/read`),
   addReply: (data: Partial<Reply>) => api.post<number>('/performers/addreply', data),
   updateTaskStatus: (data: UpdateReplyDto) => api.put('/performers/readytask', data),
   updatePortfolio: (data: UpdatePortfolioDto) => api.put('/performers/updateportfolio', data),
@@ -145,7 +149,12 @@ export const performerApi = {
   refuseOrder: (orderId: number) => api.post(`/performers/refuse-order/${orderId}`),
   getPortfolio: () => api.get<Portfolio>('/performers/portfolio'),
   getInfo: () => api.get<Account>('/performers/info'),
+  getCustomerInfo: (customerId: number) => api.get<Account>(`/performers/customer/${customerId}/info`),
+  getCustomerPortfolio: (customerId: number) => api.get<CustomerPortfolio>(`/performers/customer/${customerId}/portfolio`),
+  getCustomerDoneOrders: (customerId: number) => api.get<{ orders: Order[] }>(`/performers/customer/${customerId}/done-orders`),
+  getCustomerReviews: (customerId: number) => api.get<{ reviews: WorkExperience[] }>(`/performers/customer/${customerId}/reviews`),
   getMyReviews: () => api.get<{ reviews: WorkExperience[] }>('/performers/reviews'),
+  addReview: (data: WorkExperience) => api.post('/performers/addreview', data),
   deleteChat: (chatId: number) => api.delete(`/performers/chats/${chatId}`),
 };
 
@@ -157,6 +166,31 @@ export const adminApi = {
   activate: (userId: number) => api.post<Portfolio>('/admin/activate', null, { params: { userId } }),
   disactivate: (userId: number) => api.post<Portfolio>('/admin/disactivate', null, { params: { userId } }),
   deleteComment: (id: number) => api.delete('/admin/deletecomment', { params: { id } }),
+  // User management
+  getUserDetails: (userId: number) => api.get<any>(`/admin/users/${userId}`),
+  createCustomer: (data: RegisterCustomerRequest) => api.post('/admin/users/create-customer', data),
+  createPerformer: (data: RegisterPerformerRequest) => api.post('/admin/users/create-performer', data),
+  createAdministrator: (data: { login: string; password: string; name: string }) => api.post('/admin/users/create-administrator', data),
+  updateUser: (userId: number, data: any) => api.put(`/admin/users/${userId}`, data),
+  deleteUser: (userId: number) => api.delete(`/admin/users/${userId}`),
+  // Orders management
+  getAllOrders: () => api.get<{ orders: Order[] }>('/admin/orders'),
+  getOrdersOnReview: () => api.get<{ orders: Order[] }>('/admin/orders/review'),
+  getOrder: (orderId: number) => api.get<Order>(`/admin/orders/${orderId}`),
+  approveOrder: (orderId: number) => api.post<{ success: boolean; message: string }>(`/admin/orders/${orderId}/approve`),
+  rejectOrder: (orderId: number, reason?: string) => api.post<{ success: boolean; message: string }>(`/admin/orders/${orderId}/reject`, reason ? { reason } : {}),
+  deleteOrder: (orderId: number) => api.delete(`/admin/orders/${orderId}`),
+  // Statistics
+  getStatistics: () => api.get<any>('/admin/statistics'),
+  // Super admin check
+  isSuperAdmin: () => api.get<{ isSuperAdmin: boolean }>('/admin/is-super-admin'),
+  // Customer data for admin
+  getCustomerPortfolio: (customerId: number) => api.get<CustomerPortfolio>(`/admin/customer/${customerId}/portfolio`),
+  getCustomerDoneOrders: (customerId: number) => api.get<{ orders: Order[] }>(`/admin/customer/${customerId}/done-orders`),
+  getCustomerReviews: (customerId: number) => api.get<{ reviews: WorkExperience[] }>(`/admin/customer/${customerId}/reviews`),
+  // Performer data for admin
+  getPerformerDoneOrders: (performerId: number) => api.get<{ orders: Order[] }>(`/admin/performer/${performerId}/done-orders`),
+  getPerformerReviews: (performerId: number) => api.get<{ reviews: WorkExperience[] }>(`/admin/performer/${performerId}/reviews`),
 };
 
 // Notifications API

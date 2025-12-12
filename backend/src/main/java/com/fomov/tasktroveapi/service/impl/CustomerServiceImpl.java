@@ -5,6 +5,7 @@ import com.fomov.tasktroveapi.exception.NotFoundException;
 import com.fomov.tasktroveapi.mapper.*;
 import com.fomov.tasktroveapi.model.*;
 import com.fomov.tasktroveapi.repository.CustomerRepository;
+import com.fomov.tasktroveapi.repository.AccountRepository;
 import com.fomov.tasktroveapi.service.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,6 +50,7 @@ public class CustomerServiceImpl implements CustomerService {
     private final ReplyUpdateService replyUpdateService;
     private final NotificationService notificationService;
     private final com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService;
+    private final AccountRepository accountRepository;
 
     public CustomerServiceImpl(CustomerRepository repository,
                               OrdersService ordersService,
@@ -64,7 +66,8 @@ public class CustomerServiceImpl implements CustomerService {
                               PerformerService performerService,
                               ReplyUpdateService replyUpdateService,
                               NotificationService notificationService,
-                              com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService) {
+                              com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService,
+                              AccountRepository accountRepository) {
         this.repository = repository;
         this.ordersService = ordersService;
         this.ordersMapper = ordersMapper;
@@ -80,6 +83,7 @@ public class CustomerServiceImpl implements CustomerService {
         this.replyUpdateService = replyUpdateService;
         this.notificationService = notificationService;
         this.emailNotificationService = emailNotificationService;
+        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -90,6 +94,11 @@ public class CustomerServiceImpl implements CustomerService {
     @Override
     public Optional<Customer> findById(Integer id) { 
         return repository.findById(id); 
+    }
+
+    @Override
+    public Optional<Customer> findByIdWithAccount(Integer id) {
+        return repository.findByIdWithAccount(id);
     }
 
     @Override
@@ -237,6 +246,25 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
+    @Transactional
+    public void markChatAsRead(Integer accountId, Integer chatId) {
+        Customer customer = repository.findByAccountId(accountId)
+                .orElseThrow(() -> new NotFoundException("Customer", accountId));
+        
+        Chat chat = chatService.findById(chatId)
+                .orElseThrow(() -> new NotFoundException("Chat", chatId));
+        
+        if (!chat.getCustomerId().equals(customer.getId())) {
+            throw new SecurityException("Access denied to chat " + chatId);
+        }
+        
+        // Помечаем чат как прочитанный для customer и обновляем время последней проверки
+        chat.setCheckByCustomer(true);
+        chat.setLastCheckedByCustomerTime(OffsetDateTime.now());
+        chatService.save(chat);
+    }
+
+    @Override
     public void createOrder(Integer accountId, AddOrderDto dto) {
         Customer customer = repository.findByAccountId(accountId)
                 .orElseThrow(() -> new NotFoundException("Customer", accountId));
@@ -244,7 +272,9 @@ public class CustomerServiceImpl implements CustomerService {
         Orders order = ordersMapper.toEntity(dto);
         order.setCustomer(customer);
         order.setPerformer(null);
-        order.setIsActived(true);
+        // Новые заказы по умолчанию на рассмотрении, пока администратор не одобрит
+        order.setIsOnReview(true);
+        order.setIsActived(false); // Заказ будет активен только после одобрения администратором
         order.setPublicationTime(OffsetDateTime.now());
         
         if (order.getReplyBind() == null) {
@@ -261,6 +291,83 @@ public class CustomerServiceImpl implements CustomerService {
         }
         
         ordersService.save(order);
+        
+        // Отправляем уведомление всем администраторам о новом заказе на рассмотрении
+        String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
+        String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
+        
+        // Находим всех администраторов (Administrator и SuperAdministrator)
+        List<Account> allAccounts = accountRepository.findAllWithRole();
+        for (Account account : allAccounts) {
+            if (account.getRole() != null) {
+                String roleName = account.getRole().getName();
+                if ("Administrator".equals(roleName) || "SuperAdministrator".equals(roleName)) {
+                    notificationService.createOrderReviewNotification(
+                        account.getId(),
+                        customer.getId(),
+                        order.getId(),
+                        orderTitle,
+                        customerName
+                    );
+                }
+            }
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void updateOrder(Integer accountId, Integer orderId, AddOrderDto dto) {
+        Customer customer = repository.findByAccountId(accountId)
+                .orElseThrow(() -> new NotFoundException("Customer", accountId));
+        
+        Orders existingOrder = ordersService.findById(orderId)
+                .orElseThrow(() -> new NotFoundException("Order", orderId));
+        
+        // Проверяем, что заказ принадлежит заказчику
+        if (!existingOrder.getCustomer().getId().equals(customer.getId())) {
+            throw new SecurityException("Access denied to order " + orderId);
+        }
+        
+        // Проверяем, что заказ отклонен (можно обновлять только отклоненные заказы)
+        if (!Boolean.TRUE.equals(existingOrder.getIsRejected())) {
+            throw new IllegalArgumentException("Можно обновлять только отклоненные заказы");
+        }
+        
+        // Обновляем данные заказа
+        existingOrder.setTitle(dto.getTitle());
+        existingOrder.setScope(dto.getScope());
+        existingOrder.setTechStack(dto.getStackS());
+        existingOrder.setDescription(dto.getDescription());
+        
+        // Сбрасываем статус отклонения и отправляем на повторную проверку
+        existingOrder.setIsRejected(false);
+        existingOrder.setIsOnReview(true);
+        existingOrder.setIsActived(false);
+        existingOrder.setPublicationTime(OffsetDateTime.now()); // Обновляем время публикации
+        
+        ordersService.save(existingOrder);
+        
+        // Отправляем уведомление всем администраторам о повторной отправке заказа на проверку
+        String orderTitle = existingOrder.getTitle() != null ? existingOrder.getTitle() : "Заказ #" + existingOrder.getId();
+        String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
+        
+        List<Account> allAccounts = accountRepository.findAllWithRole();
+        for (Account account : allAccounts) {
+            if (account.getRole() != null) {
+                String roleName = account.getRole().getName();
+                if ("Administrator".equals(roleName) || "SuperAdministrator".equals(roleName)) {
+                    notificationService.createOrderReviewNotification(
+                        account.getId(),
+                        customer.getId(),
+                        existingOrder.getId(),
+                        orderTitle + " (обновлен)",
+                        customerName
+                    );
+                }
+            }
+        }
+        
+        logger.info("Order {} updated and resubmitted for review by customer {}", orderId, accountId);
     }
 
     @Override
@@ -304,27 +411,6 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     @Override
-    public void activateOrder(Integer accountId, Integer orderId) {
-        Customer customer = repository.findByAccountId(accountId)
-                .orElseThrow(() -> new NotFoundException("Customer", accountId));
-        
-        Orders order = ordersService.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("Order", orderId));
-        
-        if (!order.getCustomer().getId().equals(customer.getId())) {
-            throw new SecurityException("Access denied to order " + orderId);
-        }
-        
-        // Нельзя активировать завершенный заказ
-        if (Boolean.TRUE.equals(order.getIsDone())) {
-            throw new IllegalStateException("Cannot activate completed order");
-        }
-        
-        order.setIsActived(true);
-        ordersService.save(order);
-    }
-
-    @Override
     @Transactional(rollbackFor = Exception.class)
     public void assignPerformerToOrder(Integer accountId, AddPerformerToOrderDto dto) {
         Customer customer = repository.findByAccountId(accountId)
@@ -352,7 +438,7 @@ public class CustomerServiceImpl implements CustomerService {
         // Создаем уведомление для исполнителя о принятии в работу
         if (performer.getAccount() != null) {
             String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
-            String customerName = customer.getName() != null ? customer.getName() : "Заказчик";
+            String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
             notificationService.createAssignedNotification(
                 performer.getAccount().getId(),
                 customer.getId(),
@@ -409,7 +495,7 @@ public class CustomerServiceImpl implements CustomerService {
                 
                 // Создаем уведомление для заказчика о завершении заказа
                 String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
-                String performerName = order.getPerformer().getName() != null ? order.getPerformer().getName() : "Исполнитель";
+                String performerName = order.getPerformer().getFullName() != null ? order.getPerformer().getFullName() : "Исполнитель";
                 notificationService.createCompletedNotification(
                     customer.getAccount().getId(),
                     order.getPerformer().getId(),
@@ -432,12 +518,49 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = repository.findByAccountId(accountId)
                 .orElseThrow(() -> new NotFoundException("Customer", accountId));
         
-        Performer performer = performerService.findById(dto.getPerformerId())
-                .orElseThrow(() -> new NotFoundException("Performer", dto.getPerformerId()));
+        // Проверяем, что заказ существует и завершен
+        Orders order = null;
+        if (dto.getOrderId() != null) {
+            order = ordersService.findById(dto.getOrderId())
+                    .orElseThrow(() -> new NotFoundException("Order", dto.getOrderId()));
+            
+            // Проверяем, что заказ завершен
+            if (!Boolean.TRUE.equals(order.getIsDone())) {
+                throw new IllegalStateException("Cannot add review for order that is not completed");
+            }
+            
+            // Проверяем, что заказ принадлежит текущему заказчику
+            if (!order.getCustomer().getId().equals(customer.getId())) {
+                throw new SecurityException("Access denied to order " + dto.getOrderId());
+            }
+            
+            // Проверяем, что заказ имеет исполнителя
+            if (order.getPerformer() == null) {
+                throw new IllegalStateException("Order does not have a performer assigned");
+            }
+        }
+        
+        // Получаем исполнителя: если заказ указан, используем исполнителя из заказа
+        // Это более надежно, чем поиск по ID из DTO
+        Performer performer;
+        if (order != null && order.getPerformer() != null) {
+            // Используем исполнителя из заказа - это гарантирует, что отзыв оставляется правильному исполнителю
+            performer = order.getPerformer();
+        } else {
+            // Если заказ не указан, ищем исполнителя по ID из DTO
+            Integer performerIdFromDto = dto.getPerformerId();
+            if (performerIdFromDto == null || performerIdFromDto == 0) {
+                throw new IllegalArgumentException("Performer ID is required when order is not specified");
+            }
+            performer = performerService.findById(performerIdFromDto)
+                    .orElseThrow(() -> new NotFoundException("Performer", performerIdFromDto));
+        }
         
         WorkExperience workExperience = workExperienceMapper.toEntity(dto);
         workExperience.setCustomer(customer);
         workExperience.setPerformer(performer);
+        workExperience.setReviewerType(ReviewerType.CUSTOMER); // Заказчик оставляет отзыв об исполнителе
+        workExperience.setOrder(order);
         workExperienceService.save(workExperience);
     }
 
@@ -470,7 +593,7 @@ public class CustomerServiceImpl implements CustomerService {
             if (performer != null && performer.getAccount() != null) {
                 String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
                 Customer customer = repository.findByAccountId(accountId).orElse(null);
-                String customerName = customer != null && customer.getName() != null ? customer.getName() : "Заказчик";
+                String customerName = customer != null && customer.getFullName() != null ? customer.getFullName() : "Заказчик";
                 notificationService.createCorrectionNotification(
                     performer.getAccount().getId(),
                     customer != null ? customer.getId() : null,
@@ -505,9 +628,9 @@ public class CustomerServiceImpl implements CustomerService {
         Performer performer = performerService.findByIdWithAccount(performerId).orElse(null);
         
         String orderTitle = order.getTitle() != null ? order.getTitle() : "заказ #" + order.getId();
-        String customerName = customer.getName() != null ? customer.getName() : "Заказчик";
-        String performerName = performer != null && performer.getName() != null 
-                ? performer.getName() : "Исполнитель";
+        String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
+        String performerName = performer != null && performer.getFullName() != null 
+                ? performer.getFullName() : "Исполнитель";
         
         replyService.deleteByOrderIdAndPerformerId(orderId, performerId);
         
@@ -595,8 +718,8 @@ public class CustomerServiceImpl implements CustomerService {
         }
         
         if (order != null && order.getCustomer() != null) {
-            String customerName = order.getCustomer().getName() != null 
-                    ? order.getCustomer().getName() 
+            String customerName = order.getCustomer().getFullName() != null 
+                    ? order.getCustomer().getFullName() 
                     : defaultCustomerName;
             emailText.append("Имя заказчика: ").append(customerName).append("\n");
         }
@@ -654,14 +777,32 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = repository.findByAccountId(accountId)
                 .orElseThrow(() -> new NotFoundException("Customer", accountId));
         
-        // Обновляем только разрешенные поля
-        // name и email не обновляются - они берутся из Account при регистрации и остаются неизменными
-        // customer.setName(...) - не обновляем
-        customer.setAge(dto.getAge());
+        // Обновляем разрешенные поля, включая ФИО
+        customer.setLastName(dto.getLastName());
+        customer.setFirstName(dto.getFirstName());
+        customer.setMiddleName(dto.getMiddleName());
+        customer.setPhone(dto.getPhone());
         customer.setDescription(dto.getDescription());
         customer.setScopeS(dto.getScopeS());
         
         repository.save(customer);
+        // Явно вызываем flush, чтобы убедиться, что изменения сохранены
+        repository.flush();
         logger.info("Customer portfolio updated for accountId: {}", accountId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Object> getMyReviews(Integer accountId) {
+        Customer customer = repository.findByAccountId(accountId)
+                .orElseThrow(() -> new NotFoundException("Customer", accountId));
+        
+        // Получаем только отзывы О заказчике от исполнителей (reviewerType = PERFORMER)
+        List<WorkExperience> reviews = workExperienceService.findReviewsAboutCustomer(customer.getId());
+        List<WorkExperienceDto> reviewDtos = reviews.stream()
+                .map(workExperienceMapper::toDto)
+                .collect(Collectors.toList());
+        
+        return Map.of("reviews", reviewDtos);
     }
 }

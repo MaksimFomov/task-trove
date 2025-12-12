@@ -24,4 +24,10 @@ public interface WorkExperienceService {
     List<WorkExperience> findByCustomerIdOrderByCreatedAtDesc(Integer customerId);
     
     List<WorkExperience> findByPerformerIdOrderByCreatedAtDesc(Integer performerId);
+    
+    // Отзывы О заказчике от исполнителей (reviewerType = PERFORMER)
+    List<WorkExperience> findReviewsAboutCustomer(Integer customerId);
+    
+    // Отзывы О исполнителе от заказчиков (reviewerType = CUSTOMER)
+    List<WorkExperience> findReviewsAboutPerformer(Integer performerId);
 }

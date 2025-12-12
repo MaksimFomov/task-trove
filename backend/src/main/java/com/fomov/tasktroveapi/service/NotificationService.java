@@ -20,4 +20,9 @@ public interface NotificationService {
     void createCorrectionNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName);
     void createRefusedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName);
     void createPerformerRefusedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName);
+    
+    // Методы для уведомлений о модерации заказов
+    void createOrderReviewNotification(Integer adminAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName);
+    void createOrderApprovedNotification(Integer customerAccountId, Integer orderId, String orderTitle);
+    void createOrderRejectedNotification(Integer customerAccountId, Integer orderId, String orderTitle, String reason);
 }

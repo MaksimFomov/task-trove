@@ -71,10 +71,14 @@ export default function LoginPage() {
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.error || 'Ошибка при восстановлении пароля';
-      toast.error(errorMessage);
       
-      if (errorMessage.includes('код') || errorMessage.includes('Код') || errorMessage.includes('code')) {
-        setResetErrors({ ...resetErrors, code: errorMessage });
+      // Если ошибка связана с кодом, показываем понятное сообщение в поле кода
+      if (errorMessage.includes('код') || errorMessage.includes('Код') || errorMessage.includes('code') || 
+          errorMessage.includes('восстановлен') || errorMessage.includes('истек')) {
+        setResetErrors({ ...resetErrors, code: 'Неправильный код восстановления' });
+        toast.error('Неправильный код восстановления');
+      } else {
+        toast.error(errorMessage);
       }
     },
   });
@@ -162,13 +166,18 @@ export default function LoginPage() {
         navigate('/customer/orders');
       } else if (role === 'Performer') {
         navigate('/performer/orders');
-      } else if (role === 'Administrator') {
+      } else if (role === 'Administrator' || role === 'SuperAdministrator') {
         navigate('/admin/users');
       } else {
         navigate('/');
       }
-    } catch (error) {
+    } catch (error: any) {
+      // Проверяем, является ли ошибка связанной с заблокированным аккаунтом
+      if (error?.response?.status === 403 && error?.response?.data?.error === 'Ваш аккаунт заблокирован') {
+        showErrorToast('Ваш аккаунт заблокирован', 'Обратитесь к администратору для разблокировки.');
+      } else {
       showErrorToast(error, 'Ошибка входа. Проверьте логин и пароль.');
+      }
     } finally {
       setLoading(false);
     }

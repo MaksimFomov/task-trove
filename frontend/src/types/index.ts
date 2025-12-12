@@ -11,16 +11,20 @@ export interface LoginRequest {
 }
 
 export interface RegisterCustomerRequest {
-  name: string;
+  lastName: string;
+  firstName: string;
+  middleName?: string;
   email: string;
   passwordUser: string;
-  age: number;
+  phone?: string;
   description: string;
   scopeS: string;
 }
 
 export interface RegisterPerformerRequest {
-  name: string;
+  lastName: string;
+  firstName: string;
+  middleName?: string;
   email: string;
   passwordUser: string;
   age: number;
@@ -43,6 +47,8 @@ export interface Order {
   isInProcess: boolean;
   isOnCheck: boolean;
   isDone: boolean;
+  isOnReview?: boolean;
+  isRejected?: boolean;
   isDeletedByCustomer?: boolean;
   publicationTime?: string;
   startTime?: string;
@@ -54,6 +60,8 @@ export interface Order {
   howReplies?: number;
   customerName?: string;
   performerName?: string;
+  customerEmail?: string;
+  performerEmail?: string;
   replies?: Reply[];
   hasReplied?: boolean;
 }
@@ -115,6 +123,9 @@ export interface Portfolio {
   id?: number;
   userId?: number;
   name?: string;
+  lastName?: string;
+  firstName?: string;
+  middleName?: string;
   phone?: string;
   email?: string;
   townCountry?: string;
@@ -125,7 +136,9 @@ export interface Portfolio {
 }
 
 export interface UpdatePortfolioDto {
-  name: string;
+  lastName: string;
+  firstName: string;
+  middleName?: string;
   phone?: string;
   email: string;
   townCountry?: string;
@@ -137,15 +150,20 @@ export interface UpdatePortfolioDto {
 export interface CustomerPortfolio {
   id?: number;
   name?: string;
+  lastName?: string;
+  firstName?: string;
+  middleName?: string;
   email?: string;
-  age?: number;
+  phone?: string;
   description?: string;
   scopeS?: string;
 }
 
 export interface UpdateCustomerPortfolioDto {
-  name: string;
-  age: number;
+  lastName: string;
+  firstName: string;
+  middleName?: string;
+  phone?: string;
   description?: string;
   scopeS: string;
 }
@@ -156,10 +174,13 @@ export interface WorkExperience {
   mark: number; // Changed from Mark to match backend (rate field with @JsonProperty("mark"))
   text?: string; // Changed from Text to match backend camelCase convention
   orderId?: number; // Changed from OrderId to match backend camelCase convention
+  reviewerType?: 'CUSTOMER' | 'PERFORMER'; // Who left the review
   performerId: number;
   customerId?: number;
   customerName?: string;
+  customerEmail?: string;
   performerName?: string;
+  performerEmail?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -178,6 +199,7 @@ export interface ReadyOrderDto {
 }
 
 export interface Account {
+  isActive?: boolean;
   id: number;
   login: string;
   email?: string;

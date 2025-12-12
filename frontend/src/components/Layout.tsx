@@ -1,6 +1,6 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, Home, Briefcase, MessageSquare, User, Bell, Check, Settings } from 'lucide-react';
+import { LogOut, Home, Briefcase, MessageSquare, User, Bell, Check, Settings, Users, BarChart3 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationApi } from '../services/api';
@@ -121,6 +121,7 @@ export default function Layout({ children }: LayoutProps) {
   const isCustomer = role === 'Customer';
   const isPerformer = role === 'Performer';
   const isAdmin = role === 'Administrator';
+  const isSuperAdmin = role === 'SuperAdministrator';
 
   const getRoleLabel = (role: string) => {
     switch (role) {
@@ -130,6 +131,8 @@ export default function Layout({ children }: LayoutProps) {
         return 'Исполнитель';
       case 'Administrator':
         return 'Администратор';
+      case 'SuperAdministrator':
+        return 'Суперадминистратор';
       default:
         return role;
     }
@@ -151,9 +154,11 @@ export default function Layout({ children }: LayoutProps) {
           { path: '/performer/portfolio', label: 'Портфолио', icon: User },
         ]
       : []),
-    ...(isAdmin
+    ...((isAdmin || isSuperAdmin)
       ? [
-          { path: '/admin/users', label: 'Пользователи', icon: User },
+          { path: '/admin/users', label: 'Пользователи', icon: Users },
+          { path: '/admin/orders', label: 'Заказы', icon: Briefcase },
+          { path: '/admin/statistics', label: 'Статистика', icon: BarChart3 },
         ]
       : []),
   ];

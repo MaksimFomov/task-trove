@@ -8,7 +8,10 @@ import org.springframework.stereotype.Component;
 public class PerformerMapper {
     public Performer toEntity(RegistrationAccDto dto) {
         Performer p = new Performer();
-        p.setName(dto.getName());
+        // Устанавливаем ФИО
+        p.setLastName(dto.getLastName());
+        p.setFirstName(dto.getFirstName());
+        p.setMiddleName(dto.getMiddleName());
         // email устанавливается в Account через RegistrationService
         p.setAge(dto.getAge() != null ? dto.getAge() : 0); // Обязательное поле
         p.setRating(0);
@@ -17,7 +20,9 @@ public class PerformerMapper {
 
     public RegistrationAccDto toDto(Performer e) {
         RegistrationAccDto dto = new RegistrationAccDto();
-        dto.setName(e.getName());
+        dto.setLastName(e.getLastName());
+        dto.setFirstName(e.getFirstName());
+        dto.setMiddleName(e.getMiddleName());
         // email получается из Account через метод getEmail()
         dto.setEmail(e.getEmail());
         dto.setAge(e.getAge());

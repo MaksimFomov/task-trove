@@ -70,6 +70,11 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     @Override
+    public List<Orders> findByIsOnReview(boolean isOnReview) {
+        return repository.findByIsOnReview(isOnReview);
+    }
+
+    @Override
     public List<Orders> findByTitleContaining(String titlePart) {
         return repository.findByTitleContainingIgnoreCase(titlePart);
     }

@@ -8,8 +8,22 @@ import jakarta.validation.constraints.Size;
 
 public class RegistrationCustDto {
     @NotBlank
+    @Size(max = 50, message = "Last name must not exceed 50 characters")
+    @JsonProperty("lastName")
+    private String lastName;
+    
+    @NotBlank
+    @Size(max = 50, message = "First name must not exceed 50 characters")
+    @JsonProperty("firstName")
+    private String firstName;
+    
+    @Size(max = 50, message = "Middle name must not exceed 50 characters")
+    @JsonProperty("middleName")
+    private String middleName;
+    
+    @Deprecated
     @JsonProperty("name")
-    private String name;
+    private String name; // Для обратной совместимости
     
     @Email
     @NotBlank
@@ -21,11 +35,8 @@ public class RegistrationCustDto {
     @JsonProperty("passwordUser")
     private String passwordUser;
     
-    @NotNull(message = "Age is required")
-    @jakarta.validation.constraints.Min(value = 18, message = "Age must be at least 18")
-    @jakarta.validation.constraints.Max(value = 120, message = "Age must not exceed 120")
-    @JsonProperty("age")
-    private Integer age;
+    @JsonProperty("phone")
+    private String phone;
     
     @NotBlank
     @JsonProperty("description")
@@ -35,14 +46,20 @@ public class RegistrationCustDto {
     @JsonProperty("scopeS")
     private String scopeS;
 
+    public String getLastName() { return lastName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    public String getFirstName() { return firstName; }
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public String getMiddleName() { return middleName; }
+    public void setMiddleName(String middleName) { this.middleName = middleName; }
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
     public String getPasswordUser() { return passwordUser; }
     public void setPasswordUser(String passwordUser) { this.passwordUser = passwordUser; }
-    public Integer getAge() { return age; }
-    public void setAge(Integer age) { this.age = age; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
     public String getScopeS() { return scopeS; }

@@ -51,12 +51,12 @@ public class MessageMapper {
         if ("Customer".equals(senderType) && chat.getCustomer() != null) {
             if (chat.getCustomer().getAccount() != null && 
                 chat.getCustomer().getAccount().getId().equals(senderId)) {
-                return chat.getCustomer().getName();
+                return chat.getCustomer().getFullName();
             }
         } else if ("Performer".equals(senderType) && chat.getPerformer() != null) {
             if (chat.getPerformer().getAccount() != null && 
                 chat.getPerformer().getAccount().getId().equals(senderId)) {
-                return chat.getPerformer().getName();
+                return chat.getPerformer().getFullName();
             }
         }
         return "Пользователь";

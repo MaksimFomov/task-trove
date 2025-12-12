@@ -29,6 +29,7 @@ public class CustomerController {
     private final AccountRepository accountRepository;
     private final OrdersService ordersService;
     private final WorkExperienceService workExperienceService;
+    private final PerformerService performerService;
     private final com.fomov.tasktroveapi.mapper.OrdersMapper ordersMapper;
     private final com.fomov.tasktroveapi.mapper.WorkExperienceMapper workExperienceMapper;
 
@@ -37,6 +38,7 @@ public class CustomerController {
                              AccountRepository accountRepository,
                              OrdersService ordersService,
                              WorkExperienceService workExperienceService,
+                             PerformerService performerService,
                              com.fomov.tasktroveapi.mapper.OrdersMapper ordersMapper,
                              com.fomov.tasktroveapi.mapper.WorkExperienceMapper workExperienceMapper) {
         this.customerService = customerService;
@@ -44,6 +46,7 @@ public class CustomerController {
         this.accountRepository = accountRepository;
         this.ordersService = ordersService;
         this.workExperienceService = workExperienceService;
+        this.performerService = performerService;
         this.ordersMapper = ordersMapper;
         this.workExperienceMapper = workExperienceMapper;
     }
@@ -143,6 +146,28 @@ public class CustomerController {
         }
     }
 
+    @PutMapping("/chats/{chatId}/read")
+    public ResponseEntity<?> markChatAsRead(@PathVariable Integer chatId) {
+        try {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            customerService.markChatAsRead(accountId, chatId);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            logger.error("Chat or customer not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (SecurityException e) {
+            logger.error("Access denied: {}", e.getMessage());
+            return ResponseEntity.status(403).build();
+        } catch (Exception e) {
+            logger.error("Error marking chat as read: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @PostMapping("/addorder")
     public ResponseEntity<?> addOrder(@RequestBody AddOrderDto dto) {
         try {
@@ -158,6 +183,31 @@ public class CustomerController {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error creating order: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PutMapping("/orders/{orderId}")
+    public ResponseEntity<?> updateOrder(@PathVariable Integer orderId, @RequestBody AddOrderDto dto) {
+        try {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            customerService.updateOrder(accountId, orderId, dto);
+            return ResponseEntity.ok().build();
+        } catch (NotFoundException e) {
+            logger.error("Order or customer not found: {}", e.getMessage());
+            return ResponseEntity.status(404).build();
+        } catch (SecurityException e) {
+            logger.error("Access denied: {}", e.getMessage());
+            return ResponseEntity.status(403).build();
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid argument: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error updating order: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -205,31 +255,6 @@ public class CustomerController {
             return ResponseEntity.status(403).build();
         } catch (Exception e) {
             logger.error("Error permanently deleting order: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-
-    @PostMapping("/activateorder/{orderId}")
-    public ResponseEntity<?> activateOrder(@PathVariable Integer orderId) {
-        try {
-            Integer accountId = SecurityUtils.getCurrentUserId();
-            if (accountId == null) {
-                return ResponseEntity.status(401).build();
-            }
-            
-            customerService.activateOrder(accountId, orderId);
-            return ResponseEntity.ok().build();
-        } catch (NotFoundException e) {
-            logger.error("Order or customer not found: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        } catch (SecurityException e) {
-            logger.error("Access denied: {}", e.getMessage());
-            return ResponseEntity.status(403).build();
-        } catch (IllegalStateException e) {
-            logger.warn("Invalid state: {}", e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        } catch (Exception e) {
-            logger.error("Error activating order: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -359,6 +384,25 @@ public class CustomerController {
         }
     }
 
+    @GetMapping("/reviews")
+    public ResponseEntity<Map<String, Object>> getMyReviews() {
+        try {
+            Integer accountId = SecurityUtils.getCurrentUserId();
+            if (accountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            Map<String, Object> result = customerService.getMyReviews(accountId);
+            return ResponseEntity.ok(result);
+        } catch (NotFoundException e) {
+            logger.error("Customer not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error getting reviews: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     @GetMapping("/info")
     public ResponseEntity<?> getInfo(@RequestParam("userId") Integer userId) {
         try {
@@ -376,44 +420,107 @@ public class CustomerController {
         }
     }
 
-    @GetMapping("/performer/{performerId}/done-orders")
-    public ResponseEntity<Map<String, Object>> getPerformerDoneOrders(@PathVariable Integer performerId) {
+    @GetMapping("/performer/{accountId}/done-orders")
+    public ResponseEntity<Map<String, Object>> getPerformerDoneOrders(@PathVariable Integer accountId) {
         try {
-            Integer accountId = SecurityUtils.getCurrentUserId();
-            if (accountId == null) {
+            Integer currentAccountId = SecurityUtils.getCurrentUserId();
+            if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            List<Orders> orders = ordersService.findByPerformerId(performerId);
+            // Ищем исполнителя по accountId (так как в DTO приходит accountId)
+            Performer performer = performerService.findByAccountId(accountId)
+                    .orElseThrow(() -> new NotFoundException("Performer with accountId", accountId));
+            
+            List<Orders> orders = ordersService.findByPerformerId(performer.getId());
             List<AddOrderDto> doneOrders = orders.stream()
                     .filter(o -> Boolean.TRUE.equals(o.getIsDone()))
                     .map(ordersMapper::toDto)
                     .toList();
             
             return ResponseEntity.ok(Map.of("orders", doneOrders));
+        } catch (NotFoundException e) {
+            logger.error("Performer not found for accountId: {}", accountId);
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting performer done orders: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
     }
 
-    @GetMapping("/performer/{performerId}/reviews")
-    public ResponseEntity<Map<String, Object>> getPerformerReviews(@PathVariable Integer performerId) {
+    @GetMapping("/performer/{accountId}/reviews")
+    public ResponseEntity<Map<String, Object>> getPerformerReviews(@PathVariable Integer accountId) {
         try {
-            Integer accountId = SecurityUtils.getCurrentUserId();
-            if (accountId == null) {
+            Integer currentAccountId = SecurityUtils.getCurrentUserId();
+            if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            List<WorkExperience> reviews = workExperienceService.findByPerformerId(performerId);
+            // Ищем исполнителя по accountId (так как в DTO приходит accountId)
+            Performer performer = performerService.findByAccountId(accountId)
+                    .orElseThrow(() -> new NotFoundException("Performer with accountId", accountId));
+            
+            // Получаем только отзывы О исполнителе от заказчиков (reviewerType = CUSTOMER)
+            List<WorkExperience> reviews = workExperienceService.findReviewsAboutPerformer(performer.getId());
             List<WorkExperienceDto> reviewDtos = reviews.stream()
                     .map(workExperienceMapper::toDto)
                     .toList();
             
             return ResponseEntity.ok(Map.of("reviews", reviewDtos));
+        } catch (NotFoundException e) {
+            logger.error("Performer not found for accountId: {}", accountId);
+            return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting performer reviews: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/performer/{accountId}/portfolio")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<?> getPerformerPortfolio(@PathVariable Integer accountId) {
+        try {
+            Integer currentAccountId = SecurityUtils.getCurrentUserId();
+            if (currentAccountId == null) {
+                return ResponseEntity.status(401).build();
+            }
+            
+            // Ищем исполнителя по accountId (так как в DTO приходит accountId)
+            Performer performer = performerService.findByAccountId(accountId)
+                    .orElseThrow(() -> new NotFoundException("Performer with accountId", accountId));
+            
+            // Получаем портфолио исполнителя
+            List<Portfolio> portfolios = portfolioService.findByUserId(performer.getId());
+            Portfolio portfolio = portfolios.isEmpty() ? null : portfolios.get(0);
+            
+            if (portfolio == null) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Создаем Map с данными портфолио и добавляем ФИО из Performer
+            // Используем простые геттеры, чтобы избежать ленивой загрузки
+            Map<String, Object> portfolioData = new java.util.HashMap<>();
+            portfolioData.put("id", portfolio.getId());
+            portfolioData.put("name", portfolio.getName());
+            portfolioData.put("phone", portfolio.getPhone());
+            portfolioData.put("email", portfolio.getEmail());
+            portfolioData.put("townCountry", portfolio.getTownCountry());
+            portfolioData.put("specializations", portfolio.getSpecializations());
+            portfolioData.put("employment", portfolio.getEmployment());
+            portfolioData.put("experience", portfolio.getExperience());
+            portfolioData.put("isActive", portfolio.getIsActive());
+            // Добавляем ФИО из Performer (простые поля, не ленивые связи)
+            portfolioData.put("lastName", performer.getLastName());
+            portfolioData.put("firstName", performer.getFirstName());
+            portfolioData.put("middleName", performer.getMiddleName());
+            
+            return ResponseEntity.ok(portfolioData);
+        } catch (NotFoundException e) {
+            logger.error("Performer not found for accountId: {}", accountId);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error getting performer portfolio: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get performer portfolio"));
         }
     }
 

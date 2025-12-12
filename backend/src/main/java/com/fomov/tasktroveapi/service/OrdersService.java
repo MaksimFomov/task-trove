@@ -16,6 +16,7 @@ public interface OrdersService {
     List<Orders> findByIsActived(boolean isActived);
     List<Orders> findByIsInProcess(boolean isInProcess);
     List<Orders> findByIsOnCheck(boolean isOnCheck);
+    List<Orders> findByIsOnReview(boolean isOnReview);
     List<Orders> findByTitleContaining(String titlePart);
     List<Orders> findAllActive();
     List<Orders> findByTitleContainingAndActive(String titlePart);

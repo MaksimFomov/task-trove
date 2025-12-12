@@ -100,6 +100,7 @@ com/fomov/tasktroveapi/service/OrdersService.class
 com/fomov/tasktroveapi/repository/PortfolioRepository.class
 com/fomov/tasktroveapi/model/Performer.class
 com/fomov/tasktroveapi/dto/ReplyDto.class
+com/fomov/tasktroveapi/model/ReviewerType.class
 com/fomov/tasktroveapi/exception/RepetitiveEmailException.class
 com/fomov/tasktroveapi/mapper/ReplyMapperImpl.class
 com/fomov/tasktroveapi/model/Chat.class
