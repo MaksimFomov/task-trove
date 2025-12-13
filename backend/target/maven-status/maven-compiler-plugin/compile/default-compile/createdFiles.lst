@@ -57,6 +57,7 @@ com/fomov/tasktroveapi/dto/RoleDto.class
 com/fomov/tasktroveapi/exception/NotFoundException.class
 com/fomov/tasktroveapi/mapper/WorkExperienceMapper.class
 com/fomov/tasktroveapi/mapper/RoleMapperImpl.class
+com/fomov/tasktroveapi/config/LocaleConfig.class
 com/fomov/tasktroveapi/controller/ClientController.class
 com/fomov/tasktroveapi/service/ChatAccessService.class
 com/fomov/tasktroveapi/repository/CustomerRepository.class

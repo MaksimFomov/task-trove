@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from './store/authStore';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -26,6 +27,7 @@ import NotificationsPage from './pages/NotificationsPage';
 import { Loader2 } from 'lucide-react';
 
 function App() {
+  const { t } = useTranslation();
   const { initialize, logout, isInitialized } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -68,7 +70,7 @@ function App() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-primary-600 animate-spin mx-auto mb-4" />
-          <p className="text-gray-600 text-lg">Загрузка приложения...</p>
+          <p className="text-gray-600 text-lg">{t('app.loadingApp')}</p>
         </div>
       </div>
     );

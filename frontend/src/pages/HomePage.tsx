@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { Briefcase, MessageSquare, Users, CheckCircle, BarChart3 } from 'lucide-react';
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const role = user?.role || '';
@@ -16,10 +18,10 @@ export default function HomePage() {
     <div className="space-y-8">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-slate-100 mb-2">
-          Добро пожаловать в TaskTrove, {user?.login}!
+          {t('app.welcome', { name: user?.login })}
         </h1>
         <p className="text-lg text-gray-600 dark:text-slate-400">
-          Платформа для управления задачами и проектами
+          {t('app.platformDescription')}
         </p>
       </div>
 
@@ -31,16 +33,16 @@ export default function HomePage() {
               className="card cursor-pointer hover:shadow-lg transition-shadow"
             >
               <Briefcase className="w-12 h-12 text-primary-600 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Мои заказы</h3>
-              <p className="text-gray-600 dark:text-slate-400">Просмотр и управление вашими заказами</p>
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.myOrders')}</h3>
+              <p className="text-gray-600 dark:text-slate-400">{t('navigation.myOrders')}</p>
             </div>
             <div
               onClick={() => navigate('/customer/chats')}
               className="card cursor-pointer hover:shadow-lg transition-shadow"
             >
               <MessageSquare className="w-12 h-12 text-primary-600 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Чаты</h3>
-              <p className="text-gray-600">Общение с исполнителями</p>
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.chats')}</h3>
+              <p className="text-gray-600">{t('navigation.chats')}</p>
             </div>
           </>
         )}
@@ -52,16 +54,16 @@ export default function HomePage() {
               className="card cursor-pointer hover:shadow-lg transition-shadow"
             >
               <Briefcase className="w-12 h-12 text-primary-600 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Заказы</h3>
-              <p className="text-gray-600">Просмотр доступных заказов</p>
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.orders')}</h3>
+              <p className="text-gray-600">{t('navigation.orders')}</p>
             </div>
             <div
               onClick={() => navigate('/performer/replies')}
               className="card cursor-pointer hover:shadow-lg transition-shadow"
             >
               <CheckCircle className="w-12 h-12 text-primary-600 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Мои отклики</h3>
-              <p className="text-gray-600">Управление вашими откликами</p>
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.orders')}</h3>
+              <p className="text-gray-600">{t('navigation.orders')}</p>
             </div>
             <div
               onClick={() => navigate('/performer/chats')}
@@ -76,8 +78,8 @@ export default function HomePage() {
               className="card cursor-pointer hover:shadow-lg transition-shadow"
             >
               <Briefcase className="w-12 h-12 text-primary-600 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Портфолио</h3>
-              <p className="text-gray-600">Управление вашим портфолио</p>
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.portfolio')}</h3>
+              <p className="text-gray-600">{t('navigation.portfolio')}</p>
             </div>
           </>
         )}
@@ -89,24 +91,24 @@ export default function HomePage() {
             className="card cursor-pointer hover:shadow-lg transition-shadow"
           >
             <Users className="w-12 h-12 text-primary-600 mb-4" />
-            <h3 className="text-xl font-semibold mb-2">Пользователи</h3>
-              <p className="text-gray-600 dark:text-slate-400">Управление пользователями системы</p>
+            <h3 className="text-xl font-semibold mb-2">{t('navigation.users')}</h3>
+              <p className="text-gray-600 dark:text-slate-400">{t('admin.userManagement')}</p>
             </div>
             <div
               onClick={() => navigate('/admin/orders')}
               className="card cursor-pointer hover:shadow-lg transition-shadow"
             >
               <Briefcase className="w-12 h-12 text-primary-600 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Заказы</h3>
-              <p className="text-gray-600 dark:text-slate-400">Просмотр и управление всеми заказами</p>
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.orders')}</h3>
+              <p className="text-gray-600 dark:text-slate-400">{t('admin.orderManagement')}</p>
             </div>
             <div
               onClick={() => navigate('/admin/statistics')}
               className="card cursor-pointer hover:shadow-lg transition-shadow"
             >
               <BarChart3 className="w-12 h-12 text-primary-600 mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Статистика</h3>
-              <p className="text-gray-600 dark:text-slate-400">Аналитика и статистика системы</p>
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.statistics')}</h3>
+              <p className="text-gray-600 dark:text-slate-400">{t('admin.systemAnalytics')}</p>
           </div>
           </>
         )}

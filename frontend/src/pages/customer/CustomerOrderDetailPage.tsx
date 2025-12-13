@@ -1,4 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -38,12 +39,13 @@ function ReplyItem({
     },
   });
 
-  const performerName = portfolio?.name || reply.perfName || 'Исполнитель';
+  const { t } = useTranslation();
+  const performerName = portfolio?.name || reply.perfName || t('roles.performer');
   
   // Формируем описание с префиксом "Опыт: " для experience
   let performerDescription = '';
   if (portfolio?.experience) {
-    performerDescription = `Опыт: ${portfolio.experience}`;
+    performerDescription = `${t('portfolio.experience')}: ${portfolio.experience}`;
   } else if (portfolio?.specializations) {
     performerDescription = portfolio.specializations;
   } else if (portfolio?.employment) {
@@ -59,7 +61,7 @@ function ReplyItem({
             <p className="text-sm text-gray-600 line-clamp-2">{performerDescription}</p>
           )}
           {isLoading && !portfolio && (
-            <p className="text-sm text-gray-400 italic">Загрузка информации...</p>
+            <p className="text-sm text-gray-400 italic">{t('common.loading')}</p>
           )}
         </div>
         <div className="flex gap-2 ml-4">
@@ -68,14 +70,14 @@ function ReplyItem({
             className="btn btn-secondary flex items-center"
           >
             <User className="w-4 h-4 mr-1" />
-            Профиль
+            {t('orderDetail.viewProfile')}
           </button>
           {!order.performerId && (
             <button
               onClick={() => onApprove(reply.performerId)}
               className="btn btn-primary"
             >
-              Утвердить
+              {t('orderDetail.approve')}
             </button>
           )}
         </div>
@@ -85,6 +87,7 @@ function ReplyItem({
 }
 
 export default function CustomerOrderDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -125,11 +128,11 @@ export default function CustomerOrderDetailPage() {
   const currentUserName = (() => {
     try {
       const userStr = localStorage.getItem('user');
-      if (!userStr) return 'Заказчик';
+      if (!userStr) return t('roles.customer');
       const user = JSON.parse(userStr);
-      return user.name || user.login || 'Заказчик';
+      return user.name || user.login || t('roles.customer');
     } catch (error) {
-      return 'Заказчик';
+      return t('roles.customer');
     }
   })();
 
@@ -416,7 +419,7 @@ export default function CustomerOrderDetailPage() {
   if (!order) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 text-lg">Заказ не найден</p>
+        <p className="text-gray-500 text-lg">{t('orders.orderNotFound')}</p>
       </div>
     );
   }
@@ -425,7 +428,7 @@ export default function CustomerOrderDetailPage() {
     <div className="space-y-6">
       <button onClick={() => navigate('/customer/orders')} className="btn btn-secondary flex items-center">
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Назад
+        {t('common.back')}
       </button>
 
       <div className="card">
@@ -435,11 +438,11 @@ export default function CustomerOrderDetailPage() {
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               {order.publicationTime && (
                 <span>
-                  Опубликован: {format(new Date(order.publicationTime), 'd MMMM yyyy HH:mm', { locale: ru })}
+                  {t('orderDetail.created')}: {format(new Date(order.publicationTime), 'd MMMM yyyy HH:mm', { locale: ru })}
                 </span>
               )}
               {order.howReplies !== undefined && (
-                <span>Откликов: {order.howReplies}</span>
+                <span>{t('orderDetail.replies')}: {order.howReplies}</span>
               )}
             </div>
           </div>
@@ -459,7 +462,7 @@ export default function CustomerOrderDetailPage() {
                   className="btn btn-primary w-full"
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
-                  Завершить заказ
+                  {t('orderDetail.complete')}
                 </button>
               </>
             )}
@@ -470,7 +473,7 @@ export default function CustomerOrderDetailPage() {
                 className="btn btn-danger flex items-center w-full"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Удалить заказ
+                {t('orderList.delete')}
               </button>
             )}
             {/* Кнопка удаления для неактивных заказов */}
@@ -480,7 +483,7 @@ export default function CustomerOrderDetailPage() {
                 className="btn btn-danger flex items-center w-full"
               >
                 <Trash2 className="w-4 h-4 mr-2" />
-                Удалить
+                {t('common.delete')}
               </button>
             )}
           </div>
@@ -488,16 +491,16 @@ export default function CustomerOrderDetailPage() {
 
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Описание</h3>
+            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">{t('orderForm.description')}</h3>
             <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{order.description}</p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Область</h3>
+            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">{t('orderDetail.scope')}</h3>
             <p className="text-gray-700 dark:text-slate-300">{order.scope}</p>
           </div>
           {order.stackS && (
             <div>
-              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Технологии</h3>
+              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">{t('register.technologies')}</h3>
               <p className="text-gray-700 dark:text-slate-300">{order.stackS}</p>
             </div>
           )}
@@ -507,12 +510,12 @@ export default function CustomerOrderDetailPage() {
       {/* Исполнитель или Отклики */}
       {order.performerId ? (
         <div className="card">
-          <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">Исполнитель</h2>
+          <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">{t('orders.performer')}</h2>
           <div className="border border-gray-200 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <div className="flex-1">
                 <p className="font-semibold text-lg">
-                  {approvedPerformerPortfolio?.name || order.performerName || 'Исполнитель'}
+                  {approvedPerformerPortfolio?.name || order.performerName || t('roles.performer')}
                 </p>
                 {(approvedPerformerPortfolio?.email || order.performerEmail) && (
                   <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
@@ -530,7 +533,7 @@ export default function CustomerOrderDetailPage() {
                   className="btn btn-secondary flex items-center"
                 >
                   <User className="w-4 h-4 mr-1" />
-                  Профиль
+                  {t('orderDetail.viewProfile')}
                 </button>
                 {/* Кнопка "Оставить отзыв" показывается после завершения заказа */}
                 {order.isDone && order.performerId && (
@@ -542,7 +545,7 @@ export default function CustomerOrderDetailPage() {
                     className="btn btn-primary flex items-center"
                   >
                     <Star className="w-4 h-4 mr-1" />
-                    Оставить отзыв
+                    {t('orderDetail.review')}
                   </button>
                 )}
                 {/* Кнопка "Отказаться от исполнителя" показывается только если заказ не завершен */}
@@ -552,7 +555,7 @@ export default function CustomerOrderDetailPage() {
                     className="btn btn-danger flex items-center"
                   >
                     <X className="w-4 h-4 mr-1" />
-                    Отказаться от исполнителя
+                    {t('orderDetail.refuse')}
                   </button>
                 )}
               </div>
@@ -562,7 +565,7 @@ export default function CustomerOrderDetailPage() {
       ) : (
         order.replies && order.replies.length > 0 && (
           <div className="card">
-            <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">Отклики</h2>
+            <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">{t('orderDetail.replies')}</h2>
             <div className="space-y-4">
               {order.replies.map((reply) => (
                 <ReplyItem
@@ -1054,7 +1057,7 @@ export default function CustomerOrderDetailPage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500">Портфолио не найдено</p>
+                      <p className="text-gray-500">{t('portfolio.title')} {t('common.noData')}</p>
                     </div>
                   )}
                 </div>
@@ -1093,7 +1096,7 @@ export default function CustomerOrderDetailPage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500">Выполненных заказов не найдено</p>
+                      <p className="text-gray-500">{t('orderList.doneOrders')} {t('common.noData')}</p>
                     </div>
                   )}
                 </div>
@@ -1153,7 +1156,7 @@ export default function CustomerOrderDetailPage() {
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500">Отзывов не найдено</p>
+                      <p className="text-gray-500">{t('orderDetail.review')} {t('common.noData')}</p>
                     </div>
                   )}
                 </div>

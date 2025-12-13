@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../services/api';
 import { LogIn, Mail, Lock, Loader2, RotateCcw, Send, AlertCircle, CheckCircle, X } from 'lucide-react';
@@ -8,6 +9,7 @@ import { useMutation } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -41,13 +43,13 @@ export default function LoginPage() {
       return authApi.forgotPasswordPublic(email);
     },
     onSuccess: () => {
-      toast.success('Если пользователь с таким email существует, код восстановления отправлен на почту');
+      toast.success(t('auth.passwordResetCodeSent'));
       setCodeSent(true);
       setResetLoading(false);
       setResendCooldown(60);
     },
     onError: (error: any) => {
-      const errorMessage = error.response?.data?.error || 'Ошибка при отправке кода';
+      const errorMessage = error.response?.data?.error || t('auth.passwordResetCodeError');
       toast.error(errorMessage);
       setResetLoading(false);
     },
@@ -70,13 +72,13 @@ export default function LoginPage() {
       }, 3000);
     },
     onError: (error: any) => {
-      const errorMessage = error.response?.data?.error || 'Ошибка при восстановлении пароля';
+      const errorMessage = error.response?.data?.error || t('auth.passwordResetError');
       
       // Если ошибка связана с кодом, показываем понятное сообщение в поле кода
       if (errorMessage.includes('код') || errorMessage.includes('Код') || errorMessage.includes('code') || 
           errorMessage.includes('восстановлен') || errorMessage.includes('истек')) {
-        setResetErrors({ ...resetErrors, code: 'Неправильный код восстановления' });
-        toast.error('Неправильный код восстановления');
+        setResetErrors({ ...resetErrors, code: t('auth.invalidResetCode') });
+        toast.error(t('auth.invalidResetCode'));
       } else {
         toast.error(errorMessage);
       }
@@ -87,19 +89,19 @@ export default function LoginPage() {
     const errors: Record<string, string> = {};
 
     if (!resetData.code.trim()) {
-      errors.code = 'Введите код восстановления';
+      errors.code = t('auth.enterResetCode');
     }
 
     if (!resetData.newPassword.trim()) {
-      errors.newPassword = 'Введите новый пароль';
+      errors.newPassword = t('auth.enterNewPassword');
     } else if (resetData.newPassword.length < 8) {
-      errors.newPassword = 'Пароль должен содержать минимум 8 символов';
+      errors.newPassword = t('auth.passwordMinLength');
     }
 
     if (!resetData.confirmPassword.trim()) {
-      errors.confirmPassword = 'Подтвердите новый пароль';
+      errors.confirmPassword = t('auth.enterConfirmPassword');
     } else if (resetData.newPassword !== resetData.confirmPassword) {
-      errors.confirmPassword = 'Пароли не совпадают';
+      errors.confirmPassword = t('auth.passwordsDoNotMatch');
     }
 
     setResetErrors(errors);
@@ -108,13 +110,13 @@ export default function LoginPage() {
 
   const handleSendResetCode = async () => {
     if (!resetEmail.trim()) {
-      toast.error('Введите email адрес');
+      toast.error(t('auth.enterEmail'));
       return;
     }
     
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(resetEmail.trim())) {
-      toast.error('Введите корректный email адрес');
+      toast.error(t('auth.enterValidEmail'));
       return;
     }
 
@@ -148,7 +150,7 @@ export default function LoginPage() {
     e.preventDefault();
     
     if (!login.trim() || !password.trim()) {
-      showErrorToast('Пожалуйста, заполните все поля');
+      showErrorToast(t('validation.required'));
       return;
     }
     
@@ -159,7 +161,7 @@ export default function LoginPage() {
       const { token, role, id, login: userLogin } = response.data;
       
       setAuth({ id, login: userLogin, role, token }, token);
-      showSuccessToast('Успешный вход!');
+      showSuccessToast(t('auth.loginSuccess'));
       
       // Navigate based on role
       if (role === 'Customer') {
@@ -173,10 +175,10 @@ export default function LoginPage() {
       }
     } catch (error: any) {
       // Проверяем, является ли ошибка связанной с заблокированным аккаунтом
-      if (error?.response?.status === 403 && error?.response?.data?.error === 'Ваш аккаунт заблокирован') {
-        showErrorToast('Ваш аккаунт заблокирован', 'Обратитесь к администратору для разблокировки.');
+      if (error?.response?.status === 403 && error?.response?.data?.error?.includes('заблокирован')) {
+        showErrorToast(t('auth.accountBlocked'), t('auth.contactAdmin'));
       } else {
-      showErrorToast(error, 'Ошибка входа. Проверьте логин и пароль.');
+      showErrorToast(error, t('auth.loginError'));
       }
     } finally {
       setLoading(false);
@@ -187,16 +189,16 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
-          <h1 className="text-4xl font-bold text-primary-600 mb-2">TaskTrove</h1>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">Вход в систему</h2>
-          <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">Войдите в свой аккаунт</p>
+          <h1 className="text-4xl font-bold text-primary-600 mb-2">{t('app.name')}</h1>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">{t('auth.login')}</h2>
+          <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">{t('auth.login')}</p>
         </div>
         <div className="card">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label htmlFor="login" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 <Mail className="w-4 h-4 inline mr-2" />
-                Логин или Email
+                {t('auth.loginOrEmail')}
               </label>
               <input
                 id="login"
@@ -205,13 +207,13 @@ export default function LoginPage() {
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 className="input"
-                placeholder="Введите логин или email"
+                placeholder={t('auth.enterLoginOrEmail')}
               />
             </div>
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 <Lock className="w-4 h-4 inline mr-2" />
-                Пароль
+                {t('auth.password')}
               </label>
               <input
                 id="password"
@@ -220,7 +222,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input"
-                placeholder="Введите пароль"
+                placeholder={t('auth.enterPassword')}
               />
             </div>
             <div className="flex items-center justify-between">
@@ -230,7 +232,7 @@ export default function LoginPage() {
                 className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 flex items-center"
               >
                 <RotateCcw className="w-4 h-4 mr-1" />
-                Забыл пароль?
+                {t('auth.forgotPassword')}
               </button>
             </div>
             <button
@@ -241,21 +243,21 @@ export default function LoginPage() {
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  Вход...
+                  {t('common.loading')}
                 </>
               ) : (
                 <>
                   <LogIn className="w-5 h-5 mr-2" />
-                  Войти
+                  {t('auth.login')}
                 </>
               )}
             </button>
           </form>
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600 dark:text-slate-400">
-              Нет аккаунта?{' '}
+              {t('auth.noAccount')}{' '}
               <a href="/register" className="font-medium text-primary-600 dark:text-primary-400 hover:text-primary-500 dark:hover:text-primary-300">
-                Зарегистрироваться
+                {t('auth.register')}
               </a>
             </p>
           </div>

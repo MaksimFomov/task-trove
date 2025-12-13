@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi, customerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -74,16 +75,16 @@ interface UserFormData {
   experience?: string;
 }
 
-const getRoleLabel = (role: string) => {
+const getRoleLabel = (role: string, t: any) => {
   switch (role) {
     case 'Customer':
-      return 'Заказчик';
+      return t('roles.customer');
     case 'Performer':
-      return 'Исполнитель';
+      return t('roles.performer');
     case 'Administrator':
-      return 'Администратор';
+      return t('roles.administrator');
     case 'SuperAdministrator':
-      return 'Суперадминистратор';
+      return t('roles.superAdministrator');
     default:
       return role;
   }
@@ -98,6 +99,7 @@ const formatFIO = (lastName?: string, firstName?: string, middleName?: string) =
 };
 
 export default function AdminUsersPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -728,7 +730,7 @@ export default function AdminUsersPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Загрузка...</div>
+        <div className="text-lg text-gray-600">{t('common.loading')}</div>
       </div>
     );
   }
@@ -744,14 +746,14 @@ export default function AdminUsersPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Управление пользователями</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('admin.userManagement')}</h1>
         {isSuperAdmin && (
           <button
             onClick={() => setShowCreateAdminModal(true)}
             className="btn btn-primary flex items-center"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Создать администратора
+            {t('admin.createAdministrator')}
           </button>
         )}
       </div>
@@ -762,7 +764,7 @@ export default function AdminUsersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Поиск по логину, email, имени или роли..."
+              placeholder={t('admin.searchUsers')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
@@ -834,8 +836,8 @@ export default function AdminUsersPage() {
             if (!sortBy) return 0;
             
             if (sortBy === 'role') {
-              const roleA = getRoleLabel(a.role?.name || 'USER');
-              const roleB = getRoleLabel(b.role?.name || 'USER');
+              const roleA = getRoleLabel(a.role?.name || 'USER', t);
+              const roleB = getRoleLabel(b.role?.name || 'USER', t);
               if (sortOrder === 'asc') {
                 return roleA.localeCompare(roleB, 'ru');
               } else {
@@ -918,7 +920,7 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
-                        {getRoleLabel(user.role?.name || 'USER')}
+                        {getRoleLabel(user.role?.name || 'USER', t)}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -990,7 +992,7 @@ export default function AdminUsersPage() {
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-slate-400 text-lg">
-              {searchTerm ? 'Пользователи не найдены' : 'Пользователей не найдено'}
+              {searchTerm ? t('admin.usersNotFound') : t('admin.noUsers')}
             </p>
           </div>
         );
@@ -1037,7 +1039,7 @@ export default function AdminUsersPage() {
               </label>
               <input
                 type="text"
-                value={getRoleLabel(formData.role)}
+                value={getRoleLabel(formData.role, t)}
                 readOnly
                 disabled
                 className="w-full px-3 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 bg-gray-100 cursor-not-allowed"
@@ -1508,7 +1510,7 @@ export default function AdminUsersPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2 dark:text-slate-100">Роль</h3>
-                  <p className="text-gray-700 dark:text-slate-300">{getRoleLabel(userDetails.role?.name || '')}</p>
+                  <p className="text-gray-700 dark:text-slate-300">{getRoleLabel(userDetails.role?.name || '', t)}</p>
                 </div>
                   </div>
                 )}
@@ -1880,7 +1882,7 @@ export default function AdminUsersPage() {
       }}>
         <div className="card max-w-md w-full mx-4">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-2xl font-bold dark:text-slate-100">Создать администратора</h2>
+            <h2 className="text-2xl font-bold dark:text-slate-100">{t('admin.createAdministrator')}</h2>
             <button
               onClick={() => {
                 setShowCreateAdminModal(false);
@@ -1958,7 +1960,7 @@ export default function AdminUsersPage() {
                 Отмена
               </button>
               <button type="submit" className="btn btn-primary" disabled={createAdminMutation.isPending}>
-                {createAdminMutation.isPending ? 'Создание...' : 'Создать'}
+                {createAdminMutation.isPending ? t('common.loading') : t('common.create')}
               </button>
             </div>
           </form>
@@ -1970,7 +1972,7 @@ export default function AdminUsersPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение удаления</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('admin.deleteConfirm')}</h2>
           </div>
           
           <div className="space-y-4">
@@ -2022,7 +2024,7 @@ export default function AdminUsersPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-yellow-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение обновления</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('admin.updateConfirm')}</h2>
           </div>
           
           <div className="space-y-4">

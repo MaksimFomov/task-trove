@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { X, Lock, Moon, Sun, Globe, Mail, Loader2, AlertCircle, CheckCircle, RotateCcw, Send } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import Modal from './Modal';
 import { authApi } from '../services/api';
 
@@ -11,6 +12,7 @@ interface SettingsModalProps {
 }
 
 export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
+  const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'password' | 'theme' | 'language' | 'support'>('password');
   
   // Reset state when modal closes
@@ -71,11 +73,15 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     return 'light';
   });
 
-  // Language state
-  const [language, setLanguage] = useState<'ru' | 'en'>(() => {
-    const saved = localStorage.getItem('language');
-    return (saved as 'ru' | 'en') || 'ru';
+  // Language state - get from i18n and sync on mount
+  const [language, setLanguage] = useState<string>(() => {
+    return i18n.language || 'en';
   });
+
+  // Sync language state when i18n language changes
+  useEffect(() => {
+    setLanguage(i18n.language || 'en');
+  }, [i18n.language]);
 
   // Apply theme
   const applyTheme = (newTheme: 'light' | 'dark') => {
@@ -100,21 +106,21 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         : !htmlElement.classList.contains('dark');
       
       if (isApplied) {
-        toast.success(newTheme === 'dark' ? 'Темная тема включена' : 'Светлая тема включена');
+        toast.success(newTheme === 'dark' ? t('settings.darkThemeEnabled') : t('settings.lightThemeEnabled'));
       } else {
-        toast.error('Не удалось применить тему. Попробуйте обновить страницу.');
+        toast.error(t('settings.themeError'));
       }
     } catch (error) {
       console.error('Error applying theme:', error);
-      toast.error('Ошибка при смене темы');
+      toast.error(t('settings.themeChangeError'));
     }
   };
 
   // Apply language
-  const applyLanguage = (newLanguage: 'ru' | 'en') => {
+  const applyLanguage = (newLanguage: string) => {
+    i18n.changeLanguage(newLanguage);
     setLanguage(newLanguage);
-    localStorage.setItem('language', newLanguage);
-    toast.success(newLanguage === 'ru' ? 'Язык изменен на русский' : 'Language changed to English');
+    toast.success(t('settings.languageChanged'));
   };
 
   // Синхронизируем состояние темы при открытии модального окна
@@ -328,17 +334,17 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   };
 
   const tabs = [
-    { id: 'password' as const, label: 'Пароль', icon: Lock },
-    { id: 'theme' as const, label: 'Тема', icon: theme === 'dark' ? Moon : Sun },
-    { id: 'language' as const, label: 'Язык', icon: Globe },
-    { id: 'support' as const, label: 'Поддержка', icon: Mail },
+    { id: 'password' as const, label: t('settings.password'), icon: Lock },
+    { id: 'theme' as const, label: t('settings.theme'), icon: theme === 'dark' ? Moon : Sun },
+    { id: 'language' as const, label: t('settings.language'), icon: Globe },
+    { id: 'support' as const, label: t('settings.support'), icon: Mail },
   ];
 
   return (
     <Modal isOpen={isOpen} onClose={onClose}>
       <div className="card max-w-2xl w-full mx-4 max-h-[90vh] overflow-hidden flex flex-col dark:bg-slate-900 dark:text-slate-100">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Настройки</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('settings.title')}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600 transition-colors"
@@ -724,44 +730,39 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           {activeTab === 'language' && (
             <div className="space-y-4">
               <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">
-                Выберите язык интерфейса
+                {t('settings.selectLanguage')}
               </p>
               <div className="space-y-3">
-                <button
-                  onClick={() => applyLanguage('ru')}
-                  className={`w-full p-4 border-2 rounded-lg flex items-center justify-between transition-colors ${
-                    language === 'ru'
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 dark:border-primary-400'
-                      : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-3">🇷🇺</span>
-                    <div className="text-left">
-                      <div className="font-medium text-gray-900 dark:text-slate-100">Русский</div>
-                      <div className="text-sm text-gray-500 dark:text-slate-400">Русский язык интерфейса</div>
+                {[
+                  { code: 'en', flag: '🇬🇧', nameKey: 'settings.english', descKey: 'settings.englishDescription' },
+                  { code: 'ru', flag: '🇷🇺', nameKey: 'settings.russian', descKey: 'settings.russianDescription' },
+                  { code: 'uk', flag: '🇺🇦', nameKey: 'settings.ukrainian', descKey: 'settings.ukrainianDescription' },
+                  { code: 'be', flag: '🇧🇾', nameKey: 'settings.belarusian', descKey: 'settings.belarusianDescription' },
+                  { code: 'kk', flag: '🇰🇿', nameKey: 'settings.kazakh', descKey: 'settings.kazakhDescription' },
+                  { code: 'hy', flag: '🇦🇲', nameKey: 'settings.armenian', descKey: 'settings.armenianDescription' },
+                  { code: 'az', flag: '🇦🇿', nameKey: 'settings.azerbaijani', descKey: 'settings.azerbaijaniDescription' },
+                  { code: 'ka', flag: '🇬🇪', nameKey: 'settings.georgian', descKey: 'settings.georgianDescription' },
+                  { code: 'uz', flag: '🇺🇿', nameKey: 'settings.uzbek', descKey: 'settings.uzbekDescription' },
+                ].map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => applyLanguage(lang.code)}
+                    className={`w-full p-4 border-2 rounded-lg flex items-center justify-between transition-colors ${
+                      language === lang.code
+                        ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 dark:border-primary-400'
+                        : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      <span className="text-2xl mr-3">{lang.flag}</span>
+                      <div className="text-left">
+                        <div className="font-medium text-gray-900 dark:text-slate-100">{t(lang.nameKey)}</div>
+                        <div className="text-sm text-gray-500 dark:text-slate-400">{t(lang.descKey)}</div>
+                      </div>
                     </div>
-                  </div>
-                  {language === 'ru' && <CheckCircle className="w-5 h-5 text-primary-600 dark:text-primary-400" />}
-                </button>
-
-                <button
-                  onClick={() => applyLanguage('en')}
-                  className={`w-full p-4 border-2 rounded-lg flex items-center justify-between transition-colors ${
-                    language === 'en'
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30 dark:border-primary-400'
-                      : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-3">🇬🇧</span>
-                    <div className="text-left">
-                      <div className="font-medium text-gray-900 dark:text-slate-100">English</div>
-                      <div className="text-sm text-gray-500 dark:text-slate-400">English interface language</div>
-                    </div>
-                  </div>
-                  {language === 'en' && <CheckCircle className="w-5 h-5 text-primary-600 dark:text-primary-400" />}
-                </button>
+                    {language === lang.code && <CheckCircle className="w-5 h-5 text-primary-600 dark:text-primary-400" />}
+                  </button>
+                ))}
               </div>
             </div>
           )}

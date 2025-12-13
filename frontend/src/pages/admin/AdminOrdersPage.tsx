@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -12,16 +13,16 @@ import { saveState, loadState } from '../../utils/stateStorage';
 
 const PAGE_KEY = 'adminOrders';
 
-const getRoleLabel = (role: string) => {
+const getRoleLabel = (role: string, t: any) => {
   switch (role) {
     case 'Customer':
-      return 'Заказчик';
+      return t('roles.customer');
     case 'Performer':
-      return 'Исполнитель';
+      return t('roles.performer');
     case 'Administrator':
-      return 'Администратор';
+      return t('roles.administrator');
     case 'SuperAdministrator':
-      return 'Суперадминистратор';
+      return t('roles.superAdministrator');
     default:
       return role;
   }
@@ -36,6 +37,7 @@ const formatFIO = (lastName?: string, firstName?: string, middleName?: string) =
 };
 
 export default function AdminOrdersPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
   
@@ -447,7 +449,7 @@ export default function AdminOrdersPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Загрузка...</div>
+        <div className="text-lg text-gray-600">{t('common.loading')}</div>
       </div>
     );
   }
@@ -463,7 +465,7 @@ export default function AdminOrdersPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Управление заказами</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('admin.orderManagement')}</h1>
       </div>
 
       {/* Вкладки */}
@@ -501,7 +503,7 @@ export default function AdminOrdersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Поиск по названию, описанию, заказчику или исполнителю..."
+              placeholder={t('admin.searchOrders')}
               value={searchTerm}
               onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100"
@@ -526,7 +528,7 @@ export default function AdminOrdersPage() {
 
         {isLoadingOrders ? (
           <div className="text-center py-8">
-            <p className="text-gray-500 dark:text-slate-400">Загрузка...</p>
+            <p className="text-gray-500 dark:text-slate-400">{t('common.loading')}</p>
           </div>
         ) : sortedOrders && Array.isArray(sortedOrders) && sortedOrders.length > 0 ? (
           <div className="overflow-x-auto">
@@ -651,7 +653,7 @@ export default function AdminOrdersPage() {
         ) : (
           <div className="text-center py-12">
             <p className="text-gray-500 dark:text-slate-400 text-lg">
-              {searchTerm ? 'Заказы не найдены' : 'Заказов не найдено'}
+              {searchTerm ? t('admin.ordersNotFound') : t('admin.noOrders')}
             </p>
           </div>
         )}
@@ -846,7 +848,7 @@ export default function AdminOrdersPage() {
                     <div>
                       {isLoadingPortfolio ? (
                         <div className="text-center py-12">
-                          <div className="text-lg text-gray-600">Загрузка портфолио...</div>
+                          <div className="text-lg text-gray-600">{t('common.loading')}</div>
                         </div>
                       ) : portfolioData ? (
                         <div className="space-y-4">
@@ -954,7 +956,7 @@ export default function AdminOrdersPage() {
                         <>
                           {isLoadingDoneOrders ? (
                             <div className="text-center py-12">
-                              <div className="text-lg text-gray-600">Загрузка заказов...</div>
+                              <div className="text-lg text-gray-600">{t('common.loading')}</div>
                             </div>
                           ) : doneOrdersData?.orders && doneOrdersData.orders.length > 0 ? (
                             <div className="space-y-4">
@@ -991,7 +993,7 @@ export default function AdminOrdersPage() {
                         <>
                           {isLoadingCustomerDoneOrders ? (
                             <div className="text-center py-12">
-                              <div className="text-lg text-gray-600">Загрузка заказов...</div>
+                              <div className="text-lg text-gray-600">{t('common.loading')}</div>
                             </div>
                           ) : customerDoneOrdersData?.orders && customerDoneOrdersData.orders.length > 0 ? (
                             <div className="space-y-4">
@@ -1034,7 +1036,7 @@ export default function AdminOrdersPage() {
                         <>
                           {isLoadingReviews ? (
                             <div className="text-center py-12">
-                              <div className="text-lg text-gray-600">Загрузка отзывов...</div>
+                              <div className="text-lg text-gray-600">{t('common.loading')}</div>
                             </div>
                           ) : reviewsData?.reviews && reviewsData.reviews.length > 0 ? (
                             <div className="space-y-4">
@@ -1094,7 +1096,7 @@ export default function AdminOrdersPage() {
                         <>
                           {isLoadingCustomerReviews ? (
                             <div className="text-center py-12">
-                              <div className="text-lg text-gray-600">Загрузка отзывов...</div>
+                              <div className="text-lg text-gray-600">{t('common.loading')}</div>
                             </div>
                           ) : customerReviewsData?.reviews && customerReviewsData.reviews.length > 0 ? (
                             <div className="space-y-4">
@@ -1166,7 +1168,7 @@ export default function AdminOrdersPage() {
           <div className="card max-w-md w-full mx-4">
             <div className="flex items-center mb-4">
               <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение удаления</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('admin.deleteConfirm')}</h2>
             </div>
             
             <div className="space-y-4">
@@ -1225,7 +1227,7 @@ export default function AdminOrdersPage() {
           <div className="card max-w-md w-full mx-4">
             <div className="flex items-center mb-4">
               <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение одобрения</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('admin.approveConfirm')}</h2>
             </div>
             
             <div className="space-y-4">
@@ -1288,7 +1290,7 @@ export default function AdminOrdersPage() {
           <div className="card max-w-md w-full mx-4">
             <div className="flex items-center mb-4">
               <AlertTriangle className="w-8 h-8 text-orange-600 mr-3" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение отклонения</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('admin.rejectConfirm')}</h2>
             </div>
             
             <div className="space-y-4">

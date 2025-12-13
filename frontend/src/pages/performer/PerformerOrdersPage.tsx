@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { performerApi } from '../../services/api';
@@ -16,6 +17,7 @@ type SortOrder = 'newest' | 'oldest';
 const PAGE_KEY = 'performerOrders';
 
 export default function PerformerOrdersPage() {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -133,10 +135,10 @@ export default function PerformerOrdersPage() {
       // Немедленное обновление всех связанных запросов
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
       queryClient.invalidateQueries({ queryKey: ['performerOrders'] });
-      showSuccessToast('Отклик успешно отменен');
+      showSuccessToast(t('orders.replyCancelled'));
     },
     onError: (error) => {
-      showErrorToast(error, 'Не удалось отменить отклик. Попробуйте еще раз.');
+      showErrorToast(error, t('errors.generic'));
     },
   });
 
@@ -146,10 +148,10 @@ export default function PerformerOrdersPage() {
       // Немедленное обновление всех связанных запросов
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
       queryClient.invalidateQueries({ queryKey: ['performerChats'] });
-      showSuccessToast('Выполненный заказ успешно удален из истории');
+      showSuccessToast(t('orders.completedOrderDeleted'));
     },
     onError: (error) => {
-      showErrorToast(error, 'Не удалось удалить заказ. Попробуйте еще раз.');
+      showErrorToast(error, t('errors.generic'));
     },
   });
 
@@ -160,7 +162,7 @@ export default function PerformerOrdersPage() {
       return (
         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
           <CheckCircle className="w-3 h-3 mr-1" />
-          Выполнен
+          {t('orderStatus.done')}
         </span>
       );
     }
@@ -169,7 +171,7 @@ export default function PerformerOrdersPage() {
       return (
         <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center">
           <Clock className="w-3 h-3 mr-1" />
-          На проверке
+          {t('orderStatus.onCheck')}
         </span>
       );
     }
@@ -178,7 +180,7 @@ export default function PerformerOrdersPage() {
       return (
         <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full flex items-center">
           <Clock className="w-3 h-3 mr-1" />
-          В работе
+          {t('orderStatus.inProcess')}
         </span>
       );
     }
@@ -186,7 +188,7 @@ export default function PerformerOrdersPage() {
     return (
       <span className="px-2 py-1 text-xs font-medium bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 rounded-full flex items-center">
         <Clock className="w-3 h-3 mr-1" />
-        Ожидает
+        {t('orders.pending')}
       </span>
     );
   };
@@ -270,14 +272,14 @@ export default function PerformerOrdersPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Загрузка...</div>
+        <div className="text-lg text-gray-600">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Заказы</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('orders.orders')}</h1>
 
       <div className="card">
         {/* Вкладки */}
@@ -290,7 +292,7 @@ export default function PerformerOrdersPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Новые заказы
+            {t('orders.newOrders')}
           </button>
           <button
             onClick={() => handleTabChange('pending')}
@@ -300,7 +302,7 @@ export default function PerformerOrdersPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Мои отклики
+            {t('orders.myReplies')}
           </button>
           <button
             onClick={() => handleTabChange('active')}
@@ -310,7 +312,7 @@ export default function PerformerOrdersPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            В работе
+            {t('orderList.ordersInProgress')}
           </button>
           <button
             onClick={() => handleTabChange('completed')}
@@ -320,7 +322,7 @@ export default function PerformerOrdersPage() {
                 : 'border-transparent text-gray-500 hover:text-gray-700'
             }`}
           >
-            Завершенные
+            {t('orderList.doneOrders')}
           </button>
         </div>
 
@@ -329,7 +331,7 @@ export default function PerformerOrdersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Поиск по названию, области или технологиям..."
+              placeholder={t('orderList.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10"
@@ -344,8 +346,8 @@ export default function PerformerOrdersPage() {
                   onChange={(e) => setSortOrder(e.target.value as SortOrder)}
                   className="px-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="newest">Сначала новые</option>
-                  <option value="oldest">Сначала старые</option>
+                  <option value="newest">{t('orderList.sortNewest')}</option>
+                  <option value="oldest">{t('orderList.sortOldest')}</option>
                 </select>
               </div>
               
@@ -359,7 +361,7 @@ export default function PerformerOrdersPage() {
                       className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                     />
                     <span className="ml-2 text-sm text-gray-700 dark:text-slate-300">
-                      Только заказы без моих откликов
+                      {t('orders.onlyWithoutReplies')}
                     </span>
                   </label>
                 </div>
@@ -403,11 +405,11 @@ export default function PerformerOrdersPage() {
                         {getStatusBadge(reply)}
                       </div>
                       <div className="flex flex-col gap-1 text-sm text-gray-500">
-                        {reply.orderScope && <span>• Область: {reply.orderScope}</span>}
-                        {reply.orderStackS && <span>• Технологии: {reply.orderStackS}</span>}
+                        {reply.orderScope && <span>• {t('orderDetail.scope')}: {reply.orderScope}</span>}
+                        {reply.orderStackS && <span>• {t('register.technologies')}: {reply.orderStackS}</span>}
                         {/* Показываем количество откликов только для вкладки "Мои отклики" (pending) */}
                         {activeTab === 'pending' && reply.orderHowReplies !== undefined && (
-                          <span>• Откликов: {reply.orderHowReplies}</span>
+                          <span>• {t('orderDetail.replies')}: {reply.orderHowReplies}</span>
                         )}
                       </div>
                     </div>
@@ -420,7 +422,7 @@ export default function PerformerOrdersPage() {
                             className="btn btn-secondary"
                           >
                             <Eye className="w-4 h-4 mr-1" />
-                            Просмотр
+                            {t('orderList.view')}
                           </button>
                           {/* Кнопка чата для заказов в работе */}
                           {chatsData && (() => {
@@ -431,10 +433,10 @@ export default function PerformerOrdersPage() {
                               <button
                                 onClick={() => navigate(`/chat/${chatWithCustomer.id}`)}
                                 className="btn btn-primary"
-                                title="Открыть чат с заказчиком"
+                                title={t('chats.chat')}
                               >
                                 <MessageSquare className="w-4 h-4 mr-1" />
-                                Чат
+                                {t('chats.chat')}
                               </button>
                             ) : null;
                           })()}
@@ -447,7 +449,7 @@ export default function PerformerOrdersPage() {
                           className="btn btn-secondary"
                         >
                           <Eye className="w-4 h-4 mr-1" />
-                          Просмотр
+                          {t('orderList.view')}
                         </button>
                       )}
                       {/* Кнопки для заказов на проверке или завершенных */}
@@ -458,7 +460,7 @@ export default function PerformerOrdersPage() {
                             className="btn btn-secondary"
                           >
                             <Eye className="w-4 h-4 mr-1" />
-                            Просмотр
+                            {t('orderList.view')}
                           </button>
                           {/* Кнопка чата для завершенных заказов */}
                           {chatsData && (() => {
@@ -469,10 +471,10 @@ export default function PerformerOrdersPage() {
                               <button
                                 onClick={() => navigate(`/chat/${chatWithCustomer.id}`)}
                                 className="btn btn-primary"
-                                title="Открыть чат с заказчиком"
+                                title={t('chats.chat')}
                               >
                                 <MessageSquare className="w-4 h-4 mr-1" />
-                                Чат
+                                {t('chats.chat')}
                               </button>
                             ) : null;
                           })()}
@@ -500,14 +502,14 @@ export default function PerformerOrdersPage() {
                         <h3 className="text-xl font-semibold text-gray-900 dark:text-slate-100">{order.title}</h3>
                         <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex items-center">
                           <CheckCircle className="w-3 h-3 mr-1" />
-                          Активен
+                          {t('orderStatus.active')}
                         </span>
                       </div>
                       <div className="flex flex-col gap-1 text-sm text-gray-500">
-                        <span>• Область: {order.scope}</span>
-                        {order.stackS && <span>• Технологии: {order.stackS}</span>}
+                        <span>• {t('orderDetail.scope')}: {order.scope}</span>
+                        {order.stackS && <span>• {t('register.technologies')}: {order.stackS}</span>}
                         {/* Показываем количество откликов для новых заказов */}
-                        {order.howReplies !== undefined && <span>• Откликов: {order.howReplies}</span>}
+                        {order.howReplies !== undefined && <span>• {t('orderDetail.replies')}: {order.howReplies}</span>}
                       </div>
                     </div>
                     <div className="flex flex-col gap-2 ml-4">
@@ -516,7 +518,7 @@ export default function PerformerOrdersPage() {
                         className="btn btn-secondary"
                       >
                         <Eye className="w-4 h-4 mr-1" />
-                        Просмотр
+                        {t('orderList.view')}
                       </button>
                     </div>
                   </div>
@@ -529,13 +531,13 @@ export default function PerformerOrdersPage() {
             <p className="text-gray-500 text-lg">
               {activeTab === 'new'
                 ? showOnlyWithoutReplies
-                  ? 'Заказов без ваших откликов не найдено'
-                  : 'Новых заказов не найдено'
+                  ? t('orders.noRepliesWithoutYours')
+                  : t('orders.noNewOrders')
                 : activeTab === 'pending'
-                ? 'Откликов не найдено'
+                ? t('orders.noReplies')
                 : activeTab === 'active'
-                ? 'Заказов в работе не найдено'
-                : 'Завершенных заказов не найдено'}
+                ? t('orders.noOrdersInWork')
+                : t('orders.noCompletedOrders')}
             </p>
           </div>
         )}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '../../services/api';
@@ -6,29 +7,30 @@ import { toast } from 'react-hot-toast';
 import { ArrowLeft, Save, Loader2, AlertCircle } from 'lucide-react';
 import type { Order } from '../../types';
 
-// Список областей деятельности для заказчиков
-const BUSINESS_AREAS = [
-  'IT и технологии',
-  'Маркетинг и реклама',
-  'Дизайн и творчество',
-  'Образование',
-  'Финансы',
-  'Здравоохранение',
-  'Торговля',
-  'Производство',
-  'Строительство',
-  'Транспорт',
-  'Туризм',
-  'Недвижимость',
-  'Юриспруденция',
-  'Консалтинг',
-  'Другое'
-];
-
 export default function CustomerOrderEditPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // Список областей деятельности для заказчиков
+  const BUSINESS_AREAS = [
+    t('businessAreas.it'),
+    t('businessAreas.marketing'),
+    t('businessAreas.design'),
+    t('businessAreas.education'),
+    t('businessAreas.finance'),
+    t('businessAreas.healthcare'),
+    t('businessAreas.retail'),
+    t('businessAreas.manufacturing'),
+    t('businessAreas.construction'),
+    t('businessAreas.transport'),
+    t('businessAreas.tourism'),
+    t('businessAreas.realEstate'),
+    t('businessAreas.law'),
+    t('businessAreas.consulting'),
+    t('businessAreas.other')
+  ];
   const [formData, setFormData] = useState<Partial<Order>>({
     title: '',
     description: '',
@@ -70,14 +72,14 @@ export default function CustomerOrderEditPage() {
       return customerApi.updateOrder(Number(id!), data);
     },
     onSuccess: async () => {
-      toast.success('Заказ обновлен и отправлен на повторное рассмотрение администратору.');
+      toast.success(t('orders.orderUpdatedForReview'));
       await queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
       await queryClient.invalidateQueries({ queryKey: ['customerOrder', id] });
       navigate('/customer/orders');
     },
     onError: (error: any) => {
       console.error('Error updating order:', error);
-      toast.error(error.response?.data?.error || error.response?.data?.message || 'Ошибка при обновлении заказа');
+      toast.error(error.response?.data?.error || error.response?.data?.message || t('errors.generic'));
     },
   });
 
@@ -86,30 +88,30 @@ export default function CustomerOrderEditPage() {
 
     // Валидация названия
     if (!formData.title?.trim()) {
-      newErrors.title = 'Название обязательно для заполнения';
+      newErrors.title = t('orderForm.titleRequired');
     } else if (formData.title.trim().length < 3) {
-      newErrors.title = 'Название должно содержать минимум 3 символа';
+      newErrors.title = t('orderForm.titleMinLength');
     } else if (formData.title.trim().length > 200) {
-      newErrors.title = 'Название не должно превышать 200 символов';
+      newErrors.title = t('orderForm.titleMaxLength');
     }
 
     // Валидация описания
     if (!formData.description?.trim()) {
-      newErrors.description = 'Описание обязательно для заполнения';
+      newErrors.description = t('orderForm.descriptionRequired');
     } else if (formData.description.trim().length < 10) {
-      newErrors.description = 'Описание должно содержать минимум 10 символов';
+      newErrors.description = t('orderForm.descriptionMinLength');
     } else if (formData.description.trim().length > 5000) {
-      newErrors.description = 'Описание не должно превышать 5000 символов';
+      newErrors.description = t('orderForm.descriptionMaxLength');
     }
 
     // Валидация области
     if (selectedBusinessAreas.length === 0) {
-      newErrors.scope = 'Выберите хотя бы одну область деятельности';
+      newErrors.scope = t('orderForm.scopeRequired');
     }
 
     // Валидация технологий (опциональное поле)
     if (formData.stackS && formData.stackS.trim().length > 500) {
-      newErrors.stackS = 'Технологии не должны превышать 500 символов';
+      newErrors.stackS = t('orderForm.technologiesMaxLength');
     }
 
     setErrors(newErrors);
@@ -120,7 +122,7 @@ export default function CustomerOrderEditPage() {
     e.preventDefault();
     
     if (!validateForm()) {
-      toast.error('Пожалуйста, исправьте ошибки в форме');
+      toast.error(t('register.fixErrors'));
       return;
     }
 
@@ -166,7 +168,7 @@ export default function CustomerOrderEditPage() {
         <div className="card">
           <div className="flex items-center text-red-600">
             <AlertCircle className="w-5 h-5 mr-2" />
-            <p>Заказ не найден или у вас нет доступа к нему</p>
+            <p>{t('orderForm.orderNotFound')}</p>
           </div>
         </div>
       </div>
@@ -179,7 +181,7 @@ export default function CustomerOrderEditPage() {
         <div className="card">
           <div className="flex items-center text-orange-600">
             <AlertCircle className="w-5 h-5 mr-2" />
-            <p>Можно редактировать только отклоненные заказы</p>
+            <p>{t('orders.orderRejectedByAdmin')}</p>
           </div>
         </div>
       </div>
@@ -193,15 +195,15 @@ export default function CustomerOrderEditPage() {
         className="mb-6 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 flex items-center"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Назад к заказам
+        {t('common.back')} {t('orders.orders')}
       </button>
 
       <div className="card max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6 dark:text-slate-100">Редактирование заказа</h1>
+        <h1 className="text-2xl font-bold mb-6 dark:text-slate-100">{t('orders.editOrder')}</h1>
         
         <div className="mb-4 p-4 bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-md">
           <p className="text-sm text-orange-800 dark:text-orange-200">
-            После сохранения изменений заказ будет отправлен на повторное рассмотрение администратору.
+            {t('orders.orderUpdatedForReview')}
           </p>
         </div>
 
@@ -209,7 +211,7 @@ export default function CustomerOrderEditPage() {
           {/* Название заказа */}
           <div>
             <label htmlFor="title" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-              Название заказа <span className="text-red-500">*</span>
+              {t('orderForm.title')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -228,7 +230,7 @@ export default function CustomerOrderEditPage() {
               className={`w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                 errors.title ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="Введите название заказа"
+              placeholder={t('orderForm.enterTitle')}
             />
             {errors.title && (
               <p className="mt-1 text-sm text-red-600">{errors.title}</p>
@@ -238,7 +240,7 @@ export default function CustomerOrderEditPage() {
           {/* Описание */}
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-              Описание <span className="text-red-500">*</span>
+              {t('orderForm.description')} <span className="text-red-500">*</span>
             </label>
             <textarea
               id="description"
@@ -257,7 +259,7 @@ export default function CustomerOrderEditPage() {
               className={`w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                 errors.description ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="Опишите детали вашего заказа"
+              placeholder={t('orderForm.enterDescription')}
             />
             {errors.description && (
               <p className="mt-1 text-sm text-red-600">{errors.description}</p>
@@ -267,7 +269,7 @@ export default function CustomerOrderEditPage() {
           {/* Область деятельности */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-              Область деятельности <span className="text-red-500">*</span>
+              {t('orderForm.scope')} <span className="text-red-500">*</span>
             </label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
               {BUSINESS_AREAS.map(area => (
@@ -293,7 +295,7 @@ export default function CustomerOrderEditPage() {
           {/* Технологии */}
           <div>
             <label htmlFor="stackS" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-              Технологии (необязательно)
+              {t('register.technologies')} ({t('common.optional')})
             </label>
             <input
               type="text"
@@ -312,7 +314,7 @@ export default function CustomerOrderEditPage() {
               className={`w-full px-4 py-2 border rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                 errors.stackS ? 'border-red-500' : 'border-gray-300'
               }`}
-              placeholder="Например: React, Node.js, PostgreSQL"
+              placeholder={t('register.technologiesPlaceholder')}
             />
             {errors.stackS && (
               <p className="mt-1 text-sm text-red-600">{errors.stackS}</p>
@@ -326,7 +328,7 @@ export default function CustomerOrderEditPage() {
               onClick={() => navigate('/customer/orders')}
               className="btn btn-secondary"
             >
-              Отмена
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -336,12 +338,12 @@ export default function CustomerOrderEditPage() {
               {updateMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Сохранение...
+                  {t('orderForm.updating')}
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  Сохранить и отправить на проверку
+                  {t('common.save')} {t('orders.orderSentForReview')}
                 </>
               )}
             </button>

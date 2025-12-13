@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { authApi } from '../services/api';
 import { UserPlus, Mail, Lock, User, Calendar, MapPin, Briefcase, Loader2, Phone, FileText, Building, Clock, Award, AlertCircle, CheckCircle, Send, RotateCcw } from 'lucide-react';
@@ -7,54 +8,55 @@ import { showErrorToast, showSuccessToast } from '../utils/errorHandler';
 
 type RegisterType = 'customer' | 'performer';
 
-// Список специализаций для исполнителей
-const SPECIALIZATIONS = [
-  'Веб-разработка',
-  'Мобильная разработка',
-  'Дизайн',
-  'Графический дизайн',
-  'UX/UI дизайн',
-  'Копирайтинг',
-  'Переводы',
-  'Маркетинг',
-  'SMM',
-  'SEO',
-  'Контент-маркетинг',
-  'Видеомонтаж',
-  'Фотография',
-  'Анимация',
-  'Программирование',
-  'Тестирование ПО',
-  'Администрирование',
-  'Консультации',
-  'Обучение',
-  'Другое'
-];
-
-// Список областей деятельности для заказчиков
-const BUSINESS_AREAS = [
-  'IT и технологии',
-  'Маркетинг и реклама',
-  'Дизайн и творчество',
-  'Образование',
-  'Финансы',
-  'Здравоохранение',
-  'Торговля',
-  'Производство',
-  'Строительство',
-  'Транспорт',
-  'Туризм',
-  'Недвижимость',
-  'Юриспруденция',
-  'Консалтинг',
-  'Другое'
-];
-
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const [type, setType] = useState<RegisterType>('customer');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
+
+  // Список специализаций для исполнителей
+  const SPECIALIZATIONS = [
+    t('specializations.webDevelopment'),
+    t('specializations.mobileDevelopment'),
+    t('specializations.design'),
+    t('specializations.graphicDesign'),
+    t('specializations.uxuiDesign'),
+    t('specializations.copywriting'),
+    t('specializations.translations'),
+    t('specializations.marketing'),
+    t('specializations.smm'),
+    t('specializations.seo'),
+    t('specializations.contentMarketing'),
+    t('specializations.videoEditing'),
+    t('specializations.photography'),
+    t('specializations.animation'),
+    t('specializations.programming'),
+    t('specializations.softwareTesting'),
+    t('specializations.administration'),
+    t('specializations.consultations'),
+    t('specializations.education'),
+    t('specializations.other')
+  ];
+
+  // Список областей деятельности для заказчиков
+  const BUSINESS_AREAS = [
+    t('businessAreas.it'),
+    t('businessAreas.marketing'),
+    t('businessAreas.design'),
+    t('businessAreas.education'),
+    t('businessAreas.finance'),
+    t('businessAreas.healthcare'),
+    t('businessAreas.retail'),
+    t('businessAreas.manufacturing'),
+    t('businessAreas.construction'),
+    t('businessAreas.transport'),
+    t('businessAreas.tourism'),
+    t('businessAreas.realEstate'),
+    t('businessAreas.law'),
+    t('businessAreas.consulting'),
+    t('businessAreas.other')
+  ];
 
   // Customer fields
   const [customerData, setCustomerData] = useState({
@@ -143,7 +145,7 @@ export default function RegisterPage() {
     // Проверяем, не занят ли email
     const emailExists = await checkEmailExists(email);
     if (emailExists) {
-      const errorMsg = 'Пользователь с таким email уже зарегистрирован';
+      const errorMsg = t('register.emailExists');
       if (type === 'customer') {
         setCustomerErrors({ ...customerErrors, email: errorMsg });
       } else {
@@ -168,7 +170,7 @@ export default function RegisterPage() {
         ...prev,
         [type]: { step: 'code', email, loading: false }
       }));
-      showSuccessToast('Код подтверждения отправлен на вашу почту');
+      showSuccessToast(t('register.codeSent'));
     } catch (error) {
       setEmailVerificationState(prev => ({
         ...prev,
@@ -224,7 +226,7 @@ export default function RegisterPage() {
         });
       }
       
-      showSuccessToast('Email успешно подтвержден!');
+      showSuccessToast(t('register.emailVerified'));
     } catch (error: any) {
       setEmailVerificationState(prev => ({
         ...prev,
@@ -358,47 +360,47 @@ export default function RegisterPage() {
     const errors: Record<string, string> = {};
 
     if (!customerData.lastName.trim()) {
-      errors.lastName = 'Фамилия обязательна для заполнения';
+      errors.lastName = t('validationMessages.lastNameRequired');
     } else if (customerData.lastName.trim().length < 2) {
-      errors.lastName = 'Фамилия должна содержать минимум 2 символа';
+      errors.lastName = t('validationMessages.lastNameMinLength');
     }
 
     if (!customerData.firstName.trim()) {
-      errors.firstName = 'Имя обязательно для заполнения';
+      errors.firstName = t('validationMessages.firstNameRequired');
     } else if (customerData.firstName.trim().length < 2) {
-      errors.firstName = 'Имя должно содержать минимум 2 символа';
+      errors.firstName = t('validationMessages.firstNameMinLength');
     }
 
     if (customerData.middleName && customerData.middleName.trim().length > 0 && customerData.middleName.trim().length < 2) {
-      errors.middleName = 'Отчество должно содержать минимум 2 символа';
+      errors.middleName = t('validationMessages.middleNameMinLength');
     }
 
     if (!customerData.email.trim()) {
-      errors.email = 'Email обязателен для заполнения';
+      errors.email = t('validationMessages.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerData.email)) {
-      errors.email = 'Введите корректный email адрес';
+      errors.email = t('validationMessages.emailInvalid');
     } else if (checkedEmails[customerData.email] === true) {
-      errors.email = 'Пользователь с таким email уже зарегистрирован';
+      errors.email = t('register.emailExists');
     } else if (emailVerificationState.customer.step !== 'verified' || emailVerificationState.customer.email !== customerData.email) {
-      errors.email = 'Подтвердите email адрес';
+      errors.email = t('validationMessages.emailNotVerified');
     }
 
     if (!customerData.passwordUser) {
-      errors.passwordUser = 'Пароль обязателен для заполнения';
+      errors.passwordUser = t('validationMessages.passwordRequired');
     } else if (customerData.passwordUser.length < 8) {
-      errors.passwordUser = 'Пароль должен содержать минимум 8 символов';
+      errors.passwordUser = t('auth.passwordMinLength');
     }
 
     if (customerData.phone && !/^[\+]?[0-9\s\-\(\)]{10,}$/.test(customerData.phone)) {
-      errors.phone = 'Введите корректный номер телефона';
+      errors.phone = t('validationMessages.phoneInvalid');
     }
 
     if (customerData.description.trim() && customerData.description.trim().length < 10) {
-      errors.description = 'Описание должно содержать минимум 10 символов';
+      errors.description = t('validationMessages.descriptionMinLength');
     }
 
     if (!customerData.scopeS.trim()) {
-      errors.scopeS = 'Область деятельности обязательна для заполнения';
+      errors.scopeS = t('validationMessages.scopeRequired');
     }
 
     setCustomerErrors(errors);
@@ -421,17 +423,17 @@ export default function RegisterPage() {
     }
 
     if (performerData.middleName && performerData.middleName.trim().length > 0 && performerData.middleName.trim().length < 2) {
-      errors.middleName = 'Отчество должно содержать минимум 2 символа';
+      errors.middleName = t('validationMessages.middleNameMinLength');
     }
 
     if (!performerData.email.trim()) {
-      errors.email = 'Email обязателен для заполнения';
+      errors.email = t('validationMessages.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(performerData.email)) {
-      errors.email = 'Введите корректный email адрес';
+      errors.email = t('validationMessages.emailInvalid');
     } else if (checkedEmails[performerData.email] === true) {
-      errors.email = 'Пользователь с таким email уже зарегистрирован';
+      errors.email = t('register.emailExists');
     } else if (emailVerificationState.performer.step !== 'verified' || emailVerificationState.performer.email !== performerData.email) {
-      errors.email = 'Подтвердите email адрес';
+      errors.email = t('validationMessages.emailNotVerified');
     }
 
     if (!performerData.passwordUser) {
@@ -442,17 +444,17 @@ export default function RegisterPage() {
 
     const age = parseInt(performerData.age);
     if (!performerData.age) {
-      errors.age = 'Возраст обязателен для заполнения';
+      errors.age = t('validationMessages.ageRequired');
     } else if (isNaN(age) || age < 18 || age > 120) {
-      errors.age = 'Возраст должен быть от 18 до 120 лет';
+      errors.age = t('validationMessages.ageRange');
     }
 
     if (performerData.phone && !/^[\+]?[0-9\s\-\(\)]{10,}$/.test(performerData.phone)) {
-      errors.phone = 'Введите корректный номер телефона';
+      errors.phone = t('validationMessages.phoneInvalid');
     }
 
     if (!performerData.specializations || performerData.specializations.trim() === '') {
-      errors.specializations = 'Выберите хотя бы одну специализацию';
+      errors.specializations = t('validationMessages.specializationsRequired');
     }
 
     setPerformerErrors(errors);
@@ -466,14 +468,14 @@ export default function RegisterPage() {
     if (customerData.email && checkedEmails[customerData.email] === undefined) {
       const emailExists = await checkEmailExists(customerData.email);
       if (emailExists) {
-        setCustomerErrors({ ...customerErrors, email: 'Пользователь с таким email уже зарегистрирован' });
-        showErrorToast('Пользователь с таким email уже зарегистрирован');
+        setCustomerErrors({ ...customerErrors, email: t('register.emailExists') });
+        showErrorToast(t('register.emailExists'));
         return;
       }
     }
     
     if (!validateCustomerData()) {
-      showErrorToast('Пожалуйста, исправьте ошибки в форме');
+      showErrorToast(t('register.fixErrors'));
       return;
     }
     
@@ -493,7 +495,7 @@ export default function RegisterPage() {
       const { token, role, id, login } = response.data;
       
       setAuth({ id, login, role, token }, token);
-      showSuccessToast('Регистрация успешна!');
+      showSuccessToast(t('auth.registrationSuccess'));
       navigate('/customer/orders');
     } catch (error) {
       showErrorToast(error, 'Ошибка регистрации. Возможно, такой email уже используется.');
@@ -509,14 +511,14 @@ export default function RegisterPage() {
     if (performerData.email && checkedEmails[performerData.email] === undefined) {
       const emailExists = await checkEmailExists(performerData.email);
       if (emailExists) {
-        setPerformerErrors({ ...performerErrors, email: 'Пользователь с таким email уже зарегистрирован' });
-        showErrorToast('Пользователь с таким email уже зарегистрирован');
+        setPerformerErrors({ ...performerErrors, email: t('register.emailExists') });
+        showErrorToast(t('register.emailExists'));
         return;
       }
     }
     
     if (!validatePerformerData()) {
-      showErrorToast('Пожалуйста, исправьте ошибки в форме');
+      showErrorToast(t('register.fixErrors'));
       return;
     }
     
@@ -555,11 +557,11 @@ export default function RegisterPage() {
           employment: performerData.employment || '',
           experience: performerData.experience || '',
         });
-        showSuccessToast('Регистрация успешна! Данные перенесены в портфолио.');
+        showSuccessToast(t('register.dataTransferred'));
       } catch (portfolioError) {
         // Если не удалось обновить портфолио, все равно показываем успех регистрации
         console.warn('Не удалось автоматически обновить портфолио:', portfolioError);
-        showSuccessToast('Регистрация успешна! Вы можете заполнить портфолио позже.');
+        showSuccessToast(t('register.fillPortfolioLater'));
       }
       
       navigate('/performer/orders');
@@ -575,7 +577,7 @@ export default function RegisterPage() {
       <div className="max-w-2xl w-full">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-primary-600 mb-2">TaskTrove</h1>
-          <h2 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">Регистрация</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-slate-100">{t('register.title')}</h2>
         </div>
 
         {/* Type selector */}
@@ -597,7 +599,7 @@ export default function RegisterPage() {
               }}
               className={`flex-1 btn ${type === 'customer' ? 'btn-primary' : 'btn-secondary'}`}
             >
-              Заказчик
+              {t('roles.customer')}
             </button>
             <button
               type="button"
@@ -615,7 +617,7 @@ export default function RegisterPage() {
               }}
               className={`flex-1 btn ${type === 'performer' ? 'btn-primary' : 'btn-secondary'}`}
             >
-              Исполнитель
+              {t('roles.performer')}
             </button>
           </div>
         </div>
@@ -632,7 +634,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <User className="w-4 h-4 inline mr-2" />
-                  Фамилия <span className="text-red-500">*</span>
+                  {t('register.lastName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -645,7 +647,7 @@ export default function RegisterPage() {
                     }
                   }}
                   className={`input ${customerErrors.lastName ? 'border-red-500 focus:border-red-500' : ''}`}
-                  placeholder="Введите вашу фамилию"
+                  placeholder={t('register.enterLastName')}
                 />
                 {customerErrors.lastName && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -657,7 +659,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <User className="w-4 h-4 inline mr-2" />
-                  Имя <span className="text-red-500">*</span>
+                  {t('register.firstName')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -670,7 +672,7 @@ export default function RegisterPage() {
                     }
                   }}
                   className={`input ${customerErrors.firstName ? 'border-red-500 focus:border-red-500' : ''}`}
-                  placeholder="Введите ваше имя"
+                  placeholder={t('register.enterFirstName')}
                 />
                 {customerErrors.firstName && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -682,7 +684,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <User className="w-4 h-4 inline mr-2" />
-                  Отчество
+                  {t('register.middleName')}
                 </label>
                 <input
                   type="text"
@@ -694,7 +696,7 @@ export default function RegisterPage() {
                     }
                   }}
                   className={`input ${customerErrors.middleName ? 'border-red-500 focus:border-red-500' : ''}`}
-                  placeholder="Введите ваше отчество"
+                  placeholder={t('register.enterMiddleName')}
                 />
                 {customerErrors.middleName && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -778,7 +780,7 @@ export default function RegisterPage() {
                               setVerificationErrors(prev => ({ ...prev, customer: '' }));
                             }
                           }}
-                          placeholder="Введите код из письма"
+                          placeholder={t('register.enterVerificationCode')}
                           className={`input flex-1 ${verificationErrors.customer ? 'border-red-500' : ''}`}
                           maxLength={6}
                         />
@@ -791,7 +793,7 @@ export default function RegisterPage() {
                           {emailVerificationState.customer.loading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            'Проверить'
+                            t('common.confirm')
                           )}
                         </button>
                       </div>
@@ -807,7 +809,7 @@ export default function RegisterPage() {
                         className="text-sm text-primary-600 hover:text-primary-700 flex items-center"
                       >
                         <RotateCcw className="w-3 h-3 mr-1" />
-                        Отправить код повторно
+                        {t('register.resendCode')}
                       </button>
                     </div>
                   )}
@@ -822,14 +824,14 @@ export default function RegisterPage() {
                 {emailVerificationState.customer.step === 'verified' && (
                   <p className="mt-1 text-sm text-green-600 flex items-center">
                     <CheckCircle className="w-4 h-4 mr-1" />
-                    Email подтвержден
+                    {t('register.emailVerified')}
                   </p>
                 )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <Lock className="w-4 h-4 inline mr-2" />
-                  Пароль <span className="text-red-500">*</span>
+                  {t('auth.password')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="password"
@@ -843,7 +845,7 @@ export default function RegisterPage() {
                     }
                   }}
                   className={`input ${customerErrors.passwordUser ? 'border-red-500 focus:border-red-500' : ''}`}
-                  placeholder="Минимум 8 символов"
+                  placeholder={t('auth.passwordMinLength')}
                 />
                 {customerErrors.passwordUser && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -879,7 +881,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <FileText className="w-4 h-4 inline mr-2" />
-                  Описание
+                  {t('register.description')}
                 </label>
                 <textarea
                   value={customerData.description}
@@ -891,7 +893,7 @@ export default function RegisterPage() {
                   }}
                   className={`input ${customerErrors.description ? 'border-red-500 focus:border-red-500' : ''}`}
                   rows={3}
-                  placeholder="Расскажите о себе и своих потребностях (необязательно, но если заполняете - минимум 10 символов)"
+                  placeholder={t('register.enterDescription')}
                 />
                 {customerErrors.description && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -903,10 +905,10 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <Building className="w-4 h-4 inline mr-2" />
-                  Области деятельности <span className="text-red-500">*</span>
+                  {t('register.scope')} <span className="text-red-500">*</span>
                 </label>
                 <div className={`border rounded-lg p-3 max-h-48 overflow-y-auto ${customerErrors.scopeS ? 'border-red-500' : 'border-gray-300'}`}>
-                  <p className="text-sm text-gray-600 mb-3">Выберите одну или несколько областей деятельности:</p>
+                  <p className="text-sm text-gray-600 mb-3">{t('register.selectScope')}</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {BUSINESS_AREAS.map((area) => (
                       <label key={area} className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
@@ -924,7 +926,7 @@ export default function RegisterPage() {
                 {selectedBusinessAreas.length > 0 && (
                   <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
                     <p className="text-sm text-blue-800">
-                      <strong>Выбрано:</strong> {selectedBusinessAreas.join(', ')}
+                      <strong>{t('register.selected')}:</strong> {selectedBusinessAreas.join(', ')}
                     </p>
                   </div>
                 )}
@@ -939,7 +941,7 @@ export default function RegisterPage() {
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Регистрация...
+                    {t('register.registering')}
                   </>
                 ) : (
                   <>
@@ -1110,7 +1112,7 @@ export default function RegisterPage() {
                               setVerificationErrors(prev => ({ ...prev, performer: '' }));
                             }
                           }}
-                          placeholder="Введите код из письма"
+                          placeholder={t('register.enterVerificationCode')}
                           className={`input flex-1 ${verificationErrors.performer ? 'border-red-500' : ''}`}
                           maxLength={6}
                         />
@@ -1123,7 +1125,7 @@ export default function RegisterPage() {
                           {emailVerificationState.performer.loading ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
-                            'Проверить'
+                            t('common.confirm')
                           )}
                         </button>
                       </div>
@@ -1139,7 +1141,7 @@ export default function RegisterPage() {
                         className="text-sm text-primary-600 hover:text-primary-700 flex items-center"
                       >
                         <RotateCcw className="w-3 h-3 mr-1" />
-                        Отправить код повторно
+                        {t('register.resendCode')}
                       </button>
                     </div>
                   )}
@@ -1154,14 +1156,14 @@ export default function RegisterPage() {
                 {emailVerificationState.performer.step === 'verified' && (
                   <p className="mt-1 text-sm text-green-600 flex items-center">
                     <CheckCircle className="w-4 h-4 mr-1" />
-                    Email подтвержден
+                    {t('register.emailVerified')}
                   </p>
                 )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <Lock className="w-4 h-4 inline mr-2" />
-                  Пароль <span className="text-red-500">*</span>
+                  {t('auth.password')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="password"
@@ -1175,7 +1177,7 @@ export default function RegisterPage() {
                     }
                   }}
                   className={`input ${performerErrors.passwordUser ? 'border-red-500 focus:border-red-500' : ''}`}
-                  placeholder="Минимум 8 символов"
+                  placeholder={t('auth.passwordMinLength')}
                 />
                 {performerErrors.passwordUser && (
                   <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -1187,7 +1189,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <Calendar className="w-4 h-4 inline mr-2" />
-                  Возраст <span className="text-red-500">*</span>
+                  {t('register.age')} <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="number"
@@ -1214,7 +1216,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <Phone className="w-4 h-4 inline mr-2" />
-                  Телефон
+                  {t('register.phone')}
                 </label>
                 <input
                   type="tel"
@@ -1238,7 +1240,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <MapPin className="w-4 h-4 inline mr-2" />
-                  Город/Страна
+                  {t('register.townCountry')}
                 </label>
                 <input
                   type="text"
@@ -1251,10 +1253,10 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <Briefcase className="w-4 h-4 inline mr-2" />
-                  Специализации <span className="text-red-500">*</span>
+                  {t('register.selectSpecializations')} <span className="text-red-500">*</span>
                 </label>
                 <div className={`border rounded-lg p-3 max-h-48 overflow-y-auto ${performerErrors.specializations ? 'border-red-500' : 'border-gray-300'}`}>
-                  <p className="text-sm text-gray-600 mb-3">Выберите одну или несколько специализаций:</p>
+                  <p className="text-sm text-gray-600 mb-3">{t('register.selectSpecializations')}:</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {SPECIALIZATIONS.map((spec) => (
                       <label key={spec} className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
@@ -1305,7 +1307,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <Award className="w-4 h-4 inline mr-2" />
-                  Опыт работы
+                  {t('register.experience')}
                 </label>
                 <textarea
                   value={performerData.experience}
@@ -1319,7 +1321,7 @@ export default function RegisterPage() {
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Регистрация...
+                    {t('register.registering')}
                   </>
                 ) : (
                   <>

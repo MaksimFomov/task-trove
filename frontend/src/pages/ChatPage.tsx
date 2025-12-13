@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { customerApi, performerApi } from '../services/api';
 import { useAuthStore } from '../store/authStore';
@@ -11,6 +12,7 @@ import SockJS from 'sockjs-client';
 import type { Message } from '../types';
 
 export default function ChatPage() {
+  const { t } = useTranslation();
   const { chatId } = useParams<{ chatId: string }>();
   const navigate = useNavigate();
   const { user } = useAuthStore();
@@ -135,9 +137,9 @@ export default function ChatPage() {
   useEffect(() => {
     if (chatInfo) {
       if (isCustomer && chatInfo.deletedByPerformer) {
-        setChatDeletedMessage('Чат был удален исполнителем. Вы не можете отправлять сообщения в этот чат.');
+        setChatDeletedMessage(t('chats.chatDeletedByPerformer'));
       } else if (isPerformer && chatInfo.deletedByCustomer) {
-        setChatDeletedMessage('Чат был удален заказчиком. Вы не можете отправлять сообщения в этот чат.');
+        setChatDeletedMessage(t('chats.chatDeletedByCustomer'));
       } else {
         setChatDeletedMessage(null);
       }
@@ -319,16 +321,16 @@ export default function ChatPage() {
       <div className="flex items-center mb-4 flex-shrink-0">
         <button onClick={() => navigate(-1)} className="btn btn-secondary flex items-center mr-4">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Назад
+          {t('common.back')}
         </button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold dark:text-slate-100">
-            {chatInfo?.orderTitle || chatInfo?.roomName || `Чат #${chatId}`}
+            {chatInfo?.orderTitle || chatInfo?.roomName || t('chats.chatNumber', { id: chatId })}
           </h1>
           {chatInfo && (
             <p className="text-sm text-gray-600">
-              {isCustomer && chatInfo.performerName && `Исполнитель: ${chatInfo.performerName}`}
-              {isPerformer && chatInfo.customerName && `Заказчик: ${chatInfo.customerName}`}
+              {isCustomer && chatInfo.performerName && `${t('orders.performer')}: ${chatInfo.performerName}`}
+              {isPerformer && chatInfo.customerName && `${t('orders.customer')}: ${chatInfo.customerName}`}
             </p>
           )}
         </div>
@@ -356,7 +358,7 @@ export default function ChatPage() {
                   }`}
                 >
                   <p className="text-sm font-medium mb-1">
-                    {message.sender || message.fromWho || 'Пользователь'}
+                    {message.sender || message.fromWho || t('common.user')}
                   </p>
                   <p className="text-sm whitespace-pre-wrap">{message.content || message.text}</p>
                   {message.sentAt && (
@@ -377,7 +379,7 @@ export default function ChatPage() {
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={chatDeletedMessage ? "Чат удален. Сообщения недоступны." : "Введите сообщение..."}
+            placeholder={chatDeletedMessage ? t('chats.chatDeletedPlaceholder') : t('chat.typeMessage')}
             disabled={!!chatDeletedMessage}
             className="flex-1 input disabled:opacity-50 disabled:cursor-not-allowed"
           />

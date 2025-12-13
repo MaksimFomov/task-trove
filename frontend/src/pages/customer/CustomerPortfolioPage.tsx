@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { customerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -6,29 +7,30 @@ import { useState, useEffect } from 'react';
 import Modal from '../../components/Modal';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import type { CustomerPortfolio, UpdateCustomerPortfolioDto, WorkExperience } from '../../types';
-
-// Список областей деятельности для заказчиков
-const BUSINESS_AREAS = [
-  'IT и технологии',
-  'Маркетинг и реклама',
-  'Дизайн и творчество',
-  'Образование',
-  'Финансы',
-  'Здравоохранение',
-  'Торговля',
-  'Производство',
-  'Строительство',
-  'Транспорт',
-  'Туризм',
-  'Недвижимость',
-  'Юриспруденция',
-  'Консалтинг',
-  'Другое'
-];
+import type { UpdateCustomerPortfolioDto } from '../../types';
 
 export default function CustomerPortfolioPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  // Список областей деятельности для заказчиков
+  const BUSINESS_AREAS = [
+    t('businessAreas.it'),
+    t('businessAreas.marketing'),
+    t('businessAreas.design'),
+    t('businessAreas.education'),
+    t('businessAreas.finance'),
+    t('businessAreas.healthcare'),
+    t('businessAreas.retail'),
+    t('businessAreas.manufacturing'),
+    t('businessAreas.construction'),
+    t('businessAreas.transport'),
+    t('businessAreas.tourism'),
+    t('businessAreas.realEstate'),
+    t('businessAreas.law'),
+    t('businessAreas.consulting'),
+    t('businessAreas.other')
+  ];
   const [formData, setFormData] = useState<UpdateCustomerPortfolioDto>({
     lastName: '',
     firstName: '',
@@ -100,7 +102,7 @@ export default function CustomerPortfolioPage() {
     if (portfolio) {
       const scopeSStr = portfolio.scopeS || '';
       const businessAreasArray = scopeSStr 
-        ? scopeSStr.split(',').map(s => s.trim()).filter(s => s.length > 0)
+        ? scopeSStr.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
         : [];
       
       setSelectedBusinessAreas(businessAreasArray);
@@ -134,7 +136,7 @@ export default function CustomerPortfolioPage() {
       // Инвалидируем и перезагружаем данные
       await queryClient.invalidateQueries({ queryKey: ['customerPortfolio'] });
       await queryClient.refetchQueries({ queryKey: ['customerPortfolio'] });
-      toast.success('Портфолио обновлено');
+      toast.success(t('portfolio.saveSuccess'));
     },
     onError: (error: any) => {
       console.error('Error updating customer portfolio:', error);
@@ -146,7 +148,7 @@ export default function CustomerPortfolioPage() {
         if (errorData?.errors) {
           // Ошибки валидации от Spring
           const errorMessages = Object.values(errorData.errors).flat().join(', ');
-          toast.error(`Ошибка валидации: ${errorMessages}`);
+          toast.error(`${t('error.validation')}: ${errorMessages}`);
         } else if (errorData?.message) {
           toast.error(errorData.message);
         } else {
@@ -164,36 +166,36 @@ export default function CustomerPortfolioPage() {
 
     // Last name validation
     if (!formData.lastName || formData.lastName.trim() === '') {
-      newErrors.lastName = 'Фамилия обязательна для заполнения';
+      newErrors.lastName = t('validationMessages.lastNameRequired');
     } else if (formData.lastName.trim().length < 2) {
-      newErrors.lastName = 'Фамилия должна содержать минимум 2 символа';
+      newErrors.lastName = t('validationMessages.lastNameMinLength');
     }
 
     // First name validation
     if (!formData.firstName || formData.firstName.trim() === '') {
-      newErrors.firstName = 'Имя обязательно для заполнения';
+      newErrors.firstName = t('validationMessages.firstNameRequired');
     } else if (formData.firstName.trim().length < 2) {
-      newErrors.firstName = 'Имя должно содержать минимум 2 символа';
+      newErrors.firstName = t('validationMessages.firstNameMinLength');
     }
 
     // Middle name validation (optional)
     if (formData.middleName && formData.middleName.trim().length > 0 && formData.middleName.trim().length < 2) {
-      newErrors.middleName = 'Отчество должно содержать минимум 2 символа';
+      newErrors.middleName = t('validationMessages.middleNameMinLength');
     }
 
     // Phone validation (optional)
     if (formData.phone && !/^[\+]?[0-9\s\-\(\)]{10,}$/.test(formData.phone)) {
-      newErrors.phone = 'Введите корректный номер телефона';
+      newErrors.phone = t('validationMessages.phoneInvalid');
     }
 
     // Description validation
     if (formData.description && formData.description.trim().length > 0 && formData.description.trim().length < 10) {
-      newErrors.description = 'Описание должно содержать минимум 10 символов';
+      newErrors.description = t('validationMessages.descriptionMinLength');
     }
 
     // Scope validation
     if (!formData.scopeS || formData.scopeS.trim() === '' || selectedBusinessAreas.length === 0) {
-      newErrors.scopeS = 'Выберите хотя бы одну область деятельности';
+      newErrors.scopeS = t('validationMessages.scopeRequired');
     }
 
     setErrors(newErrors);
@@ -204,7 +206,7 @@ export default function CustomerPortfolioPage() {
     e.preventDefault();
     
     if (!validateFormData()) {
-      toast.error('Пожалуйста, исправьте ошибки в форме');
+      toast.error(t('register.fixErrors'));
       return;
     }
     
@@ -224,26 +226,26 @@ export default function CustomerPortfolioPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Загрузка...</div>
+        <div className="text-lg text-gray-600">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Мое портфолио</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('portfolio.title')}</h1>
 
       <div className="card">
         <div className="mb-4 p-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg">
           <p className="text-sm text-gray-600 dark:text-slate-300">
-            <span className="text-red-500">*</span> — обязательные поля для заполнения
+            <span className="text-red-500">*</span> — {t('register.requiredFields')}
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Фамилия <span className="text-red-500">*</span>
+              {t('register.lastName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -256,7 +258,7 @@ export default function CustomerPortfolioPage() {
                 }
               }}
               className={`input ${errors.lastName ? 'border-red-500 focus:border-red-500' : ''}`}
-              placeholder="Введите вашу фамилию"
+              placeholder={t('register.enterLastName')}
             />
             {errors.lastName && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -268,7 +270,7 @@ export default function CustomerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Имя <span className="text-red-500">*</span>
+              {t('register.firstName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -281,7 +283,7 @@ export default function CustomerPortfolioPage() {
                 }
               }}
               className={`input ${errors.firstName ? 'border-red-500 focus:border-red-500' : ''}`}
-              placeholder="Введите ваше имя"
+              placeholder={t('register.enterFirstName')}
             />
             {errors.firstName && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -293,7 +295,7 @@ export default function CustomerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Отчество
+              {t('register.middleName')}
             </label>
             <input
               type="text"
@@ -305,7 +307,7 @@ export default function CustomerPortfolioPage() {
                 }
               }}
               className={`input ${errors.middleName ? 'border-red-500 focus:border-red-500' : ''}`}
-              placeholder="Введите ваше отчество"
+              placeholder={t('register.enterMiddleName')}
             />
             {errors.middleName && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -327,12 +329,12 @@ export default function CustomerPortfolioPage() {
               disabled
               className="input bg-gray-100 cursor-not-allowed"
             />
-            <p className="mt-1 text-xs text-gray-500">Email нельзя изменить</p>
+            <p className="mt-1 text-xs text-gray-500">{t('portfolio.emailCannotChange')}</p>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <Phone className="w-4 h-4 inline mr-2" />
-              Номер телефона
+              {t('register.phone')}
             </label>
             <input
               type="tel"
@@ -356,7 +358,7 @@ export default function CustomerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <FileText className="w-4 h-4 inline mr-2" />
-              Описание
+              {t('register.description')}
             </label>
             <textarea
               value={formData.description}
@@ -368,7 +370,7 @@ export default function CustomerPortfolioPage() {
               }}
               className={`input ${errors.description ? 'border-red-500 focus:border-red-500' : ''}`}
               rows={5}
-              placeholder="Расскажите о себе и своих потребностях (необязательно, но если заполняете - минимум 10 символов)"
+              placeholder={t('register.descriptionPlaceholder')}
             />
             {errors.description && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -380,10 +382,10 @@ export default function CustomerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <Building className="w-4 h-4 inline mr-2" />
-              Области деятельности <span className="text-red-500">*</span>
+              {t('register.businessAreas')} <span className="text-red-500">*</span>
             </label>
             <div className={`border rounded-lg p-3 max-h-48 overflow-y-auto ${errors.scopeS ? 'border-red-500' : 'border-gray-300'}`}>
-              <p className="text-sm text-gray-600 mb-3">Выберите одну или несколько областей деятельности:</p>
+              <p className="text-sm text-gray-600 mb-3">{t('register.selectBusinessAreas')}:</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {BUSINESS_AREAS.map((area) => (
                   <label key={area} className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
@@ -401,7 +403,7 @@ export default function CustomerPortfolioPage() {
             {selectedBusinessAreas.length > 0 && (
               <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
                 <p className="text-sm text-blue-800">
-                  <strong>Выбрано:</strong> {selectedBusinessAreas.join(', ')}
+                  <strong>{t('register.selected')}:</strong> {selectedBusinessAreas.join(', ')}
                 </p>
               </div>
             )}
@@ -415,7 +417,7 @@ export default function CustomerPortfolioPage() {
           <div className="flex justify-end">
             <button type="submit" className="btn btn-primary flex items-center">
               <Save className="w-5 h-5 mr-2" />
-              Обновить портфолио
+              {t('portfolio.update')}
             </button>
           </div>
         </form>
@@ -425,13 +427,13 @@ export default function CustomerPortfolioPage() {
       <div className="card">
         <div className="flex items-center mb-6">
           <Star className="w-6 h-6 text-yellow-500 mr-3" />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Мои отзывы</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('reviews.myReviews')}</h2>
         </div>
 
         {isLoadingReviews ? (
           <div className="text-center py-12">
             <Loader2 className="w-8 h-8 animate-spin mx-auto text-gray-400 mb-2" />
-            <p className="text-gray-600 dark:text-slate-400">Загрузка отзывов...</p>
+            <p className="text-gray-600 dark:text-slate-400">{t('reviews.loading')}</p>
           </div>
         ) : reviewsData?.reviews && reviewsData.reviews.length > 0 ? (
           <div className="space-y-4">
@@ -440,7 +442,7 @@ export default function CustomerPortfolioPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h3 className="font-semibold text-lg">
-                      {review.text || 'Отзыв без текста'}
+                      {review.text || t('reviews.noText')}
                     </h3>
                   </div>
                   <div className="flex items-center">
@@ -476,9 +478,9 @@ export default function CustomerPortfolioPage() {
         ) : (
           <div className="text-center py-12">
             <Star className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg mb-2">У вас пока нет отзывов</p>
+            <p className="text-gray-500 text-lg mb-2">{t('reviews.noReviews')}</p>
             <p className="text-gray-400 text-sm">
-              Отзывы от исполнителей будут отображаться здесь после завершения заказов
+              {t('reviews.reviewsWillAppear')}
             </p>
           </div>
         )}
@@ -489,12 +491,12 @@ export default function CustomerPortfolioPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-yellow-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение обновления</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('portfolio.confirmUpdate')}</h2>
           </div>
           
           <div className="space-y-4">
             <p className="text-gray-700 dark:text-slate-300">
-              Вы уверены, что хотите обновить портфолио? Все изменения будут сохранены.
+              {t('portfolio.confirmUpdateMessage')}
             </p>
             
             <div className="flex space-x-2 pt-4">
@@ -506,12 +508,12 @@ export default function CustomerPortfolioPage() {
                 {updateMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Обновление...
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Да, обновить
+                    {t('common.yes')}, {t('portfolio.update')}
                   </>
                 )}
               </button>
@@ -520,7 +522,7 @@ export default function CustomerPortfolioPage() {
                 disabled={updateMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
             </div>
           </div>

@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { adminApi } from '../../services/api';
 import { Users, UserCheck, UserCog, Briefcase, CheckCircle, Clock } from 'lucide-react';
 
 export default function AdminStatisticsPage() {
+  const { t } = useTranslation();
   const { data, isLoading } = useQuery({
     queryKey: ['adminStatistics'],
     queryFn: () => adminApi.getStatistics().then((res) => res.data),
@@ -11,7 +13,7 @@ export default function AdminStatisticsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Загрузка...</div>
+        <div className="text-lg text-gray-600">{t('common.loading')}</div>
       </div>
     );
   }
@@ -28,43 +30,43 @@ export default function AdminStatisticsPage() {
 
   const statCards = [
     {
-      title: 'Всего пользователей',
+      title: t('admin.statistics.totalUsers'),
       value: stats.totalUsers,
       icon: Users,
       color: 'bg-blue-500',
     },
     {
-      title: 'Заказчиков',
+      title: t('admin.statistics.totalCustomers'),
       value: stats.totalCustomers,
       icon: UserCheck,
       color: 'bg-green-500',
     },
     {
-      title: 'Исполнителей',
+      title: t('admin.statistics.totalPerformers'),
       value: stats.totalPerformers,
       icon: UserCog,
       color: 'bg-purple-500',
     },
     {
-      title: 'Администраторов',
+      title: t('admin.statistics.totalAdministrators'),
       value: stats.totalAdministrators,
       icon: Users,
       color: 'bg-red-500',
     },
     {
-      title: 'Всего заказов',
+      title: t('admin.statistics.totalOrders'),
       value: stats.totalOrders,
       icon: Briefcase,
       color: 'bg-yellow-500',
     },
     {
-      title: 'Активных заказов',
+      title: t('admin.statistics.activeOrders'),
       value: stats.activeOrders,
       icon: Clock,
       color: 'bg-indigo-500',
     },
     {
-      title: 'Выполненных заказов',
+      title: t('admin.statistics.doneOrders'),
       value: stats.doneOrders,
       icon: CheckCircle,
       color: 'bg-teal-500',
@@ -73,7 +75,7 @@ export default function AdminStatisticsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Статистика системы</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('admin.systemAnalytics')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {statCards.map((stat, index) => {
@@ -95,10 +97,10 @@ export default function AdminStatisticsPage() {
       </div>
 
       <div className="card">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-4">Дополнительная информация</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-4">{t('admin.additionalInfo')}</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-500 dark:text-slate-400">Процент заказчиков</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t('admin.statistics.customersPercent')}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
               {stats.totalUsers > 0
                 ? ((stats.totalCustomers / stats.totalUsers) * 100).toFixed(1)
@@ -107,7 +109,7 @@ export default function AdminStatisticsPage() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-slate-400">Процент исполнителей</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t('admin.statistics.performersPercent')}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
               {stats.totalUsers > 0
                 ? ((stats.totalPerformers / stats.totalUsers) * 100).toFixed(1)
@@ -116,7 +118,7 @@ export default function AdminStatisticsPage() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-slate-400">Процент выполненных заказов</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t('admin.statistics.doneOrdersPercent')}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
               {stats.totalOrders > 0
                 ? ((stats.doneOrders / stats.totalOrders) * 100).toFixed(1)
@@ -125,7 +127,7 @@ export default function AdminStatisticsPage() {
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 dark:text-slate-400">Процент активных заказов</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t('admin.statistics.activeOrdersPercent')}</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
               {stats.totalOrders > 0
                 ? ((stats.activeOrders / stats.totalOrders) * 100).toFixed(1)

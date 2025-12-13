@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { performerApi, customerApi } from '../../services/api';
@@ -12,6 +13,7 @@ import type { Reply, Chat, UpdateReplyDto, Account, CustomerPortfolio, WorkExper
 import Modal from '../../components/Modal';
 
 export default function PerformerOrderDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -146,10 +148,10 @@ export default function PerformerOrderDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
-      toast.success('Отклик отправлен');
+      toast.success(t('orders.replySent'));
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Ошибка при отправке отклика');
+      toast.error(error.response?.data?.message || t('errors.generic'));
     },
   });
 
@@ -158,10 +160,10 @@ export default function PerformerOrderDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
-      toast.success('Отклик отменен');
+      toast.success(t('orders.replyCancelled'));
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Ошибка при отмене отклика');
+      toast.error(error.response?.data?.message || t('errors.generic'));
     },
   });
 
@@ -184,7 +186,7 @@ export default function PerformerOrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
       queryClient.invalidateQueries({ queryKey: ['performerMyActiveOrders'] });
-      toast.success('Вы успешно отказались от заказа');
+      toast.success(t('orders.refuseOrderSuccess'));
       setShowRefuseConfirm(false);
     },
     onError: (error: any) => {
@@ -198,11 +200,11 @@ export default function PerformerOrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
       queryClient.invalidateQueries({ queryKey: ['performerMyActiveOrders'] });
-      toast.success('Заказ успешно завершен и отправлен на проверку');
+      toast.success(t('orders.orderCompleted'));
       setShowCompleteConfirm(false);
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Не удалось завершить заказ');
+      toast.error(error.response?.data?.error || t('errors.generic'));
     },
   });
 
@@ -211,12 +213,12 @@ export default function PerformerOrderDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
-      toast.success('Выполненный заказ успешно удален из истории');
+      toast.success(t('orders.completedOrderDeleted'));
       setShowDeleteConfirm(false);
       navigate('/performer/orders?tab=completed');
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.error || 'Не удалось удалить заказ');
+      toast.error(error.response?.data?.error || t('errors.generic'));
     },
   });
 
@@ -224,18 +226,18 @@ export default function PerformerOrderDetailPage() {
   const currentUserName = (() => {
     try {
       const userStr = localStorage.getItem('user');
-      if (!userStr) return 'Исполнитель';
+      if (!userStr) return t('roles.performer');
       const user = JSON.parse(userStr);
-      return user.name || user.login || 'Исполнитель';
+      return user.name || user.login || t('roles.performer');
     } catch (error) {
-      return 'Исполнитель';
+      return t('roles.performer');
     }
   })();
 
   const addReviewMutation = useMutation({
     mutationFn: (data: WorkExperience) => performerApi.addReview(data),
     onSuccess: (_, variables) => {
-      toast.success('Отзыв добавлен');
+      toast.success(t('orders.reviewAdded'));
       setShowReviewForm(false);
       setReviewData({ mark: 5, text: '', customerId: 0 });
       // Оптимистично обновляем список отзывов для текущего профиля
@@ -341,7 +343,7 @@ export default function PerformerOrderDetailPage() {
   if (!order) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-500 text-lg">Заказ не найден</p>
+        <p className="text-gray-500 text-lg">{t('orders.orderNotFound')}</p>
       </div>
     );
   }
@@ -360,7 +362,7 @@ export default function PerformerOrderDetailPage() {
     <div className="space-y-6">
       <button onClick={() => navigate('/performer/orders')} className="btn btn-secondary flex items-center">
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Назад
+        {t('common.back')}
       </button>
 
       <div className="card">
@@ -370,10 +372,10 @@ export default function PerformerOrderDetailPage() {
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               {order.publicationTime && (
                 <span>
-                  Опубликован: {format(new Date(order.publicationTime), 'd MMMM yyyy HH:mm', { locale: ru })}
+                  {t('orderDetail.created')}: {format(new Date(order.publicationTime), 'd MMMM yyyy HH:mm', { locale: ru })}
                 </span>
               )}
-              {order.howReplies !== undefined && <span>Откликов: {order.howReplies}</span>}
+              {order.howReplies !== undefined && <span>{t('orderDetail.replies')}: {order.howReplies}</span>}
             </div>
           </div>
           <div className="flex flex-col gap-2 items-end">
@@ -388,12 +390,12 @@ export default function PerformerOrderDetailPage() {
                     {deleteReplyMutation.isPending ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Отмена...
+                        {t('common.loading')}
                       </>
                     ) : (
                       <>
                         <X className="w-4 h-4 mr-2" />
-                        Отменить отклик
+                        {t('orders.cancelReply')}
                       </>
                     )}
                   </button>
@@ -410,12 +412,12 @@ export default function PerformerOrderDetailPage() {
                           {refuseOrderMutation.isPending ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Отказ...
+                              {t('common.loading')}
                             </>
                           ) : (
                             <>
                               <X className="w-4 h-4 mr-2" />
-                              Отказаться
+                              {t('orderDetail.refuse')}
                             </>
                           )}
                         </button>
@@ -427,12 +429,12 @@ export default function PerformerOrderDetailPage() {
                           {completeOrderMutation.isPending ? (
                             <>
                               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Завершение...
+                              {t('common.loading')}
                             </>
                           ) : (
                             <>
                               <CheckCircle className="w-4 h-4 mr-2" />
-                              Завершить
+                              {t('orderDetail.complete')}
                             </>
                           )}
                         </button>
@@ -448,12 +450,12 @@ export default function PerformerOrderDetailPage() {
                     {addReplyMutation.isPending ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Отправка...
+                        {t('common.loading')}
                       </>
                     ) : (
                       <>
                         <Send className="w-4 h-4 mr-2" />
-                        Откликнуться на заказ
+                        {t('orders.replyToOrder')}
                       </>
                     )}
                   </button>
@@ -465,16 +467,16 @@ export default function PerformerOrderDetailPage() {
 
         <div className="space-y-4">
           <div>
-            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Описание</h3>
+            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">{t('orderForm.description')}</h3>
             <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{order.description}</p>
           </div>
           <div>
-            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Область</h3>
+            <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">{t('orderDetail.scope')}</h3>
             <p className="text-gray-700 dark:text-slate-300">{order.scope}</p>
           </div>
           {order.stackS && (
             <div>
-              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">Технологии</h3>
+              <h3 className="text-lg font-semibold mb-2 dark:text-slate-100">{t('register.technologies')}</h3>
               <p className="text-gray-700 dark:text-slate-300">{order.stackS}</p>
             </div>
           )}
@@ -483,7 +485,7 @@ export default function PerformerOrderDetailPage() {
         {!isOrderActive && (
           <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg">
             <p className="text-gray-600 dark:text-slate-300">
-              Этот заказ неактивен или находится на модерации
+              {t('orders.orderInactiveOrModeration')}
             </p>
           </div>
         )}
@@ -492,12 +494,12 @@ export default function PerformerOrderDetailPage() {
       {/* Карточка заказчика */}
       {order.customerId && (
         <div className="card">
-          <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">Заказчик</h2>
+          <h2 className="text-2xl font-bold mb-4 dark:text-slate-100">{t('orders.customer')}</h2>
           <div className="border border-gray-200 rounded-lg p-4">
             <div className="flex justify-between items-center">
               <div className="flex-1">
                 <p className="font-semibold text-lg">
-                  {order.customerName || customerInfo?.login || 'Заказчик'}
+                  {order.customerName || customerInfo?.login || t('roles.customer')}
                 </p>
                 {customerInfo?.email && (
                   <p className="text-sm text-gray-600">{customerInfo.email}</p>
@@ -513,7 +515,7 @@ export default function PerformerOrderDetailPage() {
                   className="btn btn-secondary flex items-center"
                 >
                   <User className="w-4 h-4 mr-1" />
-                  Профиль
+                  {t('orderDetail.viewProfile')}
                 </button>
                 {/* Кнопка "Оставить отзыв" показывается после завершения заказа */}
                 {order.isDone && order.customerId && (
@@ -525,7 +527,7 @@ export default function PerformerOrderDetailPage() {
                     className="btn btn-primary flex items-center"
                   >
                     <Star className="w-4 h-4 mr-1" />
-                    Оставить отзыв
+                    {t('orderDetail.review')}
                   </button>
                 )}
               </div>
@@ -539,22 +541,21 @@ export default function PerformerOrderDetailPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-orange-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение отказа</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('orders.refuseOrderConfirm')}</h2>
           </div>
           
           <div className="space-y-4">
             <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
               <p className="text-orange-800 font-semibold mb-2">
-                ⚠️ Внимание!
+                ⚠️ {t('common.warning')}!
               </p>
               <p className="text-orange-700 text-sm">
-                Вы уверены, что хотите отказаться от этого заказа? Заказ вернется в статус активного, 
-                и заказчику будет отправлено уведомление об отказе.
+                {t('orders.refuseOrderMessage')}
               </p>
             </div>
             
             <p className="text-gray-700 dark:text-slate-300">
-              Это действие нельзя отменить.
+              {t('orders.cannotUndo')}
             </p>
             
             <div className="flex space-x-2 pt-4">
@@ -566,12 +567,12 @@ export default function PerformerOrderDetailPage() {
                 {refuseOrderMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Отказ...
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
                 <X className="w-4 h-4 mr-2" />
-                    Да, отказаться
+                    {t('common.yes')}, {t('orderDetail.refuse')}
                   </>
                 )}
               </button>
@@ -580,7 +581,7 @@ export default function PerformerOrderDetailPage() {
                 disabled={refuseOrderMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -592,22 +593,21 @@ export default function PerformerOrderDetailPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение завершения</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('orders.completeOrderConfirm')}</h2>
           </div>
           
           <div className="space-y-4">
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <p className="text-green-800 font-semibold mb-2">
-                ✓ Завершить заказ
+                ✓ {t('orderDetail.complete')}
               </p>
               <p className="text-green-700 text-sm">
-                Вы уверены, что хотите завершить этот заказ? После завершения заказ перейдет на проверку заказчику, 
-                и ему будет отправлено уведомление.
+                {t('orders.completeOrderMessage')}
                   </p>
                 </div>
             
             <p className="text-gray-700 dark:text-slate-300">
-              После завершения вы сможете внести исправления, если заказчик их запросит.
+              {t('orders.canMakeCorrections')}
             </p>
             
             <div className="flex space-x-2 pt-4">
@@ -619,12 +619,12 @@ export default function PerformerOrderDetailPage() {
                 {completeOrderMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Завершение...
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
                     <CheckCircle className="w-4 h-4 mr-2" />
-                    Да, завершить
+                    {t('common.yes')}, {t('orderDetail.complete')}
                   </>
                 )}
               </button>
@@ -633,7 +633,7 @@ export default function PerformerOrderDetailPage() {
                 disabled={completeOrderMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
             </div>
           </div>

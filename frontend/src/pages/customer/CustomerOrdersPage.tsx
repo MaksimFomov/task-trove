@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { customerApi } from '../../services/api';
@@ -16,6 +17,7 @@ type TabType = 'all' | 'in-progress' | 'done';
 const PAGE_KEY = 'customerOrders';
 
 export default function CustomerOrdersPage() {
+  const { t, i18n } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -135,24 +137,24 @@ export default function CustomerOrdersPage() {
   const getOrderStatus = (order: Order) => {
     // Приоритет: На рассмотрении > Отклонен > Выполнен > На проверке > В процессе > Активен > Неактивен
     if (order.isOnReview) {
-      return { label: 'На рассмотрении', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
+      return { label: t('orderStatus.onReview'), className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
     }
     if (order.isRejected) {
-      return { label: 'Отклонен', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+      return { label: t('orderStatus.rejected'), className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
     }
     if (order.isDone) {
-      return { label: 'Выполнен', className: 'bg-purple-100 text-purple-800' };
+      return { label: t('orderStatus.done'), className: 'bg-purple-100 text-purple-800' };
     }
     if (order.isOnCheck) {
-      return { label: 'На проверке', className: 'bg-yellow-100 text-yellow-800' };
+      return { label: t('orderStatus.onCheck'), className: 'bg-yellow-100 text-yellow-800' };
     }
     if (order.isInProcess) {
-      return { label: 'В процессе', className: 'bg-blue-100 text-blue-800' };
+      return { label: t('orderStatus.inProcess'), className: 'bg-blue-100 text-blue-800' };
     }
     if (order.isActived) {
-      return { label: 'Активен', className: 'bg-green-100 text-green-800' };
+      return { label: t('orderStatus.active'), className: 'bg-green-100 text-green-800' };
     }
-    return { label: 'Неактивен', className: 'bg-gray-100 text-gray-800' };
+    return { label: t('orderStatus.inactive'), className: 'bg-gray-100 text-gray-800' };
   };
 
   // Фильтруем заказы в зависимости от активной вкладки
@@ -212,12 +214,12 @@ export default function CustomerOrdersPage() {
       queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
       queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
       queryClient.invalidateQueries({ queryKey: ['customerChats'] });
-      showSuccessToast('Заказ полностью удален');
+      showSuccessToast(t('orders.orderDeleted'));
       setShowDeleteConfirm(false);
       setDeleteOrderId(null);
     },
     onError: (error) => {
-      showErrorToast(error, 'Не удалось удалить заказ. Попробуйте еще раз.');
+      showErrorToast(error, t('errors.generic'));
       setShowDeleteConfirm(false);
       setDeleteOrderId(null);
     },
@@ -273,13 +275,13 @@ export default function CustomerOrdersPage() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Мои заказы</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('orders.myOrders')}</h1>
         <button
           onClick={() => navigate('/customer/orders/new')}
           className="btn btn-primary flex items-center"
         >
           <Plus className="w-5 h-5 mr-2" />
-          Создать заказ
+          {t('orders.createOrder')}
         </button>
       </div>
 
@@ -294,7 +296,7 @@ export default function CustomerOrdersPage() {
                 : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
             }`}
           >
-            Все заказы
+            {t('orderList.allOrders')}
           </button>
           <button
             onClick={() => handleTabChange('in-progress')}
@@ -304,7 +306,7 @@ export default function CustomerOrdersPage() {
                 : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
             }`}
           >
-            Заказы в работе
+            {t('orderList.ordersInProgress')}
           </button>
           <button
             onClick={() => handleTabChange('done')}
@@ -314,7 +316,7 @@ export default function CustomerOrdersPage() {
                 : 'border-transparent text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300'
             }`}
           >
-            Выполненные заказы
+            {t('orderList.doneOrders')}
           </button>
         </div>
 
@@ -323,7 +325,7 @@ export default function CustomerOrdersPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
               type="text"
-              placeholder="Поиск по названию, области или технологиям..."
+              placeholder={t('orderList.searchPlaceholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="input pl-10"
@@ -351,8 +353,8 @@ export default function CustomerOrdersPage() {
               onChange={(e) => setSortOrder(e.target.value as SortOrder)}
               className="px-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
-              <option value="newest">Сначала новые</option>
-              <option value="oldest">Сначала старые</option>
+              <option value="newest">{t('orderList.sortNewest')}</option>
+              <option value="oldest">{t('orderList.sortOldest')}</option>
             </select>
           </div>
           
@@ -363,13 +365,13 @@ export default function CustomerOrdersPage() {
                 onChange={(e) => setStatusFilter(e.target.value)}
                 className="px-4 py-2 border border-gray-300 rounded-md dark:bg-gray-800 dark:border-gray-600 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="all">Все статусы</option>
-                <option value="На рассмотрении">На рассмотрении</option>
-                <option value="Отклонен">Отклонен</option>
-                <option value="Выполнен">Выполнен</option>
-                <option value="На проверке">На проверке</option>
-                <option value="В процессе">В процессе</option>
-                <option value="Активен">Активен</option>
+                <option value="all">{t('orderList.filterAll')}</option>
+                <option value={t('orderStatus.onReview')}>{t('orderStatus.onReview')}</option>
+                <option value={t('orderStatus.rejected')}>{t('orderStatus.rejected')}</option>
+                <option value={t('orderStatus.done')}>{t('orderStatus.done')}</option>
+                <option value={t('orderStatus.onCheck')}>{t('orderStatus.onCheck')}</option>
+                <option value={t('orderStatus.inProcess')}>{t('orderStatus.inProcess')}</option>
+                <option value={t('orderStatus.active')}>{t('orderStatus.active')}</option>
               </select>
             </div>
           )}
@@ -377,7 +379,7 @@ export default function CustomerOrdersPage() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <div className="text-lg text-gray-600">Загрузка...</div>
+            <div className="text-lg text-gray-600">{t('common.loading')}</div>
           </div>
         ) : displayData && displayData.length > 0 ? (
           <div className="space-y-4">
@@ -399,12 +401,12 @@ export default function CustomerOrdersPage() {
                       {getStatusBadge(order)}
                     </div>
                     <div className="flex flex-col gap-1 text-sm text-gray-500 dark:text-slate-400">
-                      {order.scope && <span>• Область: {order.scope}</span>}
-                      {order.stackS && <span>• Технологии: {order.stackS}</span>}
+                      {order.scope && <span>• {t('orderDetail.scope')}: {order.scope}</span>}
+                      {order.stackS && <span>• {t('register.technologies')}: {order.stackS}</span>}
                       {order.performerId && order.performerName ? (
-                        <span>• Исполнитель: {order.performerName}</span>
+                        <span>• {t('orders.performer')}: {order.performerName}</span>
                       ) : (
-                        order.howReplies !== undefined && <span>• Откликов: {order.howReplies}</span>
+                        order.howReplies !== undefined && <span>• {t('orderDetail.replies')}: {order.howReplies}</span>
                       )}
                     </div>
                   </div>
@@ -414,7 +416,7 @@ export default function CustomerOrdersPage() {
                       className="btn btn-secondary flex items-center"
                     >
                       <Eye className="w-4 h-4 mr-1" />
-                      Просмотр
+                      {t('orderList.view')}
                     </button>
                     
                     {/* Кнопка чата для заказов с исполнителем */}
@@ -426,10 +428,10 @@ export default function CustomerOrdersPage() {
                         <button
                           onClick={() => navigate(`/chat/${chatWithPerformer.id}`)}
                           className="btn btn-primary flex items-center"
-                          title="Открыть чат с исполнителем"
+                          title={t('chats.chat')}
                         >
                           <MessageSquare className="w-4 h-4 mr-1" />
-                          Чат
+                          {t('chats.chat')}
                         </button>
                       ) : null;
                     })()}
@@ -441,7 +443,7 @@ export default function CustomerOrdersPage() {
                         className="btn btn-danger flex items-center"
                       >
                         <Trash2 className="w-4 h-4 mr-1" />
-                        Удалить заказ
+                        {t('orderList.delete')}
                       </button>
                     )}
                     
@@ -450,7 +452,7 @@ export default function CustomerOrdersPage() {
                       <div className="mt-2 px-3 py-2 bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-md">
                         <p className="text-sm text-orange-800 dark:text-orange-200 flex items-center">
                           <Clock className="w-4 h-4 mr-2" />
-                          Заказ находится на рассмотрении у администратора
+                          {t('orders.orderOnReview')}
                         </p>
                       </div>
                     )}
@@ -460,14 +462,14 @@ export default function CustomerOrdersPage() {
                       <div className="mt-2 px-3 py-2 bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-md">
                         <p className="text-sm text-red-800 dark:text-red-200 flex items-center mb-2">
                           <XCircle className="w-4 h-4 mr-2" />
-                          Заказ отклонен администратором
+                          {t('orders.orderRejectedByAdmin')}
                         </p>
                       <button
                           onClick={() => navigate(`/customer/orders/edit/${order.id}`)}
                           className="btn btn-primary text-sm py-1 px-3"
                         >
-                          Редактировать и отправить повторно
-                      </button>
+                          {t('orders.orderUpdatedForReview')}
+                        </button>
                       </div>
                     )}
                   </div>
@@ -486,7 +488,7 @@ export default function CustomerOrdersPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">Заказов не найдено</p>
+            <p className="text-gray-500 text-lg">{t('orderList.noOrdersFound')}</p>
           </div>
         )}
       </div>
@@ -497,22 +499,22 @@ export default function CustomerOrdersPage() {
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
             <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-              Подтверждение удаления
+              {t('orders.deleteOrderConfirm')}
             </h2>
           </div>
           
           <div className="space-y-4">
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
               <p className="text-red-800 dark:text-red-200 font-semibold mb-2">
-                ⚠️ Внимание: заказ будет удален навсегда!
+                ⚠️ {t('common.warning')}: {t('orderList.permanentDeleteWarning')}
               </p>
               <p className="text-red-700 dark:text-red-300 text-sm">
-                Заказ будет полностью удален из базы данных. Это действие нельзя отменить.
+                {t('orderList.permanentDeleteWarning')}
               </p>
             </div>
             
             <p className="text-gray-700 dark:text-slate-300">
-              Вы уверены, что хотите удалить этот заказ?
+              {t('orders.deleteOrderConfirm')}?
             </p>
             
             <div className="flex space-x-2 pt-4">
@@ -524,12 +526,12 @@ export default function CustomerOrdersPage() {
                 {permanentDeleteMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Удаление...
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Да, удалить
+                    {t('common.yes')}, {t('common.delete')}
                   </>
                 )}
               </button>
@@ -538,7 +540,7 @@ export default function CustomerOrdersPage() {
                 disabled={permanentDeleteMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
             </div>
           </div>

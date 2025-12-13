@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { performerApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
@@ -8,32 +9,33 @@ import { ru } from 'date-fns/locale';
 import Modal from '../../components/Modal';
 import type { UpdatePortfolioDto } from '../../types';
 
-// Список специализаций для исполнителей
-const SPECIALIZATIONS = [
-  'Веб-разработка',
-  'Мобильная разработка',
-  'Дизайн',
-  'Графический дизайн',
-  'UX/UI дизайн',
-  'Копирайтинг',
-  'Переводы',
-  'Маркетинг',
-  'SMM',
-  'SEO',
-  'Контент-маркетинг',
-  'Видеомонтаж',
-  'Фотография',
-  'Анимация',
-  'Программирование',
-  'Тестирование ПО',
-  'Администрирование',
-  'Консультации',
-  'Обучение',
-  'Другое'
-];
-
 export default function PerformerPortfolioPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
+
+  // Список специализаций для исполнителей
+  const SPECIALIZATIONS = [
+    t('specializations.web'),
+    t('specializations.mobile'),
+    t('specializations.design'),
+    t('specializations.graphic'),
+    t('specializations.uiux'),
+    t('specializations.copywriting'),
+    t('specializations.translation'),
+    t('specializations.marketing'),
+    t('specializations.smm'),
+    t('specializations.seo'),
+    t('specializations.content'),
+    t('specializations.video'),
+    t('specializations.photography'),
+    t('specializations.animation'),
+    t('specializations.programming'),
+    t('specializations.testing'),
+    t('specializations.admin'),
+    t('specializations.consulting'),
+    t('specializations.training'),
+    t('specializations.other')
+  ];
   const [formData, setFormData] = useState<UpdatePortfolioDto>({
     lastName: '',
     firstName: '',
@@ -113,7 +115,7 @@ export default function PerformerPortfolioPage() {
     if (portfolio) {
       const specializationsStr = portfolio.specializations || '';
       const specializationsArray = specializationsStr 
-        ? specializationsStr.split(',').map(s => s.trim()).filter(s => s.length > 0)
+        ? specializationsStr.split(',').map((s: string) => s.trim()).filter((s: string) => s.length > 0)
         : [];
       
       setSelectedSpecializations(specializationsArray);
@@ -144,7 +146,7 @@ export default function PerformerPortfolioPage() {
       // Инвалидируем и перезагружаем данные
       await queryClient.invalidateQueries({ queryKey: ['performerPortfolio'] });
       await queryClient.refetchQueries({ queryKey: ['performerPortfolio'] });
-      toast.success('Портфолио обновлено');
+      toast.success(t('portfolio.saveSuccess'));
     },
     onError: (error: any) => {
       console.error('Error updating portfolio:', error);
@@ -156,14 +158,14 @@ export default function PerformerPortfolioPage() {
         if (errorData?.errors) {
           // Ошибки валидации от Spring
           const errorMessages = Object.values(errorData.errors).flat().join(', ');
-          toast.error(`Ошибка валидации: ${errorMessages}`);
+          toast.error(`${t('errors.validation')}: ${errorMessages}`);
         } else if (errorData?.message) {
           toast.error(errorData.message);
         } else {
-          toast.error('Ошибка валидации данных. Проверьте правильность заполнения полей.');
+          toast.error(t('errors.validation'));
         }
       } else {
-        toast.error(error.response?.data?.message || 'Ошибка при обновлении портфолио');
+        toast.error(error.response?.data?.message || t('portfolio.saveError'));
       }
     },
   });
@@ -174,38 +176,38 @@ export default function PerformerPortfolioPage() {
 
     // Last name validation
     if (!formData.lastName || formData.lastName.trim() === '') {
-      newErrors.lastName = 'Фамилия обязательна для заполнения';
+      newErrors.lastName = t('validationMessages.lastNameRequired');
     } else if (formData.lastName.trim().length < 2) {
-      newErrors.lastName = 'Фамилия должна содержать минимум 2 символа';
+      newErrors.lastName = t('validationMessages.lastNameMinLength');
     }
 
     // First name validation
     if (!formData.firstName || formData.firstName.trim() === '') {
-      newErrors.firstName = 'Имя обязательно для заполнения';
+      newErrors.firstName = t('validationMessages.firstNameRequired');
     } else if (formData.firstName.trim().length < 2) {
-      newErrors.firstName = 'Имя должно содержать минимум 2 символа';
+      newErrors.firstName = t('validationMessages.firstNameMinLength');
     }
 
     // Middle name validation (optional)
     if (formData.middleName && formData.middleName.trim().length > 0 && formData.middleName.trim().length < 2) {
-      newErrors.middleName = 'Отчество должно содержать минимум 2 символа';
+      newErrors.middleName = t('validationMessages.middleNameMinLength');
     }
 
     // Email validation (readonly, but check anyway)
     if (!formData.email || formData.email.trim() === '') {
-      newErrors.email = 'Email обязателен для заполнения';
+      newErrors.email = t('validationMessages.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Введите корректный email адрес';
+      newErrors.email = t('validationMessages.emailInvalid');
     }
 
     // Phone validation
     if (formData.phone && !/^[\+]?[0-9\s\-\(\)]{10,}$/.test(formData.phone)) {
-      newErrors.phone = 'Введите корректный номер телефона';
+      newErrors.phone = t('validationMessages.phoneInvalid');
     }
 
     // Specializations validation
     if (!formData.specializations || formData.specializations.trim() === '' || selectedSpecializations.length === 0) {
-      newErrors.specializations = 'Выберите хотя бы одну специализацию';
+      newErrors.specializations = t('validationMessages.specializationsRequired');
     }
 
     setErrors(newErrors);
@@ -216,7 +218,7 @@ export default function PerformerPortfolioPage() {
     e.preventDefault();
     
     if (!validateFormData()) {
-      toast.error('Пожалуйста, исправьте ошибки в форме');
+      toast.error(t('register.fixErrors'));
       return;
     }
     
@@ -236,26 +238,26 @@ export default function PerformerPortfolioPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Загрузка...</div>
+        <div className="text-lg text-gray-600">{t('common.loading')}</div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Мое портфолио</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('portfolio.title')}</h1>
 
       <div className="card">
         <div className="mb-4 p-3 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg">
           <p className="text-sm text-gray-600 dark:text-slate-300">
-            <span className="text-red-500">*</span> — обязательные поля для заполнения
+            <span className="text-red-500">*</span> — {t('register.requiredFields')}
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Фамилия <span className="text-red-500">*</span>
+              {t('register.lastName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -268,7 +270,7 @@ export default function PerformerPortfolioPage() {
                 }
               }}
               className={`input ${errors.lastName ? 'border-red-500 focus:border-red-500' : ''}`}
-              placeholder="Введите вашу фамилию"
+              placeholder={t('register.enterLastName')}
             />
             {errors.lastName && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -280,7 +282,7 @@ export default function PerformerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Имя <span className="text-red-500">*</span>
+              {t('register.firstName')} <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -293,7 +295,7 @@ export default function PerformerPortfolioPage() {
                 }
               }}
               className={`input ${errors.firstName ? 'border-red-500 focus:border-red-500' : ''}`}
-              placeholder="Введите ваше имя"
+              placeholder={t('register.enterFirstName')}
             />
             {errors.firstName && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -305,7 +307,7 @@ export default function PerformerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <User className="w-4 h-4 inline mr-2" />
-              Отчество
+              {t('register.middleName')}
             </label>
             <input
               type="text"
@@ -317,7 +319,7 @@ export default function PerformerPortfolioPage() {
                 }
               }}
               className={`input ${errors.middleName ? 'border-red-500 focus:border-red-500' : ''}`}
-              placeholder="Введите ваше отчество"
+              placeholder={t('register.enterMiddleName')}
             />
             {errors.middleName && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -339,7 +341,7 @@ export default function PerformerPortfolioPage() {
               disabled
               className="input bg-gray-100 cursor-not-allowed"
             />
-            <p className="mt-1 text-xs text-gray-500">Email нельзя изменить</p>
+            <p className="mt-1 text-xs text-gray-500">{t('portfolio.emailCannotChange')}</p>
             {errors.email && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
                 <AlertCircle className="w-4 h-4 mr-1" />
@@ -350,7 +352,7 @@ export default function PerformerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <Phone className="w-4 h-4 inline mr-2" />
-              Телефон
+              {t('register.phone')}
             </label>
             <input
               type="tel"
@@ -362,7 +364,7 @@ export default function PerformerPortfolioPage() {
                 }
               }}
               className={`input ${errors.phone ? 'border-red-500 focus:border-red-500' : ''}`}
-              placeholder="+375 (29) 123-45-67"
+              placeholder={t('register.phonePlaceholder')}
             />
             {errors.phone && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
@@ -374,23 +376,23 @@ export default function PerformerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <MapPin className="w-4 h-4 inline mr-2" />
-              Город/Страна
+              {t('register.townCountry')}
             </label>
             <input
               type="text"
               value={formData.townCountry}
               onChange={(e) => setFormData({ ...formData, townCountry: e.target.value })}
               className="input"
-              placeholder="Минск, Беларусь"
+              placeholder={t('register.townCountryPlaceholder')}
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <Briefcase className="w-4 h-4 inline mr-2" />
-              Специализации <span className="text-red-500">*</span>
+              {t('register.specializations')} <span className="text-red-500">*</span>
             </label>
             <div className={`border rounded-lg p-3 max-h-48 overflow-y-auto ${errors.specializations ? 'border-red-500' : 'border-gray-300'}`}>
-              <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">Выберите одну или несколько специализаций:</p>
+              <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">{t('register.selectSpecializations')}:</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {SPECIALIZATIONS.map((spec) => (
                   <label key={spec} className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
@@ -408,7 +410,7 @@ export default function PerformerPortfolioPage() {
             {selectedSpecializations.length > 0 && (
               <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded">
                 <p className="text-sm text-blue-800">
-                  <strong>Выбрано:</strong> {selectedSpecializations.join(', ')}
+                  <strong>{t('register.selected')}:</strong> {selectedSpecializations.join(', ')}
                 </p>
               </div>
             )}
@@ -422,38 +424,39 @@ export default function PerformerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <Clock className="w-4 h-4 inline mr-2" />
-              Занятость
+              {t('register.employment')}
             </label>
             <select
               value={formData.employment}
               onChange={(e) => setFormData({ ...formData, employment: e.target.value })}
               className="input"
             >
-              <option value="">Выберите доступность для работы</option>
-              <option value="Полный день">Полный день (8+ часов в день)</option>
-              <option value="Неполный день">Неполный день (4-6 часов в день)</option>
-              <option value="Несколько часов в день">Несколько часов в день (1-3 часа)</option>
-              <option value="Выходные дни">Только выходные дни</option>
-              <option value="Вечернее время">Вечернее время</option>
-              <option value="По договоренности">По договоренности</option>
+              <option value="">{t('register.selectEmployment')}</option>
+              <option value="Полный день">{t('employment.fullDay')}</option>
+              <option value="Неполный день">{t('employment.partTime')}</option>
+              <option value="Несколько часов в день">{t('employment.fewHours')}</option>
+              <option value="Выходные дни">{t('employment.weekends')}</option>
+              <option value="Вечернее время">{t('employment.evening')}</option>
+              <option value="По договоренности">{t('employment.negotiable')}</option>
             </select>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <Award className="w-4 h-4 inline mr-2" />
-              Опыт работы
+              {t('register.experience')}
             </label>
             <textarea
               value={formData.experience}
               onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
               className="input"
               rows={5}
+              placeholder={t('register.experiencePlaceholder')}
             />
           </div>
           <div className="flex justify-end">
             <button type="submit" className="btn btn-primary flex items-center">
               <Save className="w-5 h-5 mr-2" />
-              Обновить портфолио
+              {t('portfolio.update')}
             </button>
           </div>
         </form>
@@ -463,13 +466,13 @@ export default function PerformerPortfolioPage() {
       <div className="card">
         <div className="flex items-center mb-6">
           <Star className="w-6 h-6 text-yellow-500 mr-3" />
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Мои отзывы</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('reviews.myReviews')}</h2>
         </div>
 
         {isLoadingReviews ? (
           <div className="text-center py-12">
             <Loader2 className="w-8 h-8 animate-spin mx-auto text-gray-400 mb-2" />
-            <p className="text-gray-600 dark:text-slate-400">Загрузка отзывов...</p>
+            <p className="text-gray-600 dark:text-slate-400">{t('reviews.loading')}</p>
           </div>
         ) : reviewsData?.reviews && reviewsData.reviews.length > 0 ? (
           <div className="space-y-4">
@@ -478,7 +481,7 @@ export default function PerformerPortfolioPage() {
                 <div className="flex items-start justify-between mb-2">
                   <div>
                     <h3 className="font-semibold text-lg">
-                      {review.text || 'Отзыв без текста'}
+                      {review.text || t('reviews.noText')}
                     </h3>
                   </div>
                   <div className="flex items-center">
@@ -514,9 +517,9 @@ export default function PerformerPortfolioPage() {
         ) : (
           <div className="text-center py-12">
             <Star className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg mb-2">У вас пока нет отзывов</p>
+            <p className="text-gray-500 text-lg mb-2">{t('reviews.noReviews')}</p>
             <p className="text-gray-400 text-sm">
-              Отзывы от заказчиков будут отображаться здесь после завершения заказов
+              {t('reviews.reviewsWillAppear')}
             </p>
           </div>
         )}
@@ -527,12 +530,12 @@ export default function PerformerPortfolioPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-yellow-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение обновления</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('portfolio.confirmUpdate')}</h2>
           </div>
           
           <div className="space-y-4">
             <p className="text-gray-700 dark:text-slate-300">
-              Вы уверены, что хотите обновить портфолио? Все изменения будут сохранены.
+              {t('portfolio.confirmUpdateMessage')}
             </p>
             
             <div className="flex space-x-2 pt-4">
@@ -544,12 +547,12 @@ export default function PerformerPortfolioPage() {
                 {updateMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Обновление...
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
                     <Save className="w-4 h-4 mr-2" />
-                    Да, обновить
+                    {t('common.yes')}, {t('portfolio.update')}
                   </>
                 )}
               </button>
@@ -558,7 +561,7 @@ export default function PerformerPortfolioPage() {
                 disabled={updateMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
             </div>
           </div>

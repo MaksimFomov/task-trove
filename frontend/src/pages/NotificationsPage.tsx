@@ -1,27 +1,36 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationApi } from '../services/api';
 import { Bell, Check, CheckCheck, Trash2, AlertTriangle, Loader2 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import Modal from '../components/Modal';
-// Форматирование даты без внешних библиотек
+import { format } from 'date-fns';
+import { ru, enUS, uk, be, kk, hy, az, ka, uz } from 'date-fns/locale';
+import i18n from '../i18n/config';
+
+const getLocale = () => {
+  const lang = i18n.language;
+  switch (lang) {
+    case 'ru': return ru;
+    case 'uk': return uk;
+    case 'be': return be;
+    case 'kk': return kk;
+    case 'hy': return hy;
+    case 'az': return az;
+    case 'ka': return ka;
+    case 'uz': return uz;
+    default: return enUS;
+  }
+};
+
 const formatDate = (dateString: string) => {
   const date = new Date(dateString);
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
-  const hours = date.getHours().toString().padStart(2, '0');
-  const minutes = date.getMinutes().toString().padStart(2, '0');
-  
-  const months = [
-    'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-    'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'
-  ];
-  
-  return `${day} ${months[date.getMonth()]} ${year}, ${hours}:${minutes}`;
+  return format(date, 'd MMMM yyyy, HH:mm', { locale: getLocale() });
 };
 
 export default function NotificationsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -33,10 +42,10 @@ export default function NotificationsPage() {
     mutationFn: (id: number) => notificationApi.markAsRead(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      toast.success('Уведомление отмечено как прочитанное');
+      toast.success(t('notifications.markedAsRead'));
     },
     onError: () => {
-      toast.error('Ошибка при обновлении уведомления');
+      toast.error(t('errors.generic'));
     },
   });
 
@@ -45,10 +54,10 @@ export default function NotificationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['notifications', 'count'] });
-      toast.success('Все уведомления отмечены как прочитанные');
+      toast.success(t('notifications.allMarkedAsRead'));
     },
     onError: () => {
-      toast.error('Ошибка при обновлении уведомлений');
+      toast.error(t('errors.generic'));
     },
   });
 
@@ -59,11 +68,11 @@ export default function NotificationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['notifications', 'count'] });
-      toast.success('Все уведомления удалены');
+      toast.success(t('notifications.allDeleted'));
       setShowDeleteConfirm(false);
     },
     onError: () => {
-      toast.error('Ошибка при удалении уведомлений');
+      toast.error(t('errors.generic'));
     },
   });
 
@@ -87,7 +96,7 @@ export default function NotificationsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg text-gray-600">Загрузка...</div>
+        <div className="text-lg text-gray-600">{t('common.loading')}</div>
       </div>
     );
   }
@@ -100,10 +109,10 @@ export default function NotificationsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Bell className="w-8 h-8 text-primary-600" />
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Уведомления</h1>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('notifications.title')}</h1>
           {unreadCount > 0 && (
             <span className="px-3 py-1 text-sm font-medium bg-red-500 text-white rounded-full">
-              {unreadCount} непрочитанных
+              {unreadCount} {t('notifications.unread')}
             </span>
           )}
         </div>
@@ -117,12 +126,12 @@ export default function NotificationsPage() {
               {markAllAsReadMutation.isPending ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Отметка...
+                  {t('common.loading')}
                 </>
               ) : (
                 <>
                   <CheckCheck className="w-4 h-4 mr-2" />
-                  Отметить все как прочитанные
+                  {t('notifications.markAllAsRead')}
                 </>
               )}
             </button>
@@ -133,7 +142,7 @@ export default function NotificationsPage() {
               className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
             >
               <Trash2 className="w-4 h-4 mr-2" />
-              Очистить список
+              {t('notifications.clearAll')}
             </button>
           )}
         </div>
@@ -160,7 +169,7 @@ export default function NotificationsPage() {
                       <div className="flex items-center space-x-4 text-sm text-gray-500">
                         <span>{formatDate(notification.createdAt)}</span>
                         {notification.relatedOrderId && (
-                          <span>Заказ #{notification.relatedOrderId}</span>
+                          <span>{t('notifications.order')} #{notification.relatedOrderId}</span>
                         )}
                       </div>
                     </div>
@@ -170,7 +179,7 @@ export default function NotificationsPage() {
                       onClick={() => markAsReadMutation.mutate(notification.id)}
                       disabled={markAsReadMutation.isPending}
                       className="ml-4 p-2 text-gray-400 hover:text-primary-600 transition-colors disabled:opacity-50"
-                      title="Отметить как прочитанное"
+                      title={t('notifications.markAsRead')}
                     >
                       {markAsReadMutation.isPending ? (
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -186,7 +195,7 @@ export default function NotificationsPage() {
         ) : (
           <div className="text-center py-12">
             <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">Уведомлений пока нет</p>
+            <p className="text-gray-500 text-lg">{t('notifications.noNotifications')}</p>
           </div>
         )}
       </div>
@@ -196,21 +205,21 @@ export default function NotificationsPage() {
         <div className="card max-w-md w-full mx-4">
           <div className="flex items-center mb-4">
             <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение удаления</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('notifications.deleteAllConfirm')}</h2>
           </div>
           
           <div className="space-y-4">
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-red-800 font-semibold mb-2">
-                ⚠️ Внимание!
+                ⚠️ {t('common.warning')}!
               </p>
               <p className="text-red-700 text-sm">
-                Все уведомления будут удалены без возможности восстановления.
+                {t('notifications.deleteAllMessage')}
               </p>
             </div>
             
             <p className="text-gray-700 dark:text-slate-300">
-              Вы уверены, что хотите удалить все уведомления?
+              {t('notifications.deleteAllConfirm')}?
             </p>
             
             <div className="flex space-x-2 pt-4">
@@ -222,12 +231,12 @@ export default function NotificationsPage() {
                 {deleteAllMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Удаление...
+                    {t('common.loading')}
                   </>
                 ) : (
                   <>
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Да, удалить все
+                    {t('common.yes')}, {t('common.delete')} {t('common.all')}
                   </>
                 )}
               </button>
@@ -236,7 +245,7 @@ export default function NotificationsPage() {
                 disabled={deleteAllMutation.isPending}
                 className="btn btn-secondary flex-1"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
             </div>
           </div>
