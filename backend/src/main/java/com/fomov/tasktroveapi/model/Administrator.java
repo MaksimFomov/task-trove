@@ -10,7 +10,6 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "administrators", indexes = {
-    @Index(name = "idx_administrators_email", columnList = "email"),
     @Index(name = "idx_administrators_account_id", columnList = "account_id")
 })
 @Getter
@@ -32,22 +31,15 @@ public class Administrator {
     @Column(nullable = false, length = 100)
     private String name;
     
-    @Column(nullable = false, unique = true, length = 255)
-    private String email;
-    
-    @OneToMany(mappedBy = "administrator", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
-    @ToString.Exclude
-    private List<Chat> chats = new ArrayList<>();
-    
-    // Методы для работы со связанными сущностями
-    public void addChat(Chat chat) {
-        chats.add(chat);
-        chat.setAdministrator(this);
+    // Email теперь берется из связанного Account
+    public String getEmail() {
+        return account != null ? account.getEmail() : null;
     }
     
-    public void removeChat(Chat chat) {
-        chats.remove(chat);
-        chat.setAdministrator(null);
+    @Deprecated
+    public void setEmail(String email) {
+        // Email хранится в Account, этот метод оставлен для обратной совместимости
+        // Use account.setEmail() instead
     }
 
     @Override

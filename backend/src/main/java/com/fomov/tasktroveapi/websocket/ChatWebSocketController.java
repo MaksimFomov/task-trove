@@ -1,7 +1,9 @@
 package com.fomov.tasktroveapi.websocket;
 
+import com.fomov.tasktroveapi.model.Account;
 import com.fomov.tasktroveapi.model.Chat;
 import com.fomov.tasktroveapi.model.Message;
+import com.fomov.tasktroveapi.repository.AccountRepository;
 import com.fomov.tasktroveapi.service.ChatAccessService;
 import com.fomov.tasktroveapi.service.ChatService;
 import com.fomov.tasktroveapi.service.MessageService;
@@ -25,16 +27,19 @@ public class ChatWebSocketController {
     private final ChatService chatService;
     private final ChatAccessService chatAccessService;
     private final SimpMessagingTemplate messagingTemplate;
+    private final AccountRepository accountRepository;
 
     public ChatWebSocketController(
             MessageService messageService, 
             ChatService chatService,
             ChatAccessService chatAccessService,
-            SimpMessagingTemplate messagingTemplate) {
+            SimpMessagingTemplate messagingTemplate,
+            AccountRepository accountRepository) {
         this.messageService = messageService;
         this.chatService = chatService;
         this.chatAccessService = chatAccessService;
         this.messagingTemplate = messagingTemplate;
+        this.accountRepository = accountRepository;
     }
 
     @MessageMapping("/chat.sendMessage")
@@ -108,11 +113,15 @@ public class ChatWebSocketController {
         // Получаем имя отправителя
         String senderName = getSenderName(chat, userId, userRole);
         
+        // Получаем Account для отправителя
+        Account senderAccount = accountRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Account not found for userId: " + userId));
+        
         // Создаем и сохраняем сообщение
         Message message = new Message();
         message.setText(chatMessage.getContent());
         message.setChat(chat);
-        message.setSenderId(userId);
+        message.setSender(senderAccount);
         message.setSenderType(userRole);
         message.setCreated(OffsetDateTime.now());
         

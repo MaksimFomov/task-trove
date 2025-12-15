@@ -36,17 +36,8 @@ public class Reply {
     @ToString.Exclude
     private Performer performer;
     
-    @Column(name = "is_done_this_task", nullable = false)
-    private Boolean isDoneThisTask = false;
-    
-    @Column(name = "is_on_customer", nullable = false)
-    private Boolean isOnCustomer = false;
-    
-    @Column(name = "donned", nullable = false)
-    private Boolean donned = false;
-    
-    @Column(name = "work_bind", nullable = false)
-    private Integer workBind = 0;
+    @Column(name = "is_approved_by_customer", nullable = false)
+    private Boolean isApprovedByCustomer = false;
     
     // Геттеры для обратной совместимости
     public String getOrderName() {

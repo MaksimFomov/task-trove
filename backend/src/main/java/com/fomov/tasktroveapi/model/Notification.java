@@ -23,8 +23,11 @@ public class Notification {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
     
-    @Column(name = "account_id", nullable = false)
-    private Integer accountId; // ID пользователя (Account.id)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false,
+                foreignKey = @ForeignKey(name = "fk_notifications_account"))
+    @ToString.Exclude
+    private Account account;
     
     @Column(name = "user_role", nullable = false, length = 20)
     private String userRole; // "Customer", "Performer", "Administrator"
@@ -63,14 +66,26 @@ public class Notification {
         }
     }
     
-    public Notification(Integer accountId, String userRole, String type, String title, String message) {
-        this.accountId = accountId;
+    public Notification(Account account, String userRole, String type, String title, String message) {
+        this.account = account;
         this.userRole = userRole;
         this.type = type;
         this.title = title;
         this.message = message;
         this.createdAt = OffsetDateTime.now();
         this.isRead = false;
+    }
+    
+    // Геттер для обратной совместимости
+    @Deprecated
+    public Integer getAccountId() {
+        return account != null ? account.getId() : null;
+    }
+    
+    @Deprecated
+    public void setAccountId(Integer accountId) {
+        // This method is kept for backward compatibility but should not be used
+        // Use setAccount() instead
     }
 
     @Override

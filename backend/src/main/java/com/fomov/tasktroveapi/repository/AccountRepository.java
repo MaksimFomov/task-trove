@@ -10,17 +10,27 @@ import java.util.Optional;
 
 @Repository
 public interface AccountRepository extends JpaRepository<Account, Integer> {
-    Optional<Account> findByLogin(String login);
     Optional<Account> findByEmail(String email);
     
-    @Query("SELECT a FROM Account a LEFT JOIN FETCH a.role WHERE a.login = :login")
-    Optional<Account> findByLoginWithRole(@Param("login") String login);
+    @Query("SELECT a FROM Account a LEFT JOIN FETCH a.role WHERE a.email = :email")
+    Optional<Account> findByEmailWithRole(@Param("email") String email);
     
     @Query("SELECT a FROM Account a LEFT JOIN FETCH a.role WHERE a.id = :id")
     Optional<Account> findByIdWithRole(@Param("id") Integer id);
     
     @Query("SELECT a FROM Account a LEFT JOIN FETCH a.role")
     java.util.List<Account> findAllWithRole();
+    
+    // Deprecated: Use findByEmail instead
+    @Deprecated
+    default Optional<Account> findByLogin(String login) {
+        return findByEmail(login);
+    }
+    
+    @Deprecated
+    default Optional<Account> findByLoginWithRole(String login) {
+        return findByEmailWithRole(login);
+    }
 }
 
 

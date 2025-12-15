@@ -17,7 +17,7 @@ import java.util.Objects;
     @Index(name = "idx_orders_customer_id", columnList = "customer_id"),
     @Index(name = "idx_orders_performer_id", columnList = "performer_id"),
     @Index(name = "idx_orders_publication_time", columnList = "publication_time"),
-    @Index(name = "idx_orders_status", columnList = "is_actived,is_in_process,is_on_check,is_done,is_on_review,is_rejected"),
+    @Index(name = "idx_orders_status", columnList = "status"),
     @Index(name = "idx_orders_title", columnList = "title")
 })
 @Getter
@@ -54,23 +54,9 @@ public class Orders {
     @ToString.Exclude
     private Performer performer;
     
-    @Column(name = "is_actived", nullable = false)
-    private Boolean isActived = true;
-    
-    @Column(name = "is_in_process", nullable = false)
-    private Boolean isInProcess = false;
-    
-    @Column(name = "is_on_check", nullable = false)
-    private Boolean isOnCheck = false;
-    
-    @Column(name = "is_done", nullable = false)
-    private Boolean isDone = false;
-    
-    @Column(name = "is_on_review", nullable = false)
-    private Boolean isOnReview = false;
-    
-    @Column(name = "is_rejected", nullable = false)
-    private Boolean isRejected = false;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, length = 20)
+    private OrderStatus status = OrderStatus.ACTIVE;
     
     @Column(name = "is_deleted_by_customer", nullable = false)
     private Boolean isDeletedByCustomer = false;
@@ -84,11 +70,11 @@ public class Orders {
     @Column(name = "end_time")
     private OffsetDateTime endTime;
     
-    @Column(name = "document_name", length = 255)
-    private String documentName;
+    @Column(name = "budget", precision = 15, scale = 2)
+    private java.math.BigDecimal budget;
     
-    @Column(name = "result_link", length = 500)
-    private String resultLink;
+    @Column(name = "is_spec_sent", nullable = false)
+    private Boolean isSpecSent = false;
     
     @Column(name = "reply_bind", nullable = false)
     private Integer replyBind = 0;
@@ -106,23 +92,14 @@ public class Orders {
         if (this.replyBind == null) {
             this.replyBind = 0;
         }
-        if (this.isActived == null) {
-            this.isActived = true;
-        }
-        if (this.isInProcess == null) {
-            this.isInProcess = false;
-        }
-        if (this.isOnCheck == null) {
-            this.isOnCheck = false;
-        }
-        if (this.isDone == null) {
-            this.isDone = false;
-        }
-        if (this.isOnReview == null) {
-            this.isOnReview = false;
+        if (this.status == null) {
+            this.status = OrderStatus.ACTIVE;
         }
         if (this.isDeletedByCustomer == null) {
             this.isDeletedByCustomer = false;
+        }
+        if (this.isSpecSent == null) {
+            this.isSpecSent = false;
         }
     }
     
@@ -134,13 +111,40 @@ public class Orders {
         this.performer = performer;
         this.publicationTime = OffsetDateTime.now();
         this.replyBind = 0;
-        this.isActived = true;
-        this.isInProcess = false;
-        this.isOnCheck = false;
-        this.isDone = false;
-        this.isOnReview = false;
-        this.isRejected = false;
+        this.status = OrderStatus.ACTIVE;
         this.isDeletedByCustomer = false;
+        this.isSpecSent = false;
+    }
+    
+    // Helper methods for backward compatibility
+    @Deprecated
+    public boolean getIsActived() {
+        return status == OrderStatus.ACTIVE;
+    }
+    
+    @Deprecated
+    public boolean getIsInProcess() {
+        return status == OrderStatus.IN_PROCESS;
+    }
+    
+    @Deprecated
+    public boolean getIsOnCheck() {
+        return status == OrderStatus.ON_CHECK;
+    }
+    
+    @Deprecated
+    public boolean getIsDone() {
+        return status == OrderStatus.DONE;
+    }
+    
+    @Deprecated
+    public boolean getIsOnReview() {
+        return status == OrderStatus.ON_REVIEW;
+    }
+    
+    @Deprecated
+    public boolean getIsRejected() {
+        return status == OrderStatus.REJECTED;
     }
     
     // Методы для работы со связанными сущностями

@@ -8,25 +8,14 @@ public class UpdateReplyDto {
     @JsonProperty("id")
     private Integer id;
     
+    // Флаг для завершения задачи исполнителем (устанавливает Order.status = ON_CHECK)
     @JsonProperty("isDoneThisTask")
     private Boolean isDoneThisTask;
-    
-    @JsonProperty("isOnCustomer")
-    private Boolean isOnCustomer;
-    
-    @JsonProperty("donned")
-    private Boolean donned;
 
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 
     public Boolean getIsDoneThisTask() { return isDoneThisTask; }
     public void setIsDoneThisTask(Boolean isDoneThisTask) { this.isDoneThisTask = isDoneThisTask; }
-
-    public Boolean getIsOnCustomer() { return isOnCustomer; }
-    public void setIsOnCustomer(Boolean isOnCustomer) { this.isOnCustomer = isOnCustomer; }
-
-    public Boolean getDonned() { return donned; }
-    public void setDonned(Boolean donned) { this.donned = donned; }
 }
 

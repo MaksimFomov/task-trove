@@ -370,7 +370,7 @@ export default function CustomerPortfolioPage() {
               }}
               className={`input ${errors.description ? 'border-red-500 focus:border-red-500' : ''}`}
               rows={5}
-              placeholder={t('register.descriptionPlaceholder')}
+              placeholder={t('register.enterDescription')}
             />
             {errors.description && (
               <p className="mt-1 text-sm text-red-600 flex items-center">

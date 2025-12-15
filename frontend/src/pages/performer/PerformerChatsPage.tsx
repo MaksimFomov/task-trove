@@ -37,7 +37,7 @@ export default function PerformerChatsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ['performerChats'],
     queryFn: () => performerApi.getChats().then((res) => res.data.chats),
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   useEffect(() => {
@@ -62,7 +62,8 @@ export default function PerformerChatsPage() {
   });
 
   const canDeleteChat = (chat: any) => {
-    return chat.orderIsDone === true || chat.orderPerformerId == null;
+    // Чат можно удалить в любой момент (удаление только у себя)
+    return true;
   };
 
   const handleDeleteClick = (chatId: number) => {
@@ -182,11 +183,13 @@ export default function PerformerChatsPage() {
                       </div>
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">
-                          {chat.orderTitle || chat.roomName}
+                          {chat.customerName || t('orderDetail.notSpecified')}
                         </h3>
-                        <p className="text-sm text-gray-600">
-                          {t('orders.customer')}: {chat.customerName || t('orderDetail.notSpecified')}
+                        {chat.orderTitle && (
+                          <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
+                            {chat.orderTitle}
                         </p>
+                        )}
                         {renderLastMessageTime(chat)}
                       </div>
                     </div>

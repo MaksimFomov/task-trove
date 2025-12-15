@@ -61,6 +61,7 @@ public class AdministratorController {
     private final WorkExperienceService workExperienceService;
     private final WorkExperienceMapper workExperienceMapper;
     private final NotificationService notificationService;
+    private final com.fomov.tasktroveapi.service.EmailVerificationService emailVerificationService;
 
     public AdministratorController(AdministratorService service, 
                                  PortfolioService portfolioService, 
@@ -78,7 +79,8 @@ public class AdministratorController {
                                  PerformerService performerService,
                                  WorkExperienceService workExperienceService,
                                  WorkExperienceMapper workExperienceMapper,
-                                 NotificationService notificationService) {
+                                 NotificationService notificationService,
+                                 com.fomov.tasktroveapi.service.EmailVerificationService emailVerificationService) {
         this.service = service;
         this.portfolioService = portfolioService;
         this.accountRepository = accountRepository;
@@ -96,6 +98,7 @@ public class AdministratorController {
         this.workExperienceService = workExperienceService;
         this.workExperienceMapper = workExperienceMapper;
         this.notificationService = notificationService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @GetMapping
@@ -196,7 +199,6 @@ public class AdministratorController {
                 .map(account -> {
                     Map<String, Object> userMap = new HashMap<>();
                     userMap.put("id", account.getId());
-                    userMap.put("login", account.getLogin());
                     userMap.put("email", account.getEmail());
                     userMap.put("isActive", account.getIsActive());
                     // Явно добавляем роль, так как она игнорируется @JsonIgnore
@@ -223,7 +225,6 @@ public class AdministratorController {
         Account account = accountOpt.get();
         Map<String, Object> accountData = new HashMap<>();
         accountData.put("id", account.getId());
-        accountData.put("login", account.getLogin());
         accountData.put("email", account.getEmail());
         accountData.put("isActive", account.getIsActive());
         // Явно добавляем роль, так как она игнорируется @JsonIgnore
@@ -291,6 +292,35 @@ public class AdministratorController {
         }
     }
 
+    @PostMapping("/users/send-admin-verification")
+    public ResponseEntity<?> sendAdminVerification(@RequestBody Map<String, String> request) {
+        try {
+            String email = request.get("email");
+            if (email == null || email.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Email обязателен"));
+            }
+
+            // Нормализуем email
+            String normalizedEmail = email.trim().toLowerCase();
+            
+            // Проверяем, не занят ли email
+            if (accountRepository.findByEmail(normalizedEmail).isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Пользователь с таким email уже зарегистрирован"));
+            }
+
+            try {
+                emailVerificationService.sendVerificationCode(normalizedEmail);
+                return ResponseEntity.ok(Map.of("success", true, "message", "Код подтверждения отправлен на почту"));
+            } catch (Exception e) {
+                logger.error("Failed to send verification code", e);
+                return ResponseEntity.status(500).body(Map.of("success", false, "error", "Не удалось отправить код подтверждения"));
+            }
+        } catch (Exception e) {
+            logger.error("Error in sendAdminVerification", e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Внутренняя ошибка сервера"));
+        }
+    }
+
     @PostMapping("/users/create-administrator")
     @Transactional
     public ResponseEntity<?> createAdministrator(@RequestBody Map<String, String> dto) {
@@ -303,32 +333,41 @@ public class AdministratorController {
                 ));
             }
             
-            String login = dto.get("login");
+            String email = dto.get("email");
             String password = dto.get("password");
             String name = dto.get("name");
+            String verificationCode = dto.get("verificationCode");
             
-            if (login == null || password == null || name == null) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Login, password and name are required"));
+            if (email == null || password == null || name == null) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Email, password and name are required"));
             }
             
-            String normalizedLogin = login.trim().toLowerCase();
+            String normalizedEmail = email.trim().toLowerCase();
             
-            // Проверяем, существует ли логин
-            if (accountRepository.findByLogin(normalizedLogin).isPresent()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Логин уже существует"));
+            // Проверяем, существует ли email
+            if (accountRepository.findByEmail(normalizedEmail).isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Пользователь с таким email уже существует"));
             }
             
-            // Проверяем, существует ли email (логин используется как email)
-            if (accountRepository.findByEmail(normalizedLogin).isPresent()) {
-                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Логин уже существует"));
+            // Проверяем код подтверждения email
+            if (verificationCode == null || verificationCode.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Код подтверждения email обязателен"));
             }
+            
+            // Проверяем код через EmailVerificationService
+            boolean isValidCode = emailVerificationService.verifyCode(normalizedEmail, verificationCode.trim());
+            if (!isValidCode) {
+                return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Неверный код подтверждения или код истек"));
+            }
+            
+            // Удаляем код после успешной проверки
+            emailVerificationService.removeCode(normalizedEmail);
             
             Role adminRole = roleRepository.findByName("Administrator")
                     .orElseThrow(() -> new RuntimeException("Administrator role not found"));
             
             Account account = new Account();
-            account.setLogin(normalizedLogin);
-            account.setEmail(normalizedLogin); // Используем логин как email
+            account.setEmail(normalizedEmail);
             account.setPassword(passwordEncoder.encode(password));
             account.setRole(adminRole);
             account.setIsActive(true);
@@ -337,7 +376,6 @@ public class AdministratorController {
             Administrator administrator = new Administrator();
             administrator.setAccount(account);
             administrator.setName(name);
-            administrator.setEmail(normalizedLogin); // Используем логин как email
             administrator = administratorRepository.save(administrator);
             
             return ResponseEntity.ok(Map.of("success", true, "message", "Administrator created successfully", "id", administrator.getId()));
@@ -385,30 +423,13 @@ public class AdministratorController {
                 }
             }
             
-            // Update email/login if provided
-            if ("Administrator".equals(targetUserRole) || "SuperAdministrator".equals(targetUserRole)) {
-                // Для администраторов обновляем login
-                if (updates.containsKey("login")) {
-                    String newLogin = ((String) updates.get("login")).trim().toLowerCase();
-                    if (!newLogin.equals(account.getLogin()) && accountRepository.findByLogin(newLogin).isPresent()) {
-                        return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Логин уже существует"));
-                    }
-                    if (!newLogin.equals(account.getEmail()) && accountRepository.findByEmail(newLogin).isPresent()) {
-                        return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Логин уже существует"));
-                    }
-                    account.setLogin(newLogin);
-                    account.setEmail(newLogin); // Логин используется как email
-                }
-            } else {
-                // Для остальных обновляем email
+            // Update email if provided
             if (updates.containsKey("email")) {
                 String newEmail = ((String) updates.get("email")).trim().toLowerCase();
                 if (!newEmail.equals(account.getEmail()) && accountRepository.findByEmail(newEmail).isPresent()) {
                     return ResponseEntity.badRequest().body(Map.of("success", false, "error", "Email already exists"));
                 }
                 account.setEmail(newEmail);
-                account.setLogin(newEmail);
-                }
             }
             
             // Update password if provided
@@ -442,15 +463,8 @@ public class AdministratorController {
                     if (updates.containsKey("middleName")) {
                         customer.setMiddleName((String) updates.get("middleName"));
                     }
-                    if (updates.containsKey("phone")) {
-                        customer.setPhone((String) updates.get("phone"));
-                    }
-                    if (updates.containsKey("description")) {
-                        customer.setDescription((String) updates.get("description"));
-                    }
-                    if (updates.containsKey("scopeS")) {
-                        customer.setScopeS((String) updates.get("scopeS"));
-                    }
+                    // phone, description, scopeS теперь хранятся в Portfolio, обновление через PortfolioService
+                    // TODO: Обновить через PortfolioService
                         customerRepository.save(customer);
                     });
                 } else if ("Performer".equals(roleName)) {
@@ -552,43 +566,78 @@ public class AdministratorController {
 
     @GetMapping("/users/{userId}")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> getUserDetails(@PathVariable Integer userId) {
+    public ResponseEntity<?> getUserDetails(@PathVariable Integer userId, 
+                                           @RequestParam(required = false) String type) {
         try {
-            // Используем метод, который загружает роль
-            Optional<Account> accountOpt = accountRepository.findByIdWithRole(userId);
-            if (accountOpt.isEmpty()) {
+            Account account = null;
+            String roleName = null;
+            
+            // Если указан тип, ищем по customerId или performerId
+            if ("customer".equalsIgnoreCase(type)) {
+                Optional<Customer> customerOpt = customerRepository.findByIdWithAccount(userId);
+                if (customerOpt.isPresent()) {
+                    Customer customer = customerOpt.get();
+                    if (customer.getAccount() != null) {
+                        account = customer.getAccount();
+                        roleName = account.getRole() != null ? account.getRole().getName() : null;
+                    }
+                }
+            } else if ("performer".equalsIgnoreCase(type)) {
+                Optional<Performer> performerOpt = performerRepository.findByIdWithAccount(userId);
+                if (performerOpt.isPresent()) {
+                    Performer performer = performerOpt.get();
+                    if (performer.getAccount() != null) {
+                        account = performer.getAccount();
+                        roleName = account.getRole() != null ? account.getRole().getName() : null;
+                    }
+                }
+            } else {
+                // По умолчанию ищем по accountId
+                Optional<Account> accountOpt = accountRepository.findByIdWithRole(userId);
+                if (accountOpt.isPresent()) {
+                    account = accountOpt.get();
+                    roleName = account.getRole() != null ? account.getRole().getName() : null;
+                }
+            }
+            
+            if (account == null || roleName == null) {
                 return ResponseEntity.notFound().build();
             }
             
-            Account account = accountOpt.get();
             Role role = account.getRole();
-            
             if (role == null) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Role not found for user"));
             }
             
-            String roleName = role.getName();
             Map<String, Object> userData = new HashMap<>();
             userData.put("id", account.getId());
-            userData.put("login", account.getLogin());
             userData.put("email", account.getEmail());
             userData.put("isActive", account.getIsActive());
             userData.put("role", Map.of("id", role.getId(), "name", role.getName()));
             
             // Add role-specific data
             if ("Customer".equals(roleName)) {
-                customerRepository.findByAccountId(userId).ifPresent(customer -> {
+                customerRepository.findByAccountId(account.getId()).ifPresent(customer -> {
                     userData.put("name", customer.getFullName());
                     userData.put("lastName", customer.getLastName());
                     userData.put("firstName", customer.getFirstName());
                     userData.put("middleName", customer.getMiddleName());
-                    userData.put("phone", customer.getPhone());
-                    userData.put("description", customer.getDescription());
-                    userData.put("scopeS", customer.getScopeS());
+                    // phone, description, scopeS теперь получаются из Portfolio
+                    List<Portfolio> customerPortfolios = portfolioService.findByUserId(customer.getId(), "CUSTOMER");
+                    if (!customerPortfolios.isEmpty()) {
+                        Portfolio portfolio = customerPortfolios.get(0);
+                        userData.put("phone", portfolio.getPhone() != null ? portfolio.getPhone() : "");
+                        userData.put("description", portfolio.getDescription() != null ? portfolio.getDescription() : "");
+                        userData.put("scopeS", portfolio.getScopeS() != null ? portfolio.getScopeS() : "");
+                    } else {
+                        userData.put("phone", "");
+                        userData.put("description", "");
+                        userData.put("scopeS", "");
+                    }
                     userData.put("customerId", customer.getId()); // Добавляем customerId
                 });
             } else if ("Performer".equals(roleName)) {
-                performerRepository.findByAccountId(userId).ifPresent(performer -> {
+                performerRepository.findByAccountId(account.getId()).ifPresent(performer -> {
                     userData.put("name", performer.getFullName());
                     userData.put("lastName", performer.getLastName());
                     userData.put("firstName", performer.getFirstName());
@@ -598,7 +647,7 @@ public class AdministratorController {
                     userData.put("performerId", performer.getId()); // Добавляем performerId
                 });
             } else if ("Administrator".equals(roleName) || "SuperAdministrator".equals(roleName)) {
-                administratorRepository.findByAccountId(userId).ifPresent(admin -> {
+                administratorRepository.findByAccountId(account.getId()).ifPresent(admin -> {
                     userData.put("name", admin.getName());
                 });
             }
@@ -651,16 +700,15 @@ public class AdministratorController {
                     .orElseThrow(() -> new NotFoundException("Order", orderId));
             
             // Проверяем, что заказ действительно на рассмотрении
-            if (!Boolean.TRUE.equals(order.getIsOnReview())) {
+            if (order.getStatus() != com.fomov.tasktroveapi.model.OrderStatus.ON_REVIEW) {
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false, 
                     "error", "Заказ не находится на рассмотрении"
                 ));
             }
             
-            // Одобряем заказ: убираем флаг на рассмотрении и делаем активным
-            order.setIsOnReview(false);
-            order.setIsActived(true);
+            // Одобряем заказ: делаем активным
+            order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.ACTIVE);
             ordersService.save(order);
             
             // Отправляем уведомление заказчику об одобрении заказа
@@ -690,7 +738,7 @@ public class AdministratorController {
                     .orElseThrow(() -> new NotFoundException("Order", orderId));
             
             // Проверяем, что заказ действительно на рассмотрении
-            if (!Boolean.TRUE.equals(order.getIsOnReview())) {
+            if (order.getStatus() != com.fomov.tasktroveapi.model.OrderStatus.ON_REVIEW) {
                 return ResponseEntity.badRequest().body(Map.of(
                     "success", false, 
                     "error", "Заказ не находится на рассмотрении"
@@ -699,10 +747,8 @@ public class AdministratorController {
             
             String reason = requestBody != null ? requestBody.get("reason") : null;
             
-            // Отклоняем заказ: убираем флаг на рассмотрении, помечаем как отклоненный, оставляем неактивным
-            order.setIsOnReview(false);
-            order.setIsActived(false);
-            order.setIsRejected(true);
+            // Отклоняем заказ: помечаем как отклоненный
+            order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.REJECTED);
             ordersService.save(order);
             
             // Отправляем уведомление заказчику об отклонении заказа
@@ -729,7 +775,7 @@ public class AdministratorController {
     @Transactional(readOnly = true)
     public ResponseEntity<Map<String, Object>> getOrdersOnReview() {
         try {
-            List<Orders> orders = ordersService.findByIsOnReview(true);
+            List<Orders> orders = ordersService.findByStatus(com.fomov.tasktroveapi.model.OrderStatus.ON_REVIEW);
             List<AddOrderDto> orderDtos = orders.stream()
                     .map(ordersMapper::toDto)
                     .collect(java.util.stream.Collectors.toList());
@@ -755,8 +801,8 @@ public class AdministratorController {
         long totalPerformers = performerRepository.count();
         long totalAdministrators = administratorRepository.count();
         long totalOrders = ordersService.findAll().size();
-        long activeOrders = ordersService.findByIsActived(true).size();
-        long doneOrders = ordersService.findByIsDone(true).size();
+        long activeOrders = ordersService.findByStatus(OrderStatus.ACTIVE).size();
+        long doneOrders = ordersService.findByStatus(OrderStatus.DONE).size();
         
         return ResponseEntity.ok(Map.of(
             "totalUsers", totalUsers,
@@ -786,9 +832,18 @@ public class AdministratorController {
             portfolio.put("firstName", customer.getFirstName());
             portfolio.put("middleName", customer.getMiddleName());
             portfolio.put("email", customer.getEmail() != null ? customer.getEmail() : "");
-            portfolio.put("phone", customer.getPhone() != null ? customer.getPhone() : "");
-            portfolio.put("description", customer.getDescription() != null ? customer.getDescription() : "");
-            portfolio.put("scopeS", customer.getScopeS() != null ? customer.getScopeS() : "");
+            // phone, description, scopeS теперь получаются из Portfolio
+            List<Portfolio> customerPortfolios = portfolioService.findByUserId(customer.getId(), "CUSTOMER");
+            if (!customerPortfolios.isEmpty()) {
+                Portfolio customerPortfolio = customerPortfolios.get(0);
+                portfolio.put("phone", customerPortfolio.getPhone() != null ? customerPortfolio.getPhone() : "");
+                portfolio.put("description", customerPortfolio.getDescription() != null ? customerPortfolio.getDescription() : "");
+                portfolio.put("scopeS", customerPortfolio.getScopeS() != null ? customerPortfolio.getScopeS() : "");
+            } else {
+                portfolio.put("phone", "");
+                portfolio.put("description", "");
+                portfolio.put("scopeS", "");
+            }
             
             return ResponseEntity.ok(portfolio);
         } catch (NotFoundException e) {
@@ -807,7 +862,7 @@ public class AdministratorController {
             
             List<Orders> orders = ordersService.findByCustomerId(customer.getId());
             List<AddOrderDto> doneOrders = orders.stream()
-                    .filter(o -> Boolean.TRUE.equals(o.getIsDone()))
+                    .filter(o -> o.getStatus() == OrderStatus.DONE)
                     .map(ordersMapper::toDto)
                     .collect(Collectors.toList());
             
@@ -851,7 +906,7 @@ public class AdministratorController {
             
             List<Orders> orders = ordersService.findByPerformerId(performer.getId());
             List<AddOrderDto> doneOrders = orders.stream()
-                    .filter(o -> Boolean.TRUE.equals(o.getIsDone()))
+                    .filter(o -> o.getStatus() == OrderStatus.DONE)
                     .map(ordersMapper::toDto)
                     .collect(Collectors.toList());
             
@@ -881,6 +936,24 @@ public class AdministratorController {
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("error", "Error getting performer reviews: " + e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/reviews/{reviewId}")
+    @Transactional
+    public ResponseEntity<?> deleteReview(@PathVariable Integer reviewId) {
+        try {
+            WorkExperience review = workExperienceService.findById(reviewId)
+                    .orElseThrow(() -> new NotFoundException("Review", reviewId));
+            
+            workExperienceService.deleteById(reviewId);
+            
+            return ResponseEntity.ok(Map.of("success", true, "message", "Отзыв успешно удален"));
+        } catch (NotFoundException e) {
+            return ResponseEntity.status(404).body(Map.of("success", false, "error", "Отзыв не найден"));
+        } catch (Exception e) {
+            logger.error("Error deleting review: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("success", false, "error", "Ошибка при удалении отзыва: " + e.getMessage()));
         }
     }
 }

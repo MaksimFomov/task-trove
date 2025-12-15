@@ -53,6 +53,7 @@
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Customer.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Message.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Notification.java
+/Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/OrderStatus.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Orders.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Performer.java
 /Users/maksim/Desktop/task-trove/backend/src/main/java/com/fomov/tasktroveapi/model/Portfolio.java

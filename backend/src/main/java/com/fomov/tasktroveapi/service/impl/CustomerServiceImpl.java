@@ -48,6 +48,7 @@ public class CustomerServiceImpl implements CustomerService {
     private final WorkExperienceMapper workExperienceMapper;
     private final PerformerService performerService;
     private final ReplyUpdateService replyUpdateService;
+    private final PortfolioService portfolioService;
     private final NotificationService notificationService;
     private final com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService;
     private final AccountRepository accountRepository;
@@ -65,6 +66,7 @@ public class CustomerServiceImpl implements CustomerService {
                               WorkExperienceMapper workExperienceMapper,
                               PerformerService performerService,
                               ReplyUpdateService replyUpdateService,
+                              PortfolioService portfolioService,
                               NotificationService notificationService,
                               com.fomov.tasktroveapi.service.EmailNotificationService emailNotificationService,
                               AccountRepository accountRepository) {
@@ -81,6 +83,7 @@ public class CustomerServiceImpl implements CustomerService {
         this.workExperienceMapper = workExperienceMapper;
         this.performerService = performerService;
         this.replyUpdateService = replyUpdateService;
+        this.portfolioService = portfolioService;
         this.notificationService = notificationService;
         this.emailNotificationService = emailNotificationService;
         this.accountRepository = accountRepository;
@@ -150,12 +153,22 @@ public class CustomerServiceImpl implements CustomerService {
         }
         
         AddOrderDto dto = ordersMapper.toDto(order);
-        List<Reply> replies = replyService.findByOrderId(order.getId());
+        // Используем findByOrderIdWithRelations чтобы загрузить performer для каждого reply
+        List<Reply> replies = replyService.findByOrderIdWithRelations(order.getId());
         
         if (replies != null && !replies.isEmpty()) {
+            // Фильтруем отклики, где performer был удален (orphaned replies)
             List<ReplyDto> replyDtos = replies.stream()
+                    .filter(reply -> reply.getPerformer() != null && reply.getPerformer().getId() != null)
                     .map(replyMapper::toDto)
                     .collect(Collectors.toList());
+            
+            // Логируем удаленные отклики для отладки
+            long orphanedCount = replies.size() - replyDtos.size();
+            if (orphanedCount > 0) {
+                logger.warn("Found {} orphaned replies (with deleted performers) for order {}", orphanedCount, order.getId());
+            }
+            
             dto.setReplies(replyDtos);
         } else {
             dto.setReplies(new java.util.ArrayList<>());
@@ -172,7 +185,7 @@ public class CustomerServiceImpl implements CustomerService {
         
         List<Orders> orders = ordersService.findByCustomerId(customer.getId());
         List<Orders> doneOrders = orders.stream()
-                .filter(o -> Boolean.TRUE.equals(o.getIsDone()))
+                .filter(o -> o.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE)
                 .filter(o -> !Boolean.TRUE.equals(o.getIsDeletedByCustomer()))
                 .collect(Collectors.toList());
         
@@ -207,7 +220,7 @@ public class CustomerServiceImpl implements CustomerService {
                     if (orderId != null) {
                         dto.setOrderId(orderId);
                         ordersService.findById(orderId).ifPresent(order -> {
-                            dto.setOrderIsDone(order.getIsDone());
+                            dto.setOrderIsDone(order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE);
                             dto.setOrderPerformerId(order.getPerformer() != null ? order.getPerformer().getId() : null);
                         });
                     }
@@ -228,7 +241,10 @@ public class CustomerServiceImpl implements CustomerService {
         Chat chat = chatService.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("Chat", chatId));
         
-        if (!chat.getCustomerId().equals(customer.getId())) {
+        // Проверяем доступ: сравниваем accountId, а не customer.id
+        if (chat.getCustomer() == null || 
+            chat.getCustomer().getAccount() == null ||
+            !chat.getCustomer().getAccount().getId().equals(accountId)) {
             throw new SecurityException("Access denied to chat " + chatId);
         }
         
@@ -273,21 +289,11 @@ public class CustomerServiceImpl implements CustomerService {
         order.setCustomer(customer);
         order.setPerformer(null);
         // Новые заказы по умолчанию на рассмотрении, пока администратор не одобрит
-        order.setIsOnReview(true);
-        order.setIsActived(false); // Заказ будет активен только после одобрения администратором
+        order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.ON_REVIEW);
         order.setPublicationTime(OffsetDateTime.now());
         
         if (order.getReplyBind() == null) {
             order.setReplyBind(0);
-        }
-        if (order.getIsInProcess() == null) {
-            order.setIsInProcess(false);
-        }
-        if (order.getIsOnCheck() == null) {
-            order.setIsOnCheck(false);
-        }
-        if (order.getIsDone() == null) {
-            order.setIsDone(false);
         }
         
         ordersService.save(order);
@@ -329,7 +335,7 @@ public class CustomerServiceImpl implements CustomerService {
         }
         
         // Проверяем, что заказ отклонен (можно обновлять только отклоненные заказы)
-        if (!Boolean.TRUE.equals(existingOrder.getIsRejected())) {
+        if (existingOrder.getStatus() != com.fomov.tasktroveapi.model.OrderStatus.REJECTED) {
             throw new IllegalArgumentException("Можно обновлять только отклоненные заказы");
         }
         
@@ -340,9 +346,7 @@ public class CustomerServiceImpl implements CustomerService {
         existingOrder.setDescription(dto.getDescription());
         
         // Сбрасываем статус отклонения и отправляем на повторную проверку
-        existingOrder.setIsRejected(false);
-        existingOrder.setIsOnReview(true);
-        existingOrder.setIsActived(false);
+        existingOrder.setStatus(com.fomov.tasktroveapi.model.OrderStatus.ON_REVIEW);
         existingOrder.setPublicationTime(OffsetDateTime.now()); // Обновляем время публикации
         
         ordersService.save(existingOrder);
@@ -387,7 +391,8 @@ public class CustomerServiceImpl implements CustomerService {
             throw new IllegalStateException("Cannot deactivate order that is in progress");
         }
         
-        order.setIsActived(false);
+        // Для деактивации заказа можно использовать статус или мягкое удаление
+        // В данном случае просто сохраняем, статус остается прежним
         ordersService.save(order);
     }
 
@@ -402,6 +407,11 @@ public class CustomerServiceImpl implements CustomerService {
         
         if (!order.getCustomer().getId().equals(customer.getId())) {
             throw new SecurityException("Access denied to order " + orderId);
+        }
+        
+        // Нельзя удалять заказ, который в работе (назначен исполнителю)
+        if (order.getPerformer() != null) {
+            throw new IllegalStateException("Нельзя удалить заказ, который находится в работе. Сначала откажитесь от исполнителя.");
         }
         
         // Помечаем заказ как удаленный заказчиком (мягкое удаление)
@@ -426,19 +436,103 @@ public class CustomerServiceImpl implements CustomerService {
         Performer performer = performerService.findById(dto.getPerformerId())
                 .orElseThrow(() -> new NotFoundException("Performer", dto.getPerformerId()));
         
-        order.setPerformer(performer);
-        order.setIsInProcess(true);
-        ordersService.save(order);
+        // Получаем все отклики на этот заказ
+        List<Reply> replies = replyService.findByOrderId(order.getId());
         
-        replyUpdateService.updateReplyOnPerformerAssignment(order.getId(), performer.getId());
+        // Находим отклик одобренного исполнителя
+        Reply approvedReply = null;
+        for (Reply reply : replies) {
+            if (reply.getPerformerId().equals(performer.getId())) {
+                approvedReply = reply;
+                break;
+            }
+        }
+        
+        if (approvedReply == null) {
+            throw new NotFoundException("Reply from performer " + performer.getId() + " for order " + order.getId() + " not found");
+        }
+        
+        String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
+        String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
+        
+        // Сначала сохраняем ID одобренного отклика
+        Integer approvedReplyId = approvedReply.getId();
+        
+        // Отслеживаем, кому уже отправлено уведомление, чтобы не отправлять повторно
+        java.util.Set<Integer> notifiedPerformerIds = new java.util.HashSet<>();
+        
+        // Удаляем все отклики других исполнителей на этот заказ и отправляем им уведомления об отказе
+        for (Reply reply : replies) {
+            if (!reply.getPerformerId().equals(performer.getId())) {
+                // Отправляем уведомление исполнителю об отказе перед удалением отклика
+                Performer refusedPerformer = performerService.findById(reply.getPerformerId()).orElse(null);
+                if (refusedPerformer != null && refusedPerformer.getAccount() != null) {
+                    Integer performerAccountId = refusedPerformer.getAccount().getId();
+                    // Отправляем уведомление только если еще не отправляли этому исполнителю
+                    if (!notifiedPerformerIds.contains(performerAccountId)) {
+                        notificationService.createPerformerNotSelectedNotification(
+                            performerAccountId,
+                            customer.getId(),
+                            order.getId(),
+                            orderTitle,
+                            customerName
+                        );
+                        notifiedPerformerIds.add(performerAccountId);
+                    }
+                }
+                replyService.deleteById(reply.getId());
+                logger.info("Deleted reply ID: {} from performer ID: {} for order ID: {}", 
+                    reply.getId(), reply.getPerformerId(), order.getId());
+            }
+        }
+        
+        // Перезагружаем список откликов из БД и удаляем все остальные отклики (если есть), кроме одобренного
+        // Это гарантирует, что все отклики, включая те, которые могли появиться параллельно, будут удалены
+        List<Reply> remainingReplies = replyService.findByOrderId(order.getId());
+        for (Reply reply : remainingReplies) {
+            if (!reply.getId().equals(approvedReplyId)) {
+                // Отправляем уведомление исполнителю об отказе только если еще не отправляли в первом проходе
+                Performer refusedPerformer = performerService.findById(reply.getPerformerId()).orElse(null);
+                if (refusedPerformer != null && refusedPerformer.getAccount() != null) {
+                    Integer performerAccountId = refusedPerformer.getAccount().getId();
+                    // Отправляем уведомление только если еще не отправляли этому исполнителю
+                    if (!notifiedPerformerIds.contains(performerAccountId)) {
+                        notificationService.createPerformerNotSelectedNotification(
+                            performerAccountId,
+                            customer.getId(),
+                            order.getId(),
+                            orderTitle,
+                            customerName
+                        );
+                        notifiedPerformerIds.add(performerAccountId);
+                    }
+                }
+                replyService.deleteById(reply.getId());
+                logger.info("Deleted remaining reply ID: {} from performer ID: {} for order ID: {}", 
+                    reply.getId(), reply.getPerformerId(), order.getId());
+            }
+        }
+        
+        // Устанавливаем флаг одобрения заказчиком для одобренного отклика
+        // Перезагружаем одобренный отклик из БД, чтобы убедиться что он все еще существует
+        approvedReply = replyService.findById(approvedReplyId)
+                .orElseThrow(() -> new IllegalStateException("Approved reply was deleted"));
+        approvedReply.setIsApprovedByCustomer(true);
+        replyService.save(approvedReply);
+        
+        // Перезагружаем заказ из БД, чтобы обновить коллекцию replies после удаления
+        order = ordersService.findById(dto.getOrderId())
+                .orElseThrow(() -> new NotFoundException("Order", dto.getOrderId()));
+        
+        order.setPerformer(performer);
+        order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.IN_PROCESS);
+        ordersService.save(order);
         
         // Создаем чат между заказчиком и исполнителем, если его еще нет
         createChatIfNotExists(customer, performer, order);
         
         // Создаем уведомление для исполнителя о принятии в работу
         if (performer.getAccount() != null) {
-            String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
-            String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
             notificationService.createAssignedNotification(
                 performer.getAccount().getId(),
                 customer.getId(),
@@ -450,26 +544,67 @@ public class CustomerServiceImpl implements CustomerService {
     }
     
     private void createChatIfNotExists(Customer customer, Performer performer, Orders order) {
+        // Проверяем, существует ли уже чат между этим заказчиком и исполнителем
+        // Используем метод без учета флагов удаления, чтобы найти чат даже если он был удален
+        List<Chat> existingChats = chatService.findByCustomerIdAndPerformerIdIgnoreDeleted(customer.getId(), performer.getId());
+        boolean chatExists = !existingChats.isEmpty();
+        
+        if (!chatExists) {
         // Формируем roomName для этого конкретного заказа
         String roomName = "Order #" + order.getId() + ": " + 
                          (order.getTitle() != null ? order.getTitle() : "Chat");
         
-        // Проверяем, существует ли уже чат для этого конкретного заказа
-        List<Chat> existingChats = chatService.findByRoomName(roomName);
-        boolean chatExists = !existingChats.isEmpty();
-        
-        if (!chatExists) {
             Chat chat = new Chat();
             chat.setCustomer(customer);
             chat.setPerformer(performer);
             chat.setRoomName(roomName);
             chat.setCheckByCustomer(false);
             chat.setCheckByPerformer(false);
-            chat.setCheckByAdministrator(false);
+            chat.setDeletedByCustomer(false);
+            chat.setDeletedByPerformer(false);
             chatService.save(chat);
             
             logger.info("Created chat between customer {} and performer {} for order {}", 
                        customer.getId(), performer.getId(), order.getId());
+        } else {
+            // Если чат уже существует (включая удаленные), восстанавливаем его и обновляем roomName
+            Chat existingChat = existingChats.get(0);
+            
+            // Восстанавливаем чат, если он был удален (сбрасываем флаги удаления)
+            boolean wasRestored = false;
+            if (Boolean.TRUE.equals(existingChat.getDeletedByCustomer())) {
+                existingChat.setDeletedByCustomer(false);
+                wasRestored = true;
+            }
+            if (Boolean.TRUE.equals(existingChat.getDeletedByPerformer())) {
+                existingChat.setDeletedByPerformer(false);
+                wasRestored = true;
+            }
+            
+            String currentRoomName = existingChat.getRoomName();
+            String newOrderTitle = order.getTitle() != null ? order.getTitle() : "Chat";
+            String newOrderPart = "Order #" + order.getId() + ": " + newOrderTitle;
+            
+            // Проверяем, не добавлен ли уже этот проект
+            if (!currentRoomName.contains(newOrderPart)) {
+                // Добавляем новый проект через запятую
+                String updatedRoomName = currentRoomName + ", " + newOrderPart;
+                // Ограничиваем длину до 100 символов (ограничение в БД)
+                if (updatedRoomName.length() > 100) {
+                    updatedRoomName = updatedRoomName.substring(0, 97) + "...";
+                }
+                existingChat.setRoomName(updatedRoomName);
+            }
+            
+            chatService.save(existingChat);
+            
+            if (wasRestored) {
+                logger.info("Restored and updated chat between customer {} and performer {} for order {}", 
+                           customer.getId(), performer.getId(), order.getId());
+            } else {
+                logger.info("Updated chat roomName for existing chat between customer {} and performer {}, added order {}", 
+                           customer.getId(), performer.getId(), order.getId());
+            }
         }
     }
 
@@ -487,27 +622,40 @@ public class CustomerServiceImpl implements CustomerService {
         }
         
         if (dto.getIsDone() != null) {
-            order.setIsDone(dto.getIsDone());
-            
-            if (dto.getIsDone() && order.getPerformer() != null) {
-                order.setIsOnCheck(false);
-                replyUpdateService.updateReplyOnOrderCompletion(order.getId(), order.getPerformer().getId());
-                
-                // Создаем уведомление для заказчика о завершении заказа
-                String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
-                String performerName = order.getPerformer().getFullName() != null ? order.getPerformer().getFullName() : "Исполнитель";
-                notificationService.createCompletedNotification(
-                    customer.getAccount().getId(),
-                    order.getPerformer().getId(),
-                    order.getId(),
-                    orderTitle,
-                    performerName
-                );
+            if (dto.getIsDone()) {
+                order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.DONE);
+                if (order.getPerformer() != null) {
+                    replyUpdateService.updateReplyOnOrderCompletion(order.getId(), order.getPerformer().getId());
+                    
+                    // Создаем уведомление для исполнителя о том, что заказчик завершил заказ
+                    String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
+                    String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
+                    if (order.getPerformer().getAccount() != null) {
+                        notificationService.createOrderCompletedByCustomerNotification(
+                            order.getPerformer().getAccount().getId(),
+                            customer.getId(),
+                            order.getId(),
+                            orderTitle,
+                            customerName
+                        );
+                    }
+                }
+            } else {
+                // Если заказ не завершен, возвращаем его в процесс
+                if (order.getPerformer() != null) {
+                    order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.IN_PROCESS);
+                } else {
+                    order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.ACTIVE);
+                }
             }
         }
         
         if (dto.getIsOnCheck() != null) {
-            order.setIsOnCheck(dto.getIsOnCheck());
+            if (dto.getIsOnCheck()) {
+                order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.ON_CHECK);
+            } else if (order.getPerformer() != null) {
+                order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.IN_PROCESS);
+            }
         }
         
         ordersService.save(order);
@@ -525,7 +673,7 @@ public class CustomerServiceImpl implements CustomerService {
                     .orElseThrow(() -> new NotFoundException("Order", dto.getOrderId()));
             
             // Проверяем, что заказ завершен
-            if (!Boolean.TRUE.equals(order.getIsDone())) {
+            if (order.getStatus() != com.fomov.tasktroveapi.model.OrderStatus.DONE) {
                 throw new IllegalStateException("Cannot add review for order that is not completed");
             }
             
@@ -562,17 +710,39 @@ public class CustomerServiceImpl implements CustomerService {
         workExperience.setReviewerType(ReviewerType.CUSTOMER); // Заказчик оставляет отзыв об исполнителе
         workExperience.setOrder(order);
         workExperienceService.save(workExperience);
+        
+        // Создаем уведомление для исполнителя о том, что его оценили
+        if (performer.getAccount() != null) {
+            String orderTitle = order != null && order.getTitle() != null ? order.getTitle() : "заказ #" + (order != null ? order.getId() : "");
+            String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
+            Integer mark = dto.getRate() != null ? dto.getRate() : 5;
+            Integer orderId = order != null ? order.getId() : null;
+            notificationService.createReviewNotification(
+                performer.getAccount().getId(),
+                customer.getId(),
+                orderId,
+                orderTitle,
+                customerName,
+                mark
+            );
+        }
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void sendEmailToPerformer(Integer accountId, Integer orderId, Integer performerId,
                                     String text, MultipartFile document, Boolean isCorrection) {
+        Customer customer = repository.findByAccountId(accountId)
+                .orElseThrow(() -> new NotFoundException("Customer", accountId));
+        
         Orders order = null;
         Performer performer = null;
         
         if (orderId != null) {
             order = ordersService.findById(orderId).orElse(null);
+            if (order != null && !order.getCustomer().getId().equals(customer.getId())) {
+                throw new SecurityException("Access denied to order " + orderId);
+            }
         }
         
         String performerEmail = defaultPerformerEmail;
@@ -586,21 +756,30 @@ public class CustomerServiceImpl implements CustomerService {
         String emailText = buildEmailText(text, order);
         String attachmentPath = saveAttachment(document);
         
-        if (isCorrection && order != null && performerId != null) {
+        if (isCorrection != null && isCorrection && order != null && performerId != null) {
             handleCorrection(order, orderId, performerId);
             
             // Создаем уведомление для исполнителя о правках
             if (performer != null && performer.getAccount() != null) {
                 String orderTitle = order.getTitle() != null ? order.getTitle() : "Заказ #" + order.getId();
-                Customer customer = repository.findByAccountId(accountId).orElse(null);
-                String customerName = customer != null && customer.getFullName() != null ? customer.getFullName() : "Заказчик";
+                String customerName = customer.getFullName() != null ? customer.getFullName() : "Заказчик";
                 notificationService.createCorrectionNotification(
                     performer.getAccount().getId(),
-                    customer != null ? customer.getId() : null,
+                    customer.getId(),
                     order.getId(),
                     orderTitle,
                     customerName
                 );
+            }
+        } else if (order != null && (isCorrection == null || !isCorrection)) {
+            // Проверяем, что исполнитель уже одобрен для этого заказа
+            if (order.getPerformer() != null && performerId != null && 
+                order.getPerformer().getId().equals(performerId)) {
+                // Если это не исправление и исполнитель одобрен, то устанавливаем флаг отправки ТЗ
+            order.setIsSpecSent(true);
+            ordersService.save(order);
+            } else {
+                throw new IllegalStateException("Нельзя отправить ТЗ до одобрения исполнителя");
             }
         }
         
@@ -632,13 +811,16 @@ public class CustomerServiceImpl implements CustomerService {
         String performerName = performer != null && performer.getFullName() != null 
                 ? performer.getFullName() : "Исполнитель";
         
-        replyService.deleteByOrderIdAndPerformerId(orderId, performerId);
+        // Удаляем все отклики для этого заказа, чтобы при возврате в статус ACTIVE заказ был "чистым"
+        // Исполнители смогут откликнуться заново
+        replyService.deleteAllByOrderId(orderId);
+        logger.info("Deleted all replies for order {} after refusing performer {}", orderId, performerId);
         
         order = ordersService.findById(orderId)
                 .orElseThrow(() -> new NotFoundException("Order", orderId));
         
         order.setPerformer(null);
-        order.setIsInProcess(false);
+        order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.ACTIVE);
         ordersService.save(order);
         
         // Создаем уведомление для исполнителя об отказе
@@ -664,45 +846,40 @@ public class CustomerServiceImpl implements CustomerService {
         Chat chat = chatService.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("Chat", chatId));
         
+        // Проверяем, что чат принадлежит этому заказчику
         if (!chat.getCustomerId().equals(customer.getId())) {
             throw new SecurityException("Access denied to chat " + chatId);
         }
         
-        // Извлекаем ID заказа из roomName (формат: "Order #14: Название")
-        Integer orderId = extractOrderIdFromRoomName(chat.getRoomName());
-        if (orderId == null) {
-            throw new IllegalStateException("Cannot extract order ID from chat roomName");
-        }
-        
-        Orders order = ordersService.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("Order", orderId));
-        
-        // Проверяем условия: заказ завершен ИЛИ исполнитель не привязан
-        boolean canDelete = Boolean.TRUE.equals(order.getIsDone()) || 
-                           order.getPerformer() == null;
-        
-        if (!canDelete) {
-            throw new IllegalStateException("Chat can only be deleted for completed orders or orders without assigned performer");
-        }
-        
-        // Помечаем чат как удаленный для заказчика
+        // Помечаем чат как удаленный для заказчика (мягкое удаление - чат скрыт только для заказчика)
         chat.setDeletedByCustomer(true);
         chatService.save(chat);
         
-        logger.info("Chat {} deleted by customer {}", chatId, customer.getId());
+        logger.info("Chat {} deleted by customer {} (soft delete)", chatId, customer.getId());
     }
     
     private Integer extractOrderIdFromRoomName(String roomName) {
-        if (roomName == null || !roomName.startsWith("Order #")) {
+        if (roomName == null || !roomName.contains("Order #")) {
             return null;
         }
         try {
-            // Формат: "Order #14: Название"
-            String[] parts = roomName.split(":");
-            if (parts.length > 0) {
-                String orderPart = parts[0].trim(); // "Order #14"
-                String idStr = orderPart.replace("Order #", "").trim();
-                return Integer.parseInt(idStr);
+            // Формат может быть: "Order #14: Название" или "Order #14: Название, Order #15: Название2"
+            // Извлекаем первый orderId из строки
+            int orderIndex = roomName.indexOf("Order #");
+            if (orderIndex >= 0) {
+                String remaining = roomName.substring(orderIndex + "Order #".length());
+                // Ищем конец числа (пробел, двоеточие или запятая)
+                StringBuilder idStr = new StringBuilder();
+                for (char c : remaining.toCharArray()) {
+                    if (Character.isDigit(c)) {
+                        idStr.append(c);
+                    } else {
+                        break;
+                    }
+                }
+                if (idStr.length() > 0) {
+                    return Integer.parseInt(idStr.toString());
+                }
             }
         } catch (NumberFormatException e) {
             logger.error("Failed to extract order ID from roomName: {}", roomName, e);
@@ -746,7 +923,7 @@ public class CustomerServiceImpl implements CustomerService {
     }
 
     private void handleCorrection(Orders order, Integer orderId, Integer performerId) {
-        order.setIsOnCheck(false);
+        order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.IN_PROCESS);
         ordersService.save(order);
         replyUpdateService.resetReplyOnCorrection(orderId, performerId);
     }
@@ -777,13 +954,13 @@ public class CustomerServiceImpl implements CustomerService {
         Customer customer = repository.findByAccountId(accountId)
                 .orElseThrow(() -> new NotFoundException("Customer", accountId));
         
-        // Обновляем разрешенные поля, включая ФИО
+        // Обновляем ФИО в Customer
         customer.setLastName(dto.getLastName());
         customer.setFirstName(dto.getFirstName());
         customer.setMiddleName(dto.getMiddleName());
-        customer.setPhone(dto.getPhone());
-        customer.setDescription(dto.getDescription());
-        customer.setScopeS(dto.getScopeS());
+        
+        // Используем PortfolioService для обновления портфолио
+        portfolioService.updatePortfolio(customer.getId(), dto, "CUSTOMER");
         
         repository.save(customer);
         // Явно вызываем flush, чтобы убедиться, что изменения сохранены

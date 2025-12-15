@@ -15,28 +15,38 @@ export default function RegisterPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
 
-  // Список специализаций для исполнителей
+  // Список специализаций для исполнителей (только разработка ПО)
   const SPECIALIZATIONS = [
-    t('specializations.webDevelopment'),
-    t('specializations.mobileDevelopment'),
-    t('specializations.design'),
-    t('specializations.graphicDesign'),
-    t('specializations.uxuiDesign'),
-    t('specializations.copywriting'),
-    t('specializations.translations'),
-    t('specializations.marketing'),
-    t('specializations.smm'),
-    t('specializations.seo'),
-    t('specializations.contentMarketing'),
-    t('specializations.videoEditing'),
-    t('specializations.photography'),
-    t('specializations.animation'),
-    t('specializations.programming'),
-    t('specializations.softwareTesting'),
-    t('specializations.administration'),
-    t('specializations.consultations'),
-    t('specializations.education'),
-    t('specializations.other')
+    'Frontend разработка',
+    'Backend разработка',
+    'Full-stack разработка',
+    'Мобильная разработка (iOS)',
+    'Мобильная разработка (Android)',
+    'Мобильная разработка (React Native)',
+    'Мобильная разработка (Flutter)',
+    'Python разработка',
+    'Java разработка',
+    'JavaScript/TypeScript разработка',
+    'C++ разработка',
+    'C# разработка',
+    'Go разработка',
+    'Rust разработка',
+    'PHP разработка',
+    'Ruby разработка',
+    'Тестирование ПО (QA)',
+    'Автоматизированное тестирование',
+    'DevOps',
+    'Системное администрирование',
+    'Базы данных (SQL/NoSQL)',
+    'Микросервисы и архитектура',
+    'API разработка',
+    'Разработка игр',
+    'Machine Learning / AI',
+    'Blockchain разработка',
+    'Cloud разработка (AWS/Azure/GCP)',
+    'Кибербезопасность',
+    'Embedded разработка',
+    'Другое'
   ];
 
   // Список областей деятельности для заказчиков
@@ -65,6 +75,7 @@ export default function RegisterPage() {
     middleName: '',
     email: '',
     passwordUser: '',
+    confirmPassword: '',
     phone: '',
     description: '',
     scopeS: '',
@@ -77,6 +88,7 @@ export default function RegisterPage() {
     middleName: '',
     email: '',
     passwordUser: '',
+    confirmPassword: '',
     age: '',
     phone: '',
     townCountry: '',
@@ -391,6 +403,12 @@ export default function RegisterPage() {
       errors.passwordUser = t('auth.passwordMinLength');
     }
 
+    if (!customerData.confirmPassword) {
+      errors.confirmPassword = 'Подтверждение пароля обязательно';
+    } else if (customerData.passwordUser !== customerData.confirmPassword) {
+      errors.confirmPassword = 'Пароли не совпадают';
+    }
+
     if (customerData.phone && !/^[\+]?[0-9\s\-\(\)]{10,}$/.test(customerData.phone)) {
       errors.phone = t('validationMessages.phoneInvalid');
     }
@@ -440,6 +458,12 @@ export default function RegisterPage() {
       errors.passwordUser = 'Пароль обязателен для заполнения';
     } else if (performerData.passwordUser.length < 8) {
       errors.passwordUser = 'Пароль должен содержать минимум 8 символов';
+    }
+
+    if (!performerData.confirmPassword) {
+      errors.confirmPassword = 'Подтверждение пароля обязательно';
+    } else if (performerData.passwordUser !== performerData.confirmPassword) {
+      errors.confirmPassword = 'Пароли не совпадают';
     }
 
     const age = parseInt(performerData.age);
@@ -492,9 +516,9 @@ export default function RegisterPage() {
         description: customerData.description,
         scopeS: customerData.scopeS,
       });
-      const { token, role, id, login } = response.data;
+      const { token, role, id, email: userEmail } = response.data;
       
-      setAuth({ id, login, role, token }, token);
+      setAuth({ id, email: userEmail, role, token }, token);
       showSuccessToast(t('auth.registrationSuccess'));
       navigate('/customer/orders');
     } catch (error) {
@@ -538,9 +562,9 @@ export default function RegisterPage() {
         employment: performerData.employment || undefined,
         experience: performerData.experience || undefined,
       });
-      const { token, role, id, login } = response.data;
+      const { token, role, id, email: userEmail } = response.data;
       
-      setAuth({ id, login, role, token }, token);
+      setAuth({ id, email: userEmail, role, token }, token);
       
       // После успешной регистрации переносим данные в портфолио
       try {
@@ -843,6 +867,12 @@ export default function RegisterPage() {
                     if (customerErrors.passwordUser) {
                       setCustomerErrors({ ...customerErrors, passwordUser: '' });
                     }
+                    // Очищаем ошибку подтверждения пароля при изменении пароля
+                    if (customerErrors.confirmPassword && customerData.confirmPassword) {
+                      if (e.target.value === customerData.confirmPassword) {
+                        setCustomerErrors({ ...customerErrors, confirmPassword: '' });
+                      }
+                    }
                   }}
                   className={`input ${customerErrors.passwordUser ? 'border-red-500 focus:border-red-500' : ''}`}
                   placeholder={t('auth.passwordMinLength')}
@@ -851,6 +881,32 @@ export default function RegisterPage() {
                   <p className="mt-1 text-sm text-red-600 flex items-center">
                     <AlertCircle className="w-4 h-4 mr-1" />
                     {customerErrors.passwordUser}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  <Lock className="w-4 h-4 inline mr-2" />
+                  Подтверждение пароля <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={customerData.confirmPassword}
+                  onChange={(e) => {
+                    setCustomerData({ ...customerData, confirmPassword: e.target.value });
+                    if (customerErrors.confirmPassword) {
+                      setCustomerErrors({ ...customerErrors, confirmPassword: '' });
+                    }
+                  }}
+                  className={`input ${customerErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
+                  placeholder="Повторите пароль"
+                />
+                {customerErrors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {customerErrors.confirmPassword}
                   </p>
                 )}
               </div>
@@ -1175,6 +1231,12 @@ export default function RegisterPage() {
                     if (performerErrors.passwordUser) {
                       setPerformerErrors({ ...performerErrors, passwordUser: '' });
                     }
+                    // Очищаем ошибку подтверждения пароля при изменении пароля
+                    if (performerErrors.confirmPassword && performerData.confirmPassword) {
+                      if (e.target.value === performerData.confirmPassword) {
+                        setPerformerErrors({ ...performerErrors, confirmPassword: '' });
+                      }
+                    }
                   }}
                   className={`input ${performerErrors.passwordUser ? 'border-red-500 focus:border-red-500' : ''}`}
                   placeholder={t('auth.passwordMinLength')}
@@ -1183,6 +1245,32 @@ export default function RegisterPage() {
                   <p className="mt-1 text-sm text-red-600 flex items-center">
                     <AlertCircle className="w-4 h-4 mr-1" />
                     {performerErrors.passwordUser}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  <Lock className="w-4 h-4 inline mr-2" />
+                  Подтверждение пароля <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  value={performerData.confirmPassword}
+                  onChange={(e) => {
+                    setPerformerData({ ...performerData, confirmPassword: e.target.value });
+                    if (performerErrors.confirmPassword) {
+                      setPerformerErrors({ ...performerErrors, confirmPassword: '' });
+                    }
+                  }}
+                  className={`input ${performerErrors.confirmPassword ? 'border-red-500 focus:border-red-500' : ''}`}
+                  placeholder="Повторите пароль"
+                />
+                {performerErrors.confirmPassword && (
+                  <p className="mt-1 text-sm text-red-600 flex items-center">
+                    <AlertCircle className="w-4 h-4 mr-1" />
+                    {performerErrors.confirmPassword}
                   </p>
                 )}
               </div>

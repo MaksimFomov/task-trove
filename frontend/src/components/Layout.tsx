@@ -1,7 +1,7 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
-import { LogOut, Home, Briefcase, MessageSquare, User, Bell, Check, Settings, Users, BarChart3 } from 'lucide-react';
+import { LogOut, Home, Briefcase, MessageSquare, User, Bell, Check, Settings, Users, BarChart3, Trophy } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { notificationApi } from '../services/api';
@@ -28,7 +28,7 @@ export default function Layout({ children }: LayoutProps) {
     queryKey: ['notifications', 'count'],
     queryFn: () => notificationApi.getUnreadCount().then((res) => res.data),
     enabled: isAuthenticated,
-    refetchInterval: 30000, // Обновляем каждые 30 секунд
+    refetchInterval: 1000, // Обновляем каждую секунду
   });
 
   // Запрос для полного списка уведомлений (только когда dropdown открыт)
@@ -36,7 +36,7 @@ export default function Layout({ children }: LayoutProps) {
     queryKey: ['notifications'],
     queryFn: () => notificationApi.getAll().then((res) => res.data),
     enabled: isAuthenticated && isNotificationsOpen,
-    refetchInterval: isNotificationsOpen ? 30000 : false,
+    refetchInterval: isNotificationsOpen ? 1000 : false,
   });
 
   const notifications = notificationsData?.notifications || [];
@@ -55,7 +55,7 @@ export default function Layout({ children }: LayoutProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notifications'] });
       queryClient.invalidateQueries({ queryKey: ['notifications', 'count'] });
-      toast.success(t('notifications.allMarkedRead'));
+      toast.success(t('notifications.allMarkedAsRead'));
     },
   });
 
@@ -147,6 +147,7 @@ export default function Layout({ children }: LayoutProps) {
           { path: '/customer/orders', label: t('navigation.myOrders'), icon: Briefcase },
           { path: '/customer/chats', label: t('navigation.chats'), icon: MessageSquare },
           { path: '/customer/portfolio', label: t('navigation.portfolio'), icon: User },
+          { path: '/rating', label: t('navigation.rating', 'Рейтинг исполнителей'), icon: Trophy },
         ]
       : []),
     ...(isPerformer
@@ -154,6 +155,7 @@ export default function Layout({ children }: LayoutProps) {
           { path: '/performer/orders', label: t('navigation.orders'), icon: Briefcase },
           { path: '/performer/chats', label: t('navigation.chats'), icon: MessageSquare },
           { path: '/performer/portfolio', label: t('navigation.portfolio'), icon: User },
+          { path: '/rating', label: t('navigation.rating', 'Рейтинг исполнителей'), icon: Trophy },
         ]
       : []),
     ...((isAdmin || isSuperAdmin)
@@ -198,7 +200,7 @@ export default function Layout({ children }: LayoutProps) {
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
                 <User className="w-5 h-5 text-gray-500 dark:text-slate-400" />
-                <span className="text-sm text-gray-700 dark:text-slate-200">{user?.login}</span>
+                <span className="text-sm text-gray-700 dark:text-slate-200">{user?.email || user?.login}</span>
                 <span className="px-2 py-1 text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-800 dark:text-primary-300 rounded-full border dark:border-primary-800/50">
                   {getRoleLabel(role)}
                 </span>

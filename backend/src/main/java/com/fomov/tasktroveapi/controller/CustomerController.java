@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/customers")
@@ -355,7 +356,30 @@ public class CustomerController {
             }
             
             Customer customer = customerService.getPortfolio(accountId);
-            return ResponseEntity.ok(customer);
+            
+            // Преобразуем Customer в CustomerPortfolio DTO с данными из Portfolio
+            Map<String, Object> portfolio = new java.util.HashMap<>();
+            portfolio.put("id", customer.getId());
+            portfolio.put("name", customer.getFullName() != null ? customer.getFullName() : "");
+            portfolio.put("lastName", customer.getLastName());
+            portfolio.put("firstName", customer.getFirstName());
+            portfolio.put("middleName", customer.getMiddleName());
+            portfolio.put("email", customer.getEmail() != null ? customer.getEmail() : "");
+            
+            // Получаем данные из Portfolio
+            List<Portfolio> customerPortfolios = portfolioService.findByUserId(customer.getId(), "CUSTOMER");
+            if (!customerPortfolios.isEmpty()) {
+                Portfolio customerPortfolio = customerPortfolios.get(0);
+                portfolio.put("phone", customerPortfolio.getPhone() != null ? customerPortfolio.getPhone() : "");
+                portfolio.put("description", customerPortfolio.getDescription() != null ? customerPortfolio.getDescription() : "");
+                portfolio.put("scopeS", customerPortfolio.getScopeS() != null ? customerPortfolio.getScopeS() : "");
+            } else {
+                portfolio.put("phone", "");
+                portfolio.put("description", "");
+                portfolio.put("scopeS", "");
+            }
+            
+            return ResponseEntity.ok(portfolio);
         } catch (NotFoundException e) {
             logger.error("Customer not found: {}", e.getMessage());
             return ResponseEntity.notFound().build();
@@ -420,27 +444,27 @@ public class CustomerController {
         }
     }
 
-    @GetMapping("/performer/{accountId}/done-orders")
-    public ResponseEntity<Map<String, Object>> getPerformerDoneOrders(@PathVariable Integer accountId) {
+    @GetMapping("/performer/{performerId}/done-orders")
+    public ResponseEntity<Map<String, Object>> getPerformerDoneOrders(@PathVariable Integer performerId) {
         try {
             Integer currentAccountId = SecurityUtils.getCurrentUserId();
             if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            // Ищем исполнителя по accountId (так как в DTO приходит accountId)
-            Performer performer = performerService.findByAccountId(accountId)
-                    .orElseThrow(() -> new NotFoundException("Performer with accountId", accountId));
+            // Ищем исполнителя по performerId (в DTO теперь приходит performer.id)
+            Performer performer = performerService.findById(performerId)
+                    .orElseThrow(() -> new NotFoundException("Performer", performerId));
             
             List<Orders> orders = ordersService.findByPerformerId(performer.getId());
             List<AddOrderDto> doneOrders = orders.stream()
-                    .filter(o -> Boolean.TRUE.equals(o.getIsDone()))
+                    .filter(o -> o.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE)
                     .map(ordersMapper::toDto)
                     .toList();
             
             return ResponseEntity.ok(Map.of("orders", doneOrders));
         } catch (NotFoundException e) {
-            logger.error("Performer not found for accountId: {}", accountId);
+            logger.error("Performer not found for performerId: {}", performerId);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting performer done orders: {}", e.getMessage(), e);
@@ -448,17 +472,17 @@ public class CustomerController {
         }
     }
 
-    @GetMapping("/performer/{accountId}/reviews")
-    public ResponseEntity<Map<String, Object>> getPerformerReviews(@PathVariable Integer accountId) {
+    @GetMapping("/performer/{performerId}/reviews")
+    public ResponseEntity<Map<String, Object>> getPerformerReviews(@PathVariable Integer performerId) {
         try {
             Integer currentAccountId = SecurityUtils.getCurrentUserId();
             if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            // Ищем исполнителя по accountId (так как в DTO приходит accountId)
-            Performer performer = performerService.findByAccountId(accountId)
-                    .orElseThrow(() -> new NotFoundException("Performer with accountId", accountId));
+            // Ищем исполнителя по performerId (в DTO теперь приходит performer.id)
+            Performer performer = performerService.findById(performerId)
+                    .orElseThrow(() -> new NotFoundException("Performer", performerId));
             
             // Получаем только отзывы О исполнителе от заказчиков (reviewerType = CUSTOMER)
             List<WorkExperience> reviews = workExperienceService.findReviewsAboutPerformer(performer.getId());
@@ -468,7 +492,7 @@ public class CustomerController {
             
             return ResponseEntity.ok(Map.of("reviews", reviewDtos));
         } catch (NotFoundException e) {
-            logger.error("Performer not found for accountId: {}", accountId);
+            logger.error("Performer not found for performerId: {}", performerId);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting performer reviews: {}", e.getMessage(), e);
@@ -476,50 +500,76 @@ public class CustomerController {
         }
     }
 
-    @GetMapping("/performer/{accountId}/portfolio")
+    @GetMapping("/performer/{performerId}/portfolio")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<?> getPerformerPortfolio(@PathVariable Integer accountId) {
+    public ResponseEntity<?> getPerformerPortfolio(@PathVariable Integer performerId) {
         try {
             Integer currentAccountId = SecurityUtils.getCurrentUserId();
             if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            // Ищем исполнителя по accountId (так как в DTO приходит accountId)
-            Performer performer = performerService.findByAccountId(accountId)
-                    .orElseThrow(() -> new NotFoundException("Performer with accountId", accountId));
+            // Ищем исполнителя по performerId (в ReplyDto приходит performer.id)
+            // Используем findByIdWithAccount чтобы загрузить Account для получения email
+            logger.info("Looking for performer with ID: {} for customer accountId: {}", performerId, currentAccountId);
             
-            // Получаем портфолио исполнителя
-            List<Portfolio> portfolios = portfolioService.findByUserId(performer.getId());
-            Portfolio portfolio = portfolios.isEmpty() ? null : portfolios.get(0);
-            
-            if (portfolio == null) {
-                return ResponseEntity.notFound().build();
+            // Сначала пробуем найти через обычный findById
+            Optional<Performer> performerByIdOpt = performerService.findById(performerId);
+            if (performerByIdOpt.isEmpty()) {
+                logger.warn("Performer with ID {} does not exist in database. Request from accountId: {}", 
+                    performerId, currentAccountId);
+                return ResponseEntity.status(404).body(Map.of(
+                    "error", "Performer not found",
+                    "message", "Исполнитель не найден. Возможно, он был удален из системы.",
+                    "performerId", performerId
+                ));
             }
             
-            // Создаем Map с данными портфолио и добавляем ФИО из Performer
-            // Используем простые геттеры, чтобы избежать ленивой загрузки
-            Map<String, Object> portfolioData = new java.util.HashMap<>();
-            portfolioData.put("id", portfolio.getId());
-            portfolioData.put("name", portfolio.getName());
-            portfolioData.put("phone", portfolio.getPhone());
-            portfolioData.put("email", portfolio.getEmail());
-            portfolioData.put("townCountry", portfolio.getTownCountry());
-            portfolioData.put("specializations", portfolio.getSpecializations());
-            portfolioData.put("employment", portfolio.getEmployment());
-            portfolioData.put("experience", portfolio.getExperience());
-            portfolioData.put("isActive", portfolio.getIsActive());
-            // Добавляем ФИО из Performer (простые поля, не ленивые связи)
-            portfolioData.put("lastName", performer.getLastName());
-            portfolioData.put("firstName", performer.getFirstName());
-            portfolioData.put("middleName", performer.getMiddleName());
+            // Теперь загружаем с Account
+            Optional<Performer> performerOpt = performerService.findByIdWithAccount(performerId);
+            if (performerOpt.isEmpty()) {
+                logger.error("Performer found with findById but not with findByIdWithAccount for ID: {}. This indicates an issue with Account relationship.", performerId);
+                return ResponseEntity.status(500).body(Map.of(
+                    "error", "Internal server error",
+                    "message", "Ошибка при загрузке данных исполнителя.",
+                    "performerId", performerId
+                ));
+            }
+            Performer performer = performerOpt.get();
             
-            return ResponseEntity.ok(portfolioData);
-        } catch (NotFoundException e) {
-            logger.error("Performer not found for accountId: {}", accountId);
-            return ResponseEntity.notFound().build();
+            // Преобразуем Performer в Portfolio DTO (аналогично getCustomerPortfolio)
+            Map<String, Object> portfolio = new java.util.HashMap<>();
+            portfolio.put("id", performer.getId());
+            portfolio.put("name", performer.getFullName() != null ? performer.getFullName() : "");
+            portfolio.put("lastName", performer.getLastName());
+            portfolio.put("firstName", performer.getFirstName());
+            portfolio.put("middleName", performer.getMiddleName());
+            // Получаем email из Account (теперь Account загружен благодаря findByIdWithAccount)
+            String performerEmail = performer.getEmail();
+            portfolio.put("email", performerEmail != null ? performerEmail : "");
+            
+            // phone, townCountry, specializations, employment, experience получаются из Portfolio
+            List<Portfolio> performerPortfolios = portfolioService.findByUserId(performer.getId(), "PERFORMER");
+            if (!performerPortfolios.isEmpty()) {
+                Portfolio performerPortfolio = performerPortfolios.get(0);
+                portfolio.put("phone", performerPortfolio.getPhone() != null ? performerPortfolio.getPhone() : "");
+                portfolio.put("townCountry", performerPortfolio.getTownCountry() != null ? performerPortfolio.getTownCountry() : "");
+                portfolio.put("specializations", performerPortfolio.getSpecializations() != null ? performerPortfolio.getSpecializations() : "");
+                portfolio.put("employment", performerPortfolio.getEmployment() != null ? performerPortfolio.getEmployment() : "");
+                portfolio.put("experience", performerPortfolio.getExperience() != null ? performerPortfolio.getExperience() : "");
+                portfolio.put("isActive", performerPortfolio.getIsActive() != null ? performerPortfolio.getIsActive() : false);
+            } else {
+                portfolio.put("phone", "");
+                portfolio.put("townCountry", "");
+                portfolio.put("specializations", "");
+                portfolio.put("employment", "");
+                portfolio.put("experience", "");
+                portfolio.put("isActive", false);
+            }
+            
+            return ResponseEntity.ok(portfolio);
         } catch (Exception e) {
-            logger.error("Error getting performer portfolio: {}", e.getMessage(), e);
+            logger.error("Error getting performer portfolio for performerId {}: {}", performerId, e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get performer portfolio"));
         }
     }
@@ -571,6 +621,51 @@ public class CustomerController {
         } catch (Exception e) {
             logger.error("Error deleting chat: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @GetMapping("/top-performers")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getTopPerformers() {
+        try {
+            List<Performer> performers = performerService.getTopPerformers();
+            List<Map<String, Object>> performerDtos = performers.stream()
+                    .map(performer -> {
+                        // Рассчитываем рейтинг на основе отзывов
+                        List<WorkExperience> reviews = workExperienceService.findReviewsAboutPerformer(performer.getId());
+                        int calculatedRating = 0;
+                        if (!reviews.isEmpty()) {
+                            double averageMark = reviews.stream()
+                                    .mapToInt(review -> review.getRate() != null ? review.getRate() : 0)
+                                    .average()
+                                    .orElse(0.0);
+                            // Преобразуем среднюю оценку (1-5) в рейтинг (0-100)
+                            calculatedRating = (int) Math.round(averageMark * 20);
+                        }
+                        
+                        // Подсчитываем количество выполненных заказов
+                        List<Orders> allOrders = ordersService.findByPerformerId(performer.getId());
+                        long completedOrdersCount = allOrders.stream()
+                                .filter(order -> order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE)
+                                .count();
+                        
+                        Map<String, Object> dto = new java.util.HashMap<>();
+                        dto.put("id", performer.getId());
+                        dto.put("lastName", performer.getLastName());
+                        dto.put("firstName", performer.getFirstName());
+                        dto.put("middleName", performer.getMiddleName());
+                        dto.put("fullName", performer.getFullName());
+                        dto.put("email", performer.getEmail());
+                        dto.put("rating", calculatedRating);
+                        dto.put("completedOrdersCount", completedOrdersCount);
+                        return dto;
+                    })
+                    .sorted((a, b) -> Integer.compare((Integer) b.get("rating"), (Integer) a.get("rating")))
+                    .collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(Map.of("performers", performerDtos));
+        } catch (Exception e) {
+            logger.error("Error getting top performers: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get top performers"));
         }
     }
 }

@@ -13,6 +13,8 @@ public interface ChatService {
     List<Chat> findByRoomName(String roomName);
     List<Chat> findByCustomerId(Integer customerId);
     List<Chat> findByPerformerId(Integer performerId);
+    List<Chat> findByCustomerIdAndPerformerId(Integer customerId, Integer performerId);
+    List<Chat> findByCustomerIdAndPerformerIdIgnoreDeleted(Integer customerId, Integer performerId);
 }
 
 

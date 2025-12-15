@@ -175,7 +175,7 @@ export default function CustomerOrderEditPage() {
     );
   }
 
-  if (!order.isRejected) {
+  if (order.status !== 'REJECTED' && !order.isRejected) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="card">
@@ -195,17 +195,11 @@ export default function CustomerOrderEditPage() {
         className="mb-6 text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 flex items-center"
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
-        {t('common.back')} {t('orders.orders')}
+        {t('common.back')}
       </button>
 
       <div className="card max-w-3xl mx-auto">
         <h1 className="text-2xl font-bold mb-6 dark:text-slate-100">{t('orders.editOrder')}</h1>
-        
-        <div className="mb-4 p-4 bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-md">
-          <p className="text-sm text-orange-800 dark:text-orange-200">
-            {t('orders.orderUpdatedForReview')}
-          </p>
-        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Название заказа */}
@@ -343,7 +337,7 @@ export default function CustomerOrderEditPage() {
               ) : (
                 <>
                   <Save className="w-4 h-4 mr-2" />
-                  {t('common.save')} {t('orders.orderSentForReview')}
+                  {t('orders.saveAndSendForReview')}
                 </>
               )}
             </button>

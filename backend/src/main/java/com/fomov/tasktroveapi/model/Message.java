@@ -35,8 +35,11 @@ public class Message {
     @ToString.Exclude
     private Chat chat;
     
-    @Column(name = "sender_id", nullable = false)
-    private Integer senderId; // ID пользователя (Account.id)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "sender_id", nullable = false,
+                foreignKey = @ForeignKey(name = "fk_messages_sender"))
+    @ToString.Exclude
+    private Account sender;
     
     @Column(name = "sender_type", nullable = false, length = 20)
     private String senderType; // "Customer", "Performer", "Administrator"
@@ -54,13 +57,34 @@ public class Message {
         return senderType;
     }
     
+    // Геттер для обратной совместимости
+    @Deprecated
+    public Integer getSenderId() {
+        return sender != null ? sender.getId() : null;
+    }
+    
+    @Deprecated
+    public void setSenderId(Integer senderId) {
+        // This method is kept for backward compatibility but should not be used
+        // Use setSender() instead
+    }
+    
     // Конструкторы
+    public Message(String text, Chat chat, Account sender, String senderType) {
+        this.created = OffsetDateTime.now();
+        this.text = text;
+        this.chat = chat;
+        this.sender = sender;
+        this.senderType = senderType;
+    }
+    
+    @Deprecated
     public Message(String text, Chat chat, Integer senderId, String senderType) {
         this.created = OffsetDateTime.now();
         this.text = text;
         this.chat = chat;
-        this.senderId = senderId;
         this.senderType = senderType;
+        // Note: sender should be set separately using setSender()
     }
 
     @Override

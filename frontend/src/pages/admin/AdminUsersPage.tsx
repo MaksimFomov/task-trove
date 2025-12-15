@@ -14,27 +14,37 @@ import { saveState, loadState } from '../../utils/stateStorage';
 
 const PAGE_KEY = 'adminUsers';
 
-// Список специализаций для исполнителей
+// Список специализаций для исполнителей (только разработка ПО)
 const SPECIALIZATIONS = [
-  'Веб-разработка',
-  'Мобильная разработка',
-  'Дизайн',
-  'Графический дизайн',
-  'UX/UI дизайн',
-  'Копирайтинг',
-  'Переводы',
-  'Маркетинг',
-  'SMM',
-  'SEO',
-  'Контент-маркетинг',
-  'Видеомонтаж',
-  'Фотография',
-  'Анимация',
-  'Программирование',
-  'Тестирование ПО',
-  'Администрирование',
-  'Консультации',
-  'Обучение',
+  'Frontend разработка',
+  'Backend разработка',
+  'Full-stack разработка',
+  'Мобильная разработка (iOS)',
+  'Мобильная разработка (Android)',
+  'Мобильная разработка (React Native)',
+  'Мобильная разработка (Flutter)',
+  'Python разработка',
+  'Java разработка',
+  'JavaScript/TypeScript разработка',
+  'C++ разработка',
+  'C# разработка',
+  'Go разработка',
+  'Rust разработка',
+  'PHP разработка',
+  'Ruby разработка',
+  'Тестирование ПО (QA)',
+  'Автоматизированное тестирование',
+  'DevOps',
+  'Системное администрирование',
+  'Базы данных (SQL/NoSQL)',
+  'Микросервисы и архитектура',
+  'API разработка',
+  'Разработка игр',
+  'Machine Learning / AI',
+  'Blockchain разработка',
+  'Cloud разработка (AWS/Azure/GCP)',
+  'Кибербезопасность',
+  'Embedded разработка',
   'Другое'
 ];
 
@@ -146,7 +156,14 @@ export default function AdminUsersPage() {
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
   const [userToActivate, setUserToActivate] = useState<{ id: number; name: string } | null>(null);
   const [selectedUser, setSelectedUser] = useState<Account | null>(null);
-  const [adminFormData, setAdminFormData] = useState({ name: '', login: '', password: '', confirmPassword: '' });
+  const [adminFormData, setAdminFormData] = useState({ 
+    name: '', 
+    email: '', 
+    password: '', 
+    confirmPassword: '',
+    verificationCode: '',
+    emailVerified: false
+  });
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [userDetails, setUserDetails] = useState<any>(null);
   const [profileTab, setProfileTab] = useState<'portfolio' | 'orders' | 'reviews'>(() => {
@@ -154,6 +171,8 @@ export default function AdminUsersPage() {
   });
   const [performerId, setPerformerId] = useState<number | null>(null);
   const [customerId, setCustomerId] = useState<number | null>(null);
+  const [showDeleteReviewConfirm, setShowDeleteReviewConfirm] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState<WorkExperience | null>(null);
 
   // Сохранение состояния в localStorage
   useEffect(() => {
@@ -232,7 +251,7 @@ export default function AdminUsersPage() {
       }
       return users;
     },
-    refetchInterval: 15000, // Автоматическое обновление каждые 15 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   const activateMutation = useMutation({
@@ -258,12 +277,18 @@ export default function AdminUsersPage() {
   });
 
   const handleActivate = (user: Account) => {
-    setUserToActivate({ id: user.id, name: user.login || user.email || 'Пользователь' });
+    setUserToActivate({ id: user.id, name: user.email || 'Пользователь' });
     setShowActivateConfirm(true);
   };
 
-  const handleDeactivate = (user: Account) => {
-    setUserToActivate({ id: user.id, name: user.login || user.email || 'Пользователь' });
+  const handleDeactivate = (userAccount: Account) => {
+    // Проверка: суперадмин не может деактивировать себя
+    const currentUser = user; // Текущий пользователь из authStore
+    if (currentUser?.role === 'SuperAdministrator' && currentUser?.id === userAccount.id) {
+      toast.error('Вы не можете деактивировать себя');
+      return;
+    }
+    setUserToActivate({ id: userAccount.id, name: userAccount.email || 'Пользователь' });
     setShowDeactivateConfirm(true);
   };
 
@@ -275,6 +300,13 @@ export default function AdminUsersPage() {
 
   const handleConfirmDeactivate = () => {
     if (userToActivate) {
+      // Дополнительная проверка: суперадмин не может деактивировать себя
+      if (user?.role === 'SuperAdministrator' && user?.id === userToActivate.id) {
+        toast.error('Вы не можете деактивировать себя');
+        setShowDeactivateConfirm(false);
+        setUserToActivate(null);
+        return;
+      }
       disactivateMutation.mutate(userToActivate.id);
     }
   };
@@ -324,6 +356,21 @@ export default function AdminUsersPage() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Ошибка при удалении пользователя');
+    },
+  });
+
+  const deleteReviewMutation = useMutation({
+    mutationFn: (reviewId: number) => adminApi.deleteReview(reviewId),
+    onSuccess: () => {
+      // Обновляем запросы отзывов
+      queryClient.invalidateQueries({ queryKey: ['adminPerformerReviews'] });
+      queryClient.invalidateQueries({ queryKey: ['adminCustomerReviews'] });
+      toast.success('Отзыв успешно удален');
+      setShowDeleteReviewConfirm(false);
+      setReviewToDelete(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Ошибка при удалении отзыва');
     },
   });
 
@@ -511,11 +558,11 @@ export default function AdminUsersPage() {
     }
 
     if (formData.role === 'Administrator' || formData.role === 'SuperAdministrator') {
-      // Для администраторов проверяем логин
+      // Для администраторов проверяем email
       if (!formData.email || formData.email.trim() === '') {
-        newErrors.email = 'Логин обязателен для заполнения';
+        newErrors.email = 'Email обязателен для заполнения';
       } else if (formData.email.trim().length < 3) {
-        newErrors.email = 'Логин должен содержать минимум 3 символа';
+        newErrors.email = 'Email должен содержать минимум 3 символа';
       }
     } else {
       // Для остальных проверяем email
@@ -595,7 +642,7 @@ export default function AdminUsersPage() {
         firstName: (role === 'Customer' || role === 'Performer') ? (response.data.firstName || '') : undefined,
         middleName: (role === 'Customer' || role === 'Performer') ? (response.data.middleName || '') : undefined,
         name: (role === 'Administrator' || role === 'SuperAdministrator') ? (response.data.name || '') : undefined,
-        email: (role === 'Administrator' || role === 'SuperAdministrator') ? (response.data.login || '') : (response.data.email || ''),
+        email: response.data.email || '',
         password: '',
         role: (role === 'SuperAdministrator' ? 'SuperAdministrator' : role) as 'Customer' | 'Performer' | 'Administrator' | 'SuperAdministrator',
         age: (role === 'Performer' ? response.data.age : undefined),
@@ -615,12 +662,24 @@ export default function AdminUsersPage() {
   };
 
   const handleDelete = (userId: number) => {
+    // Проверка: суперадмин не может удалить себя
+    if (user?.role === 'SuperAdministrator' && user?.id === userId) {
+      toast.error('Вы не можете удалить себя');
+      return;
+    }
     setUserToDelete(userId);
     setShowDeleteConfirm(true);
   };
 
   const handleConfirmDelete = () => {
     if (userToDelete) {
+      // Дополнительная проверка: суперадмин не может удалить себя
+      if (user?.role === 'SuperAdministrator' && user?.id === userToDelete) {
+        toast.error('Вы не можете удалить себя');
+        setShowDeleteConfirm(false);
+        setUserToDelete(null);
+        return;
+      }
       deleteUserMutation.mutate(userToDelete);
       setShowDeleteConfirm(false);
       setUserToDelete(null);
@@ -648,10 +707,10 @@ export default function AdminUsersPage() {
     if (showEditModal && selectedUser) {
       const updateData: any = {};
       
-      // Для администраторов используем name и login
+      // Для администраторов используем name и email
       if (formData.role === 'Administrator' || formData.role === 'SuperAdministrator') {
         updateData.name = formData.name;
-        updateData.login = formData.email.trim();
+        updateData.email = formData.email;
       } else {
         // Для заказчиков и исполнителей используем ФИО
         updateData.lastName = formData.lastName;
@@ -685,9 +744,23 @@ export default function AdminUsersPage() {
     setShowUpdateConfirm(false);
   };
 
+  // Mutation для отправки кода подтверждения email
+  const sendVerificationMutation = useMutation({
+    mutationFn: (email: string) => {
+      return adminApi.sendAdminVerification(email);
+    },
+    onSuccess: () => {
+      toast.success('Код подтверждения отправлен на email');
+      setAdminFormData(prev => ({ ...prev, emailVerified: false }));
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Ошибка при отправке кода подтверждения');
+    },
+  });
+
   // Mutation для создания администратора
   const createAdminMutation = useMutation({
-    mutationFn: (data: { login: string; password: string; name: string }) => {
+    mutationFn: (data: { email: string; password: string; name: string; verificationCode: string }) => {
       return adminApi.createAdministrator(data);
     },
     onSuccess: () => {
@@ -695,21 +768,46 @@ export default function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ['adminUsers'] });
       toast.success('Администратор создан');
       setShowCreateAdminModal(false);
-      setAdminFormData({ name: '', login: '', password: '', confirmPassword: '' });
+      setAdminFormData({ 
+        name: '', 
+        email: '', 
+        password: '', 
+        confirmPassword: '',
+        verificationCode: '',
+        emailVerified: false
+      });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.error || 'Ошибка при создании администратора');
     },
   });
 
+  const handleSendVerification = async () => {
+    if (!adminFormData.email.trim()) {
+      toast.error('Введите email');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminFormData.email.trim())) {
+      toast.error('Введите корректный email адрес');
+      return;
+    }
+    sendVerificationMutation.mutate(adminFormData.email.trim());
+  };
+
   const handleCreateAdmin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adminFormData.name || !adminFormData.login || !adminFormData.password || !adminFormData.confirmPassword) {
+    if (!adminFormData.name || !adminFormData.email || !adminFormData.password || !adminFormData.confirmPassword) {
       toast.error('Заполните все поля');
       return;
     }
-    if (adminFormData.login.trim().length < 3) {
-      toast.error('Логин должен содержать минимум 3 символа');
+    if (!adminFormData.verificationCode) {
+      toast.error('Введите код подтверждения email');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(adminFormData.email.trim())) {
+      toast.error('Введите корректный email адрес');
       return;
     }
     if (adminFormData.password.length < 8) {
@@ -722,9 +820,26 @@ export default function AdminUsersPage() {
     }
     createAdminMutation.mutate({
       name: adminFormData.name,
-      login: adminFormData.login.trim(),
+      email: adminFormData.email.trim(),
       password: adminFormData.password,
+      verificationCode: adminFormData.verificationCode.trim(),
     });
+  };
+
+  const handleDeleteReview = (review: WorkExperience) => {
+    setReviewToDelete(review);
+    setShowDeleteReviewConfirm(true);
+  };
+
+  const confirmDeleteReview = () => {
+    if (reviewToDelete) {
+      deleteReviewMutation.mutate(reviewToDelete.id);
+    }
+  };
+
+  const cancelDeleteReview = () => {
+    setShowDeleteReviewConfirm(false);
+    setReviewToDelete(null);
   };
 
   if (isLoading) {
@@ -821,7 +936,7 @@ export default function AdminUsersPage() {
             if (searchTerm) {
               const searchLower = searchTerm.toLowerCase();
               return (
-                user.login?.toLowerCase().includes(searchLower) ||
+                user.email?.toLowerCase().includes(searchLower) ||
                 user.email?.toLowerCase().includes(searchLower) ||
                 user.role?.name?.toLowerCase().includes(searchLower) ||
                 user.id?.toString().includes(searchTerm)
@@ -867,6 +982,8 @@ export default function AdminUsersPage() {
             }
           };
           
+          const currentUserFromStore = user; // Сохраняем текущего пользователя из authStore
+          
           return sortedUsers.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -874,9 +991,6 @@ export default function AdminUsersPage() {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     ID
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
-                    Логин
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase tracking-wider">
                     Email
@@ -909,14 +1023,16 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200">
-                  {sortedUsers.map((user) => (
+                  {sortedUsers.map((user) => {
+                  // Проверяем, не пытается ли суперадмин удалить себя
+                  const isDeletingSelf = currentUserFromStore?.role === 'SuperAdministrator' && 
+                                         currentUserFromStore?.id === user.id;
+                  
+                  return (
                   <tr key={user.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-slate-100">{user.id}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-slate-100">
-                      {user.login || '-'}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
-                      {(user.role?.name === 'Administrator' || user.role?.name === 'SuperAdministrator') ? '-' : (user.email || '-')}
+                      {user.email || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs font-medium bg-primary-100 text-primary-800 rounded-full">
@@ -952,6 +1068,8 @@ export default function AdminUsersPage() {
                       >
                         <Edit className="w-4 h-4" />
                       </button>
+                      {/* Суперадмин не может удалить себя */}
+                      {!isDeletingSelf && (
                       <button
                         onClick={() => handleDelete(user.id)}
                         className="text-red-600 hover:text-red-900 dark:text-red-400"
@@ -959,12 +1077,15 @@ export default function AdminUsersPage() {
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
+                      )}
                         </>
                       )}
                       {/* Кнопка активации/деактивации для всех пользователей (кроме администраторов, если текущий пользователь не суперадмин) */}
                       {((user.role?.name !== 'Administrator' && user.role?.name !== 'SuperAdministrator') || isSuperAdmin) && (
                         <>
                           {user.isActive !== false ? (
+                          /* Суперадмин не может деактивировать себя */
+                          !isDeletingSelf && (
                           <button
                               onClick={() => handleDeactivate(user)}
                             className="text-red-600 hover:text-red-900 dark:text-red-400"
@@ -972,6 +1093,7 @@ export default function AdminUsersPage() {
                           >
                             <XCircle className="w-4 h-4" />
                           </button>
+                          )
                           ) : (
                             <button
                               onClick={() => handleActivate(user)}
@@ -985,7 +1107,8 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -1157,7 +1280,8 @@ export default function AdminUsersPage() {
             {(formData.role === 'Administrator' || formData.role === 'SuperAdministrator') ? (
             <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Логин <span className="text-red-500">*</span>
+                  <Mail className="w-4 h-4 inline mr-2" />
+                  Email <span className="text-red-500">*</span>
               </label>
               <input
                   type="text"
@@ -1505,8 +1629,8 @@ export default function AdminUsersPage() {
                   <p className="text-gray-700 dark:text-slate-300">{userDetails.name || '-'}</p>
                 </div>
                 <div>
-                  <h3 className="font-semibold mb-2 dark:text-slate-100">Логин</h3>
-                  <p className="text-gray-700 dark:text-slate-300">{userDetails.login || '-'}</p>
+                  <h3 className="font-semibold mb-2 dark:text-slate-100">Email</h3>
+                  <p className="text-gray-700 dark:text-slate-300">{userDetails.email || '-'}</p>
                 </div>
                 <div>
                   <h3 className="font-semibold mb-2 dark:text-slate-100">Роль</h3>
@@ -1613,45 +1737,29 @@ export default function AdminUsersPage() {
                             </>
                           ) : (
                             <>
-                              {(formatFIO(portfolioData.lastName, portfolioData.firstName, portfolioData.middleName) || portfolioData.name) && (
                             <div>
                                   <h3 className="font-semibold mb-2 dark:text-slate-100">ФИО</h3>
                                   <p className="text-gray-700 dark:text-slate-300">
-                                    {formatFIO(portfolioData.lastName, portfolioData.firstName, portfolioData.middleName) || portfolioData.name}
+                                  {formatFIO(portfolioData.lastName, portfolioData.firstName, portfolioData.middleName) || portfolioData.name || 'Не указано'}
                                   </p>
                                 </div>
-                              )}
-                              {portfolioData.email && (
                                 <div>
                                   <h3 className="font-semibold mb-2 dark:text-slate-100">Email</h3>
-                                  <p className="text-gray-700 dark:text-slate-300">{portfolioData.email}</p>
+                                <p className="text-gray-700 dark:text-slate-300">{portfolioData.email || userDetails?.email || 'Не указано'}</p>
                                 </div>
-                              )}
-                              {portfolioData.phone && (
                                 <div>
                                   <h3 className="font-semibold mb-2 dark:text-slate-100">Телефон</h3>
-                                  <p className="text-gray-700 dark:text-slate-300">{portfolioData.phone}</p>
+                                <p className="text-gray-700 dark:text-slate-300">{portfolioData.phone || 'Не указано'}</p>
                                 </div>
-                              )}
-                              {portfolioData.description && (
                                 <div>
                                   <h3 className="font-semibold mb-2 dark:text-slate-100">Описание</h3>
-                                  <p className="text-gray-700 dark:text-slate-300">{portfolioData.description}</p>
+                                <p className="text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{portfolioData.description || 'Не указано'}</p>
                                 </div>
-                              )}
-                              {portfolioData.scopeS && (
                                 <div>
-                                  <h3 className="font-semibold mb-2 dark:text-slate-100">Область</h3>
-                                  <p className="text-gray-700 dark:text-slate-300">{portfolioData.scopeS}</p>
+                                <h3 className="font-semibold mb-2 dark:text-slate-100">Область деятельности</h3>
+                                <p className="text-gray-700 dark:text-slate-300">{portfolioData.scopeS || 'Не указано'}</p>
                                 </div>
-                              )}
                             </>
-                          )}
-                          {((userDetails.role?.name === 'Performer' && !formatFIO(portfolioData.lastName, portfolioData.firstName, portfolioData.middleName) && !portfolioData.name && !portfolioData.email && !portfolioData.phone && !portfolioData.specializations && !portfolioData.experience && !portfolioData.employment && !portfolioData.townCountry) ||
-                            (userDetails.role?.name === 'Customer' && !formatFIO(portfolioData.lastName, portfolioData.firstName, portfolioData.middleName) && !portfolioData.name && !portfolioData.email && !portfolioData.phone && !portfolioData.description && !portfolioData.scopeS)) && (
-                            <div className="text-center py-12">
-                              <p className="text-gray-500 dark:text-slate-400">Портфолио не заполнено</p>
-                            </div>
                           )}
                         </div>
                       ) : (
@@ -1755,23 +1863,33 @@ export default function AdminUsersPage() {
                           {reviewsData.reviews.map((review: WorkExperience) => (
                             <div key={review.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                               <div className="flex items-start justify-between mb-2">
-                                <div>
+                                <div className="flex-1">
                                   <h3 className="font-semibold dark:text-slate-100">
                                     {review.text || 'Отзыв без текста'}
                                   </h3>
                                 </div>
-                                <div className="flex items-center">
-                                  {Array.from({ length: 5 }).map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      className={`w-4 h-4 ${
-                                        i < (review.mark || 0)
-                                          ? 'text-yellow-400 fill-current'
-                                          : 'text-gray-300 dark:text-slate-600'
-                                      }`}
-                                    />
-                                  ))}
-                                  <span className="ml-2 font-semibold dark:text-slate-100">{review.mark}</span>
+                                <div className="flex items-center gap-2">
+                                  <div className="flex items-center">
+                                    {Array.from({ length: 5 }).map((_, i) => (
+                                      <Star
+                                        key={i}
+                                        className={`w-4 h-4 ${
+                                          i < (review.mark || 0)
+                                            ? 'text-yellow-400 fill-current'
+                                            : 'text-gray-300 dark:text-slate-600'
+                                        }`}
+                                      />
+                                    ))}
+                                    <span className="ml-2 font-semibold dark:text-slate-100">{review.mark}</span>
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeleteReview(review)}
+                                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                    title="Удалить отзыв"
+                                    disabled={deleteReviewMutation.isPending}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
                                 </div>
                               </div>
                                   {review.reviewerType === 'CUSTOMER' && review.customerName && (
@@ -1815,23 +1933,33 @@ export default function AdminUsersPage() {
                               {customerReviewsData.reviews.map((review: WorkExperience) => (
                                 <div key={review.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                   <div className="flex items-start justify-between mb-2">
-                                    <div>
+                                    <div className="flex-1">
                                       <h3 className="font-semibold dark:text-slate-100">
                                         {review.text || 'Отзыв без текста'}
                                       </h3>
                                     </div>
-                                    <div className="flex items-center">
-                                      {Array.from({ length: 5 }).map((_, i) => (
-                                        <Star
-                                          key={i}
-                                          className={`w-4 h-4 ${
-                                            i < (review.mark || 0)
-                                              ? 'text-yellow-400 fill-current'
-                                              : 'text-gray-300 dark:text-slate-600'
-                                          }`}
-                                        />
-                                      ))}
-                                      <span className="ml-2 font-semibold dark:text-slate-100">{review.mark}</span>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                          <Star
+                                            key={i}
+                                            className={`w-4 h-4 ${
+                                              i < (review.mark || 0)
+                                                ? 'text-yellow-400 fill-current'
+                                                : 'text-gray-300 dark:text-slate-600'
+                                            }`}
+                                          />
+                                        ))}
+                                        <span className="ml-2 font-semibold dark:text-slate-100">{review.mark}</span>
+                                      </div>
+                                      <button
+                                        onClick={() => handleDeleteReview(review)}
+                                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                        title="Удалить отзыв"
+                                        disabled={deleteReviewMutation.isPending}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
                                     </div>
                                   </div>
                                   {review.reviewerType === 'PERFORMER' && review.performerName && (
@@ -1878,7 +2006,14 @@ export default function AdminUsersPage() {
       {/* Create Administrator Modal */}
       <Modal isOpen={showCreateAdminModal} onClose={() => {
         setShowCreateAdminModal(false);
-        setAdminFormData({ name: '', login: '', password: '', confirmPassword: '' });
+        setAdminFormData({ 
+          name: '', 
+          email: '', 
+          password: '', 
+          confirmPassword: '',
+          verificationCode: '',
+          emailVerified: false
+        });
       }}>
         <div className="card max-w-md w-full mx-4">
           <div className="flex justify-between items-center mb-4">
@@ -1886,7 +2021,14 @@ export default function AdminUsersPage() {
             <button
               onClick={() => {
                 setShowCreateAdminModal(false);
-                setAdminFormData({ name: '', login: '', password: '', confirmPassword: '' });
+                setAdminFormData({ 
+          name: '', 
+          email: '', 
+          password: '', 
+          confirmPassword: '',
+          verificationCode: '',
+          emailVerified: false
+        });
               }}
               className="text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300"
             >
@@ -1909,18 +2051,51 @@ export default function AdminUsersPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                Логин <span className="text-red-500">*</span>
+                Email <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={adminFormData.login}
-                onChange={(e) => setAdminFormData({ ...adminFormData, login: e.target.value })}
-                className="input"
-                minLength={3}
-                required
-              />
-              <p className="mt-1 text-xs text-gray-500">Минимум 3 символа</p>
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={adminFormData.email}
+                  onChange={(e) => setAdminFormData({ ...adminFormData, email: e.target.value, emailVerified: false })}
+                  className="input flex-1"
+                  required
+                  disabled={sendVerificationMutation.isPending}
+                />
+                <button
+                  type="button"
+                  onClick={handleSendVerification}
+                  disabled={sendVerificationMutation.isPending || !adminFormData.email.trim()}
+                  className="btn btn-secondary whitespace-nowrap"
+                >
+                  {sendVerificationMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Отправить код'
+                  )}
+                </button>
+              </div>
+              {sendVerificationMutation.isSuccess && (
+                <p className="mt-1 text-xs text-green-600">Код отправлен на email</p>
+              )}
             </div>
+            {sendVerificationMutation.isSuccess && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Код подтверждения <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={adminFormData.verificationCode}
+                  onChange={(e) => setAdminFormData({ ...adminFormData, verificationCode: e.target.value })}
+                  className="input"
+                  placeholder="Введите код из письма"
+                  maxLength={6}
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">Введите 6-значный код из письма</p>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 Пароль <span className="text-red-500">*</span>
@@ -1953,7 +2128,14 @@ export default function AdminUsersPage() {
                 type="button"
                 onClick={() => {
                   setShowCreateAdminModal(false);
-                  setAdminFormData({ name: '', login: '', password: '', confirmPassword: '' });
+                  setAdminFormData({ 
+                    name: '', 
+                    email: '', 
+                    password: '', 
+                    confirmPassword: '',
+                    verificationCode: '',
+                    emailVerified: false
+                  });
                 }}
                 className="btn btn-secondary"
               >
@@ -2164,6 +2346,80 @@ export default function AdminUsersPage() {
             </div>
           </div>
         </div>
+      </Modal>
+
+      {/* Delete Review Confirmation Modal */}
+      <Modal isOpen={showDeleteReviewConfirm && !!reviewToDelete} onClose={cancelDeleteReview}>
+        {reviewToDelete && (
+          <div className="card max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Удаление отзыва</h2>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <p className="text-red-800 dark:text-red-200 font-semibold mb-2">
+                  ⚠️ Внимание!
+                </p>
+                <p className="text-red-700 dark:text-red-300 text-sm">
+                  Отзыв будет удален без возможности восстановления.
+                </p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-1">Отзыв:</p>
+                <p className="text-lg font-semibold dark:text-slate-100">
+                  {reviewToDelete.text || 'Отзыв без текста'}
+                </p>
+                <div className="flex items-center mt-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-4 h-4 ${
+                        i < (reviewToDelete.mark || 0)
+                          ? 'text-yellow-400 fill-current'
+                          : 'text-gray-300 dark:text-slate-600'
+                      }`}
+                    />
+                  ))}
+                  <span className="ml-2 font-semibold dark:text-slate-100">{reviewToDelete.mark}</span>
+                </div>
+              </div>
+              
+              <p className="text-gray-700 dark:text-slate-300">
+                Вы уверены, что хотите удалить этот отзыв?
+              </p>
+              
+              <div className="flex space-x-2 pt-4">
+                <button
+                  onClick={cancelDeleteReview}
+                  disabled={deleteReviewMutation.isPending}
+                  className="btn btn-secondary flex items-center flex-1"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={confirmDeleteReview}
+                  disabled={deleteReviewMutation.isPending}
+                  className="btn btn-danger flex items-center flex-1"
+                >
+                  {deleteReviewMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Удаление...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Да, удалить
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

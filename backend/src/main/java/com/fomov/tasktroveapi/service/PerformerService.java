@@ -33,4 +33,5 @@ public interface PerformerService {
     Map<String, Object> getMyReviews(Integer accountId);
     void deleteChat(Integer accountId, Integer chatId);
     void addReview(Integer accountId, WorkExperienceDto dto);
+    List<Performer> getTopPerformers();
 }

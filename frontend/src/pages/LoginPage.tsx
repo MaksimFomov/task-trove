@@ -10,7 +10,7 @@ import { toast } from 'react-hot-toast';
 
 export default function LoginPage() {
   const { t } = useTranslation();
-  const [login, setLogin] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
@@ -149,7 +149,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!login.trim() || !password.trim()) {
+    if (!email.trim() || !password.trim()) {
       showErrorToast(t('validation.required'));
       return;
     }
@@ -157,10 +157,10 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const response = await authApi.login({ login: login, password: password });
-      const { token, role, id, login: userLogin } = response.data;
+      const response = await authApi.login({ login: email, password: password });
+      const { token, role, id, email: userEmail } = response.data;
       
-      setAuth({ id, login: userLogin, role, token }, token);
+      setAuth({ id, email: userEmail, role, token }, token);
       showSuccessToast(t('auth.loginSuccess'));
       
       // Navigate based on role
@@ -196,18 +196,18 @@ export default function LoginPage() {
         <div className="card">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="login" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                 <Mail className="w-4 h-4 inline mr-2" />
-                {t('auth.loginOrEmail')}
+                {t('auth.email')}
               </label>
               <input
-                id="login"
-                type="text"
+                id="email"
+                type="email"
                 required
-                value={login}
-                onChange={(e) => setLogin(e.target.value)}
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="input"
-                placeholder={t('auth.enterLoginOrEmail')}
+                placeholder={t('auth.enterEmail')}
               />
             </div>
             <div>

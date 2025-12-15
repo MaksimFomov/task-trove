@@ -55,9 +55,8 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void initializeAdmin() {
-        // Проверяем, существует ли уже администратор с логином "admin" или email "admin@tasktrove.com"
-        if (accountRepository.findByLogin("admin").isPresent() || 
-            accountRepository.findByEmail("admin@tasktrove.com").isPresent()) {
+        // Проверяем, существует ли уже администратор с email "admin@tasktrove.com"
+        if (accountRepository.findByEmail("admin@tasktrove.com").isPresent()) {
             logger.info("Admin user already exists");
             return;
         }
@@ -68,19 +67,17 @@ public class DataInitializer implements CommandLineRunner {
 
         // Создаем аккаунт суперадминистратора
         Account adminAccount = new Account();
-        adminAccount.setLogin("admin");
         adminAccount.setEmail("admin@tasktrove.com");
         adminAccount.setPassword(passwordEncoder.encode("admin"));
         adminAccount.setRole(superAdminRole);
         adminAccount.setIsActive(true);
         adminAccount = accountRepository.save(adminAccount);
-        logger.info("Created super admin account with login: admin and role: SuperAdministrator");
+        logger.info("Created super admin account with email: admin@tasktrove.com and role: SuperAdministrator");
 
         // Создаем сущность Administrator
         Administrator administrator = new Administrator();
         administrator.setAccount(adminAccount);
         administrator.setName("Administrator");
-        administrator.setEmail("admin@tasktrove.com");
         administratorRepository.save(administrator);
         logger.info("Created administrator entity for super admin account");
     }

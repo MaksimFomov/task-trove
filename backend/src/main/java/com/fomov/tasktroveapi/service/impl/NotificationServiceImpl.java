@@ -1,8 +1,11 @@
 package com.fomov.tasktroveapi.service.impl;
 
+import com.fomov.tasktroveapi.model.Account;
 import com.fomov.tasktroveapi.model.Notification;
+import com.fomov.tasktroveapi.repository.AccountRepository;
 import com.fomov.tasktroveapi.repository.NotificationRepository;
 import com.fomov.tasktroveapi.service.NotificationService;
+import com.fomov.tasktroveapi.exception.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -17,9 +20,11 @@ public class NotificationServiceImpl implements NotificationService {
     private static final Logger logger = LoggerFactory.getLogger(NotificationServiceImpl.class);
     
     private final NotificationRepository repository;
+    private final AccountRepository accountRepository;
 
-    public NotificationServiceImpl(NotificationRepository repository) {
+    public NotificationServiceImpl(NotificationRepository repository, AccountRepository accountRepository) {
         this.repository = repository;
+        this.accountRepository = accountRepository;
     }
 
     @Override
@@ -50,7 +55,7 @@ public class NotificationServiceImpl implements NotificationService {
         Notification notification = repository.findById(notificationId)
                 .orElseThrow(() -> new IllegalArgumentException("Notification not found: " + notificationId));
         
-        if (!notification.getAccountId().equals(accountId)) {
+        if (notification.getAccount() == null || !notification.getAccount().getId().equals(accountId)) {
             throw new SecurityException("Access denied to notification " + notificationId);
         }
         
@@ -74,8 +79,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void createReplyNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName) {
+        Account account = accountRepository.findById(customerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", customerAccountId));
         Notification notification = new Notification(
-            customerAccountId,
+            account,
             "Customer",
             "REPLY",
             "Новый отклик на заказ",
@@ -89,8 +96,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void createAssignedNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+        Account account = accountRepository.findById(performerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", performerAccountId));
         Notification notification = new Notification(
-            performerAccountId,
+            account,
             "Performer",
             "ASSIGNED",
             "Вас приняли в работу",
@@ -104,8 +113,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void createCompletedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName) {
+        Account account = accountRepository.findById(customerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", customerAccountId));
         Notification notification = new Notification(
-            customerAccountId,
+            account,
             "Customer",
             "COMPLETED",
             "Заказ завершен",
@@ -116,11 +127,30 @@ public class NotificationServiceImpl implements NotificationService {
         save(notification);
         logger.info("Created COMPLETED notification for customer accountId={}, orderId={}", customerAccountId, orderId);
     }
+    
+    @Override
+    public void createOrderCompletedByCustomerNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+        Account account = accountRepository.findById(performerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", performerAccountId));
+        Notification notification = new Notification(
+            account,
+            "Performer",
+            "COMPLETED",
+            "Заказ выполнен",
+            String.format("Заказчик %s завершил заказ \"%s\"", customerName, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedCustomerId(customerId);
+        save(notification);
+        logger.info("Created COMPLETED notification for performer accountId={}, orderId={}", performerAccountId, orderId);
+    }
 
     @Override
     public void createCorrectionNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+        Account account = accountRepository.findById(performerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", performerAccountId));
         Notification notification = new Notification(
-            performerAccountId,
+            account,
             "Performer",
             "CORRECTION",
             "Требуются правки",
@@ -134,8 +164,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void createRefusedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName) {
+        Account account = accountRepository.findById(customerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", customerAccountId));
         Notification notification = new Notification(
-            customerAccountId,
+            account,
             "Customer",
             "REFUSED",
             "Исполнитель отказался",
@@ -154,9 +186,28 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public void createOrderReviewNotification(Integer adminAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+    public void createPerformerNotSelectedNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+        Account account = accountRepository.findById(performerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", performerAccountId));
         Notification notification = new Notification(
-            adminAccountId,
+            account,
+            "Performer",
+            "REFUSED",
+            "Вас не выбрали",
+            String.format("Заказчик %s выбрал другого исполнителя для заказа \"%s\"", customerName, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedCustomerId(customerId);
+        save(notification);
+        logger.info("Created REFUSED notification for performer accountId={}, orderId={}", performerAccountId, orderId);
+    }
+
+    @Override
+    public void createOrderReviewNotification(Integer adminAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName) {
+        Account account = accountRepository.findById(adminAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", adminAccountId));
+        Notification notification = new Notification(
+            account,
             "Administrator",
             "ORDER_REVIEW",
             "Новый заказ на рассмотрении",
@@ -170,8 +221,10 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void createOrderApprovedNotification(Integer customerAccountId, Integer orderId, String orderTitle) {
+        Account account = accountRepository.findById(customerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", customerAccountId));
         Notification notification = new Notification(
-            customerAccountId,
+            account,
             "Customer",
             "ORDER_APPROVED",
             "Заказ одобрен",
@@ -184,13 +237,15 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void createOrderRejectedNotification(Integer customerAccountId, Integer orderId, String orderTitle, String reason) {
+        Account account = accountRepository.findById(customerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", customerAccountId));
         String message = String.format("Ваш заказ \"%s\" не прошел проверку администратором", orderTitle);
         if (reason != null && !reason.trim().isEmpty()) {
             message += String.format(". Причина: %s", reason);
         }
         
         Notification notification = new Notification(
-            customerAccountId,
+            account,
             "Customer",
             "ORDER_REJECTED",
             "Заказ не прошел проверку",
@@ -199,5 +254,39 @@ public class NotificationServiceImpl implements NotificationService {
         notification.setRelatedOrderId(orderId);
         save(notification);
         logger.info("Created ORDER_REJECTED notification for customer accountId={}, orderId={}", customerAccountId, orderId);
+    }
+    
+    @Override
+    public void createReviewNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName, Integer mark) {
+        Account account = accountRepository.findById(performerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", performerAccountId));
+        Notification notification = new Notification(
+            account,
+            "Performer",
+            "REVIEW",
+            "Вас оценили",
+            String.format("Заказчик %s оставил вам отзыв с оценкой %d/5 по заказу \"%s\"", customerName, mark, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedCustomerId(customerId);
+        save(notification);
+        logger.info("Created REVIEW notification for performer accountId={}, orderId={}, mark={}", performerAccountId, orderId, mark);
+    }
+    
+    @Override
+    public void createCustomerReviewNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName, Integer mark) {
+        Account account = accountRepository.findById(customerAccountId)
+                .orElseThrow(() -> new NotFoundException("Account", customerAccountId));
+        Notification notification = new Notification(
+            account,
+            "Customer",
+            "REVIEW",
+            "Вас оценили",
+            String.format("Исполнитель %s оставил вам отзыв с оценкой %d/5 по заказу \"%s\"", performerName, mark, orderTitle)
+        );
+        notification.setRelatedOrderId(orderId);
+        notification.setRelatedPerformerId(performerId);
+        save(notification);
+        logger.info("Created REVIEW notification for customer accountId={}, orderId={}, mark={}", customerAccountId, orderId, mark);
     }
 }

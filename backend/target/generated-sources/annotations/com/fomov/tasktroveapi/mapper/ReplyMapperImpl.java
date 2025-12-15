@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-12-12T23:27:06+0300",
+    date = "2025-12-15T20:06:13+0300",
     comments = "version: 1.6.3, compiler: javac, environment: Java 25 (Homebrew)"
 )
 @Component
@@ -27,10 +27,9 @@ public class ReplyMapperImpl implements ReplyMapper {
         replyDto.setOrderId( replyOrdersId( reply ) );
         replyDto.setPerformerId( replyPerformerId( reply ) );
         replyDto.setId( reply.getId() );
-        replyDto.setIsDoneThisTask( reply.getIsDoneThisTask() );
-        replyDto.setIsOnCustomer( reply.getIsOnCustomer() );
-        replyDto.setDonned( reply.getDonned() );
-        replyDto.setWorkBind( reply.getWorkBind() );
+        replyDto.setIsApprovedByCustomer( reply.getIsApprovedByCustomer() );
+
+        afterMappingToDto( replyDto, reply );
 
         return replyDto;
     }
@@ -44,10 +43,7 @@ public class ReplyMapperImpl implements ReplyMapper {
         Reply reply = new Reply();
 
         reply.setId( dto.getId() );
-        reply.setIsDoneThisTask( dto.getIsDoneThisTask() );
-        reply.setIsOnCustomer( dto.getIsOnCustomer() );
-        reply.setDonned( dto.getDonned() );
-        reply.setWorkBind( dto.getWorkBind() );
+        reply.setIsApprovedByCustomer( dto.getIsApprovedByCustomer() );
 
         return reply;
     }

@@ -79,6 +79,8 @@ export default function AdminOrdersPage() {
   });
   const [performerId, setPerformerId] = useState<number | null>(null);
   const [customerId, setCustomerId] = useState<number | null>(null);
+  const [showDeleteReviewConfirm, setShowDeleteReviewConfirm] = useState(false);
+  const [reviewToDelete, setReviewToDelete] = useState<WorkExperience | null>(null);
 
   // Сохранение вкладки профиля в модальном окне
   useEffect(() => {
@@ -130,7 +132,7 @@ export default function AdminOrdersPage() {
       const response = await adminApi.getAllOrders();
       return response.data?.orders || [];
     },
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   const { data: reviewOrders, isLoading: isLoadingReview } = useQuery({
@@ -139,7 +141,7 @@ export default function AdminOrdersPage() {
       const response = await adminApi.getOrdersOnReview();
       return response.data?.orders || [];
     },
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   const deleteOrderMutation = useMutation({
@@ -191,6 +193,21 @@ export default function AdminOrdersPage() {
     },
   });
 
+  const deleteReviewMutation = useMutation({
+    mutationFn: (reviewId: number) => adminApi.deleteReview(reviewId),
+    onSuccess: () => {
+      // Обновляем запросы отзывов
+      queryClient.invalidateQueries({ queryKey: ['adminPerformerReviews'] });
+      queryClient.invalidateQueries({ queryKey: ['adminCustomerReviews'] });
+      toast.success('Отзыв успешно удален');
+      setShowDeleteReviewConfirm(false);
+      setReviewToDelete(null);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.error || 'Ошибка при удалении отзыва');
+    },
+  });
+
   const handleViewOrder = (order: Order) => {
     setSelectedOrder(order);
     setShowViewModal(true);
@@ -198,7 +215,8 @@ export default function AdminOrdersPage() {
 
   const handleViewUser = async (userId: number, role: 'Customer' | 'Performer') => {
     try {
-      const response = await adminApi.getUserDetails(userId);
+      const type = role === 'Customer' ? 'customer' : 'performer';
+      const response = await adminApi.getUserDetails(userId, type);
       setUserDetails(response.data);
       setProfileTab('portfolio');
       
@@ -266,6 +284,22 @@ export default function AdminOrdersPage() {
         reason: rejectReason.trim() || undefined 
       });
     }
+  };
+
+  const handleDeleteReview = (review: WorkExperience) => {
+    setReviewToDelete(review);
+    setShowDeleteReviewConfirm(true);
+  };
+
+  const confirmDeleteReview = () => {
+    if (reviewToDelete) {
+      deleteReviewMutation.mutate(reviewToDelete.id);
+    }
+  };
+
+  const cancelDeleteReview = () => {
+    setShowDeleteReviewConfirm(false);
+    setReviewToDelete(null);
   };
 
   // Загрузка портфолио для просмотра
@@ -357,6 +391,34 @@ export default function AdminOrdersPage() {
     enabled: showUserViewModal && !!customerId && profileTab === 'reviews' && userDetails?.role?.name === 'Customer',
   });
 
+  // Функция для определения текущего статуса заказа (только один, наиболее приоритетный)
+  const getOrderStatus = (order: Order) => {
+    const status = order.status || 
+      (order.isOnReview ? 'ON_REVIEW' : 
+       order.isRejected ? 'REJECTED' : 
+       order.isDone ? 'DONE' : 
+       order.isOnCheck ? 'ON_CHECK' : 
+       order.isInProcess ? 'IN_PROCESS' : 
+       order.isActived ? 'ACTIVE' : 'ACTIVE');
+    
+    switch (status) {
+      case 'ON_REVIEW':
+        return { label: 'На рассмотрении', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
+      case 'REJECTED':
+        return { label: 'Отклонен', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+      case 'DONE':
+        return { label: 'Выполнен', className: 'bg-purple-100 text-purple-800' };
+      case 'ON_CHECK':
+        return { label: 'На проверке', className: 'bg-yellow-100 text-yellow-800' };
+      case 'IN_PROCESS':
+        return { label: 'В процессе', className: 'bg-blue-100 text-blue-800' };
+      case 'ACTIVE':
+        return { label: 'Активен', className: 'bg-green-100 text-green-800' };
+      default:
+        return { label: 'Неактивен', className: 'bg-gray-100 text-gray-800' };
+    }
+  };
+
   // Выбираем источник данных в зависимости от вкладки
   const ordersDataSource = ordersTab === 'review' ? reviewOrders : data;
   const isLoadingOrders = ordersTab === 'review' ? isLoadingReview : isLoading;
@@ -371,7 +433,8 @@ export default function AdminOrdersPage() {
     );
     
     // Для вкладки "На рассмотрении" показываем только заказы на рассмотрении
-    if (ordersTab === 'review' && !order.isOnReview) {
+    const orderStatus = order.status || (order.isOnReview ? 'ON_REVIEW' : order.isRejected ? 'REJECTED' : order.isDone ? 'DONE' : order.isOnCheck ? 'ON_CHECK' : order.isInProcess ? 'IN_PROCESS' : order.isActived ? 'ACTIVE' : 'ACTIVE');
+    if (ordersTab === 'review' && orderStatus !== 'ON_REVIEW') {
       return false;
     }
     
@@ -387,13 +450,23 @@ export default function AdminOrdersPage() {
   
   // Функция для получения приоритета статуса (для сортировки)
   const getStatusPriority = (order: Order): number => {
-    if (order.isOnReview) return 0; // На рассмотрении - самый высокий приоритет
-    if (order.isRejected) return 0.5; // Отклонен
-    if (order.isDone) return 1;
-    if (order.isOnCheck) return 2;
-    if (order.isInProcess) return 3;
-    if (order.isActived) return 4;
-    return 5; // Неактивен
+    const status = order.status || 
+      (order.isOnReview ? 'ON_REVIEW' : 
+       order.isRejected ? 'REJECTED' : 
+       order.isDone ? 'DONE' : 
+       order.isOnCheck ? 'ON_CHECK' : 
+       order.isInProcess ? 'IN_PROCESS' : 
+       order.isActived ? 'ACTIVE' : 'ACTIVE');
+    
+    switch (status) {
+      case 'ON_REVIEW': return 0; // На рассмотрении - самый высокий приоритет
+      case 'REJECTED': return 0.5; // Отклонен
+      case 'DONE': return 1;
+      case 'ON_CHECK': return 2;
+      case 'IN_PROCESS': return 3;
+      case 'ACTIVE': return 4;
+      default: return 5; // Неактивен
+    }
   };
   
   // Сортировка
@@ -420,30 +493,6 @@ export default function AdminOrdersPage() {
 
   const handleStatusFilterChange = (value: string) => {
     setStatusFilter(value);
-  };
-
-  // Функция для определения текущего статуса заказа (только один, наиболее приоритетный)
-  const getOrderStatus = (order: Order) => {
-    // Приоритет: На рассмотрении > Отклонен > Выполнен > На проверке > В процессе > Активен > Неактивен
-    if (order.isOnReview) {
-      return { label: 'На рассмотрении', className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
-    }
-    if (order.isRejected) {
-      return { label: 'Отклонен', className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
-    }
-    if (order.isDone) {
-      return { label: 'Выполнен', className: 'bg-purple-100 text-purple-800' };
-    }
-    if (order.isOnCheck) {
-      return { label: 'На проверке', className: 'bg-yellow-100 text-yellow-800' };
-    }
-    if (order.isInProcess) {
-      return { label: 'В процессе', className: 'bg-blue-100 text-blue-800' };
-    }
-    if (order.isActived) {
-      return { label: 'Активен', className: 'bg-green-100 text-green-800' };
-    }
-    return { label: 'Неактивен', className: 'bg-gray-100 text-gray-800' };
   };
 
   if (isLoading) {
@@ -616,7 +665,7 @@ export default function AdminOrdersPage() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-                      {order.isOnReview && (
+                      {(order.status === 'ON_REVIEW' || order.isOnReview) && (
                         <>
                           <button
                             onClick={() => handleApprove(order)}
@@ -1043,23 +1092,33 @@ export default function AdminOrdersPage() {
                               {reviewsData.reviews.map((review: WorkExperience) => (
                                 <div key={review.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                   <div className="flex items-start justify-between mb-2">
-                                    <div>
+                                    <div className="flex-1">
                                       <h3 className="font-semibold dark:text-slate-100">
                                         {review.text || 'Отзыв без текста'}
                                       </h3>
                                     </div>
-                                    <div className="flex items-center">
-                                      {Array.from({ length: 5 }).map((_, i) => (
-                                        <Star
-                                          key={i}
-                                          className={`w-4 h-4 ${
-                                            i < (review.mark || 0)
-                                              ? 'text-yellow-400 fill-current'
-                                              : 'text-gray-300 dark:text-slate-600'
-                                          }`}
-                                        />
-                                      ))}
-                                      <span className="ml-2 font-semibold dark:text-slate-100">{review.mark}</span>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                          <Star
+                                            key={i}
+                                            className={`w-4 h-4 ${
+                                              i < (review.mark || 0)
+                                                ? 'text-yellow-400 fill-current'
+                                                : 'text-gray-300 dark:text-slate-600'
+                                            }`}
+                                          />
+                                        ))}
+                                        <span className="ml-2 font-semibold dark:text-slate-100">{review.mark}</span>
+                                      </div>
+                                      <button
+                                        onClick={() => handleDeleteReview(review)}
+                                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                        title="Удалить отзыв"
+                                        disabled={deleteReviewMutation.isPending}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
                                     </div>
                                   </div>
                                   {review.reviewerType === 'CUSTOMER' && review.customerName && (
@@ -1103,23 +1162,33 @@ export default function AdminOrdersPage() {
                               {customerReviewsData.reviews.map((review: WorkExperience) => (
                                 <div key={review.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                                   <div className="flex items-start justify-between mb-2">
-                                    <div>
+                                    <div className="flex-1">
                                       <h3 className="font-semibold dark:text-slate-100">
                                         {review.text || 'Отзыв без текста'}
                                       </h3>
                                     </div>
-                                    <div className="flex items-center">
-                                      {Array.from({ length: 5 }).map((_, i) => (
-                                        <Star
-                                          key={i}
-                                          className={`w-4 h-4 ${
-                                            i < (review.mark || 0)
-                                              ? 'text-yellow-400 fill-current'
-                                              : 'text-gray-300 dark:text-slate-600'
-                                          }`}
-                                        />
-                                      ))}
-                                      <span className="ml-2 font-semibold dark:text-slate-100">{review.mark}</span>
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex items-center">
+                                        {Array.from({ length: 5 }).map((_, i) => (
+                                          <Star
+                                            key={i}
+                                            className={`w-4 h-4 ${
+                                              i < (review.mark || 0)
+                                                ? 'text-yellow-400 fill-current'
+                                                : 'text-gray-300 dark:text-slate-600'
+                                            }`}
+                                          />
+                                        ))}
+                                        <span className="ml-2 font-semibold dark:text-slate-100">{review.mark}</span>
+                                      </div>
+                                      <button
+                                        onClick={() => handleDeleteReview(review)}
+                                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                                        title="Удалить отзыв"
+                                        disabled={deleteReviewMutation.isPending}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
                                     </div>
                                   </div>
                                   {review.reviewerType === 'PERFORMER' && review.performerName && (
@@ -1351,6 +1420,80 @@ export default function AdminOrdersPage() {
                     <>
                       <XCircle className="w-4 h-4 mr-2" />
                       Да, отклонить
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Review Confirmation Modal */}
+      <Modal isOpen={showDeleteReviewConfirm && !!reviewToDelete} onClose={cancelDeleteReview}>
+        {reviewToDelete && (
+          <div className="card max-w-md w-full mx-4">
+            <div className="flex items-center mb-4">
+              <AlertTriangle className="w-8 h-8 text-red-600 mr-3" />
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Удаление отзыва</h2>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+                <p className="text-red-800 dark:text-red-200 font-semibold mb-2">
+                  ⚠️ Внимание!
+                </p>
+                <p className="text-red-700 dark:text-red-300 text-sm">
+                  Отзыв будет удален без возможности восстановления.
+                </p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-gray-500 dark:text-slate-400 mb-1">Отзыв:</p>
+                <p className="text-lg font-semibold dark:text-slate-100">
+                  {reviewToDelete.text || 'Отзыв без текста'}
+                </p>
+                <div className="flex items-center mt-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-4 h-4 ${
+                        i < (reviewToDelete.mark || 0)
+                          ? 'text-yellow-400 fill-current'
+                          : 'text-gray-300 dark:text-slate-600'
+                      }`}
+                    />
+                  ))}
+                  <span className="ml-2 font-semibold dark:text-slate-100">{reviewToDelete.mark}</span>
+                </div>
+              </div>
+              
+              <p className="text-gray-700 dark:text-slate-300">
+                Вы уверены, что хотите удалить этот отзыв?
+              </p>
+              
+              <div className="flex space-x-2 pt-4">
+                <button
+                  onClick={cancelDeleteReview}
+                  disabled={deleteReviewMutation.isPending}
+                  className="btn btn-secondary flex items-center flex-1"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={confirmDeleteReview}
+                  disabled={deleteReviewMutation.isPending}
+                  className="btn btn-danger flex items-center flex-1"
+                >
+                  {deleteReviewMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Удаление...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Да, удалить
                     </>
                   )}
                 </button>

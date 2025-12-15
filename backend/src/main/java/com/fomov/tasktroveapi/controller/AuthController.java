@@ -50,13 +50,15 @@ public class AuthController {
     @PostMapping("/login")
     @Transactional(readOnly = true)
     public ResponseEntity<?> login(@RequestBody @Validated AuthenticationAccDto dto) {
-        var accOpt = accountRepository.findByLoginWithRole(dto.getLogin());
+        // Нормализуем email для поиска
+        String normalizedEmail = dto.getLogin() != null ? dto.getLogin().trim().toLowerCase() : null;
+        var accOpt = accountRepository.findByEmailWithRole(normalizedEmail);
         if (accOpt.isEmpty()) {
-            return ResponseEntity.status(401).body(Map.of("error", "Неправильный логин или пароль"));
+            return ResponseEntity.status(401).body(Map.of("error", "Неправильный email или пароль"));
         }
         Account acc = accOpt.get();
         if (!passwordEncoder.matches(dto.getPassword(), acc.getPassword())) {
-            return ResponseEntity.status(401).body(Map.of("error", "Неправильный логин или пароль"));
+            return ResponseEntity.status(401).body(Map.of("error", "Неправильный email или пароль"));
         }
         // Проверяем, активен ли аккаунт
         if (acc.getIsActive() == null || !acc.getIsActive()) {
@@ -66,7 +68,7 @@ public class AuthController {
         String token = tokenService.createToken(acc.getId(), roleName, Map.of());
         return ResponseEntity.ok(Map.of(
                 "id", acc.getId(),
-                "login", acc.getLogin(),
+                "email", acc.getEmail(),
                 "role", roleName,
                 "token", token
         ));
@@ -79,7 +81,7 @@ public class AuthController {
         String token = tokenService.createToken(account.getId(), account.getRole().getName(), Map.of());
         return ResponseEntity.ok(Map.of(
                 "id", customer.getId(),
-                "login", account.getLogin(),
+                "email", account.getEmail(),
                 "role", account.getRole().getName(),
                 "token", token
         ));
@@ -92,7 +94,7 @@ public class AuthController {
         String token = tokenService.createToken(account.getId(), account.getRole().getName(), Map.of());
         return ResponseEntity.ok(Map.of(
                 "id", performer.getId(),
-                "login", account.getLogin(),
+                "email", account.getEmail(),
                 "role", account.getRole().getName(),
                 "token", token
         ));

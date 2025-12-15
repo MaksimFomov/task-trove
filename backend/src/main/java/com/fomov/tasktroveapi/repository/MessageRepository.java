@@ -22,7 +22,7 @@ public interface MessageRepository extends JpaRepository<Message, Integer> {
     List<Message> findAllWithChat();
     
     @Query("SELECT COUNT(m) FROM Message m WHERE m.chat.id = :chatId " +
-           "AND m.senderId != :userId " +
+           "AND m.sender.id != :userId " +
            "AND (:lastCheckedTime IS NULL OR m.created > :lastCheckedTime)")
     Long countUnreadMessagesByChatAndUser(@Param("chatId") Integer chatId, 
                                           @Param("userId") Integer userId,

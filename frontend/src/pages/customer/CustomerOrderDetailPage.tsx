@@ -1,15 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { customerApi } from '../../services/api';
+import { customerApi, notificationApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, CheckCircle, Send, Star, FileText, Upload, X, User, Briefcase, Award, Loader2, AlertTriangle, Trash2 } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Send, Star, FileText, Upload, X, User, Briefcase, Award, Loader2, AlertTriangle, Trash2, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Modal from '../../components/Modal';
-import type { WorkExperience, AddPerformerToOrderDto, Reply, Order, Chat } from '../../types';
+import type { WorkExperience, AddPerformerToOrderDto, Reply, Order, Chat, Notification } from '../../types';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
 const MAX_FILE_SIZE_KB = Math.floor(MAX_FILE_SIZE / 1024);
@@ -37,28 +37,23 @@ function ReplyItem({
         return null;
       }
     },
+    enabled: !!reply.performerId && reply.performerId > 0, // Загружаем только если performerId валидный
+    retry: false, // Не повторяем запрос при ошибке
   });
 
   const { t } = useTranslation();
   const performerName = portfolio?.name || reply.perfName || t('roles.performer');
-  
-  // Формируем описание с префиксом "Опыт: " для experience
-  let performerDescription = '';
-  if (portfolio?.experience) {
-    performerDescription = `${t('portfolio.experience')}: ${portfolio.experience}`;
-  } else if (portfolio?.specializations) {
-    performerDescription = portfolio.specializations;
-  } else if (portfolio?.employment) {
-    performerDescription = portfolio.employment;
-  }
+  const performerEmail = portfolio?.email || reply.perfEmail;
 
   return (
     <div className="border border-gray-200 rounded-lg p-4">
       <div className="flex justify-between items-start">
         <div className="flex-1">
           <p className="font-semibold text-lg mb-1">{performerName}</p>
-          {performerDescription && (
-            <p className="text-sm text-gray-600 line-clamp-2">{performerDescription}</p>
+          {performerEmail && (
+            <p className="text-sm text-gray-600 dark:text-slate-400 mt-1 mb-1">
+              {performerEmail}
+            </p>
           )}
           {isLoading && !portfolio && (
             <p className="text-sm text-gray-400 italic">{t('common.loading')}</p>
@@ -112,16 +107,55 @@ export default function CustomerOrderDetailPage() {
   const [showRefusePerformerConfirm, setShowRefusePerformerConfirm] = useState(false);
   const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
+  const [performerToApprove, setPerformerToApprove] = useState<number | null>(null);
   const [isPermanentDelete, setIsPermanentDelete] = useState(false);
   const [completeReviewData, setCompleteReviewData] = useState({
     mark: 5,
     text: '',
   });
 
+  // Отслеживание уведомлений для автоматического обновления заказа
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationApi.getAll().then((res) => res.data),
+    refetchInterval: 1000, // Проверяем уведомления каждую секунду
+    enabled: true,
+  });
+
+  const previousNotificationsRef = useRef<Notification[]>([]);
+
+  useEffect(() => {
+    if (notificationsData?.notifications && id) {
+      const currentNotifications = notificationsData.notifications;
+      const previousNotifications = previousNotificationsRef.current;
+
+      // Проверяем, есть ли новые непрочитанные уведомления REPLY, COMPLETED, REFUSED для этого заказа
+      const relevantNotificationTypes = ['REPLY', 'COMPLETED', 'REFUSED'];
+      const orderId = Number(id);
+      const newRelevantNotifications = currentNotifications.filter(
+        (notif: Notification) =>
+          !notif.isRead &&
+          relevantNotificationTypes.includes(notif.type) &&
+          notif.relatedOrderId === orderId &&
+          !previousNotifications.some((prev: Notification) => prev.id === notif.id)
+      );
+
+      // Если найдены новые релевантные уведомления, обновляем заказ
+      if (newRelevantNotifications.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['customerOrder', id] });
+        queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
+        queryClient.invalidateQueries({ queryKey: ['customerChats'] });
+      }
+
+      previousNotificationsRef.current = currentNotifications;
+    }
+  }, [notificationsData, id, queryClient]);
+
   const { data: order, isLoading } = useQuery({
     queryKey: ['customerOrder', id],
     queryFn: () => customerApi.getOrder(Number(id)).then((res) => res.data),
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   // Получаем имя текущего пользователя из localStorage
@@ -130,7 +164,7 @@ export default function CustomerOrderDetailPage() {
       const userStr = localStorage.getItem('user');
       if (!userStr) return t('roles.customer');
       const user = JSON.parse(userStr);
-      return user.name || user.login || t('roles.customer');
+      return user.name || user.email || t('roles.customer');
     } catch (error) {
       return t('roles.customer');
     }
@@ -157,27 +191,39 @@ export default function CustomerOrderDetailPage() {
     queryKey: ['customerChats'],
     queryFn: () => customerApi.getChats().then((res) => res.data.chats),
     enabled: !!order?.performerId,
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
-  // Находим чат с текущим исполнителем
+  // Находим чат с текущим исполнителем (может быть общий чат для нескольких заказов)
   const chatWithPerformer = chatsData?.find(
     (chat) => chat.performerId === order?.performerId
   );
 
   // Запросы для профиля исполнителя
-  const { data: portfolio, isLoading: isLoadingPortfolio } = useQuery({
+  const { data: portfolio, isLoading: isLoadingPortfolio, error: portfolioError } = useQuery({
     queryKey: ['performerPortfolio', selectedPerformerId],
     queryFn: async () => {
+      if (!selectedPerformerId) {
+        throw new Error('Performer ID is not set');
+      }
       try {
-        const response = await customerApi.getPerformerPortfolio(selectedPerformerId!);
+        const response = await customerApi.getPerformerPortfolio(selectedPerformerId);
         console.log('Portfolio response:', response.data);
         return response.data;
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching portfolio:', error);
-        return null;
+        // Если ошибка 404, это означает что исполнитель не найден (возможно удален)
+        if (error.response?.status === 404) {
+          // Используем сообщение с бэкенда, если оно есть, иначе используем дефолтное
+          const errorMessage = error.response?.data?.message || 'Исполнитель не найден. Возможно, он был удален из системы.';
+          console.warn(`Performer with ID ${selectedPerformerId} not found:`, errorMessage);
+          throw new Error(errorMessage);
+        }
+        throw error;
       }
     },
-    enabled: showPerformerProfile && selectedPerformerId !== null && profileTab === 'portfolio',
+    enabled: showPerformerProfile && selectedPerformerId !== null && selectedPerformerId > 0 && profileTab === 'portfolio',
+    retry: false,
   });
 
   const { data: doneOrdersData, isLoading: isLoadingDoneOrders } = useQuery({
@@ -230,7 +276,10 @@ export default function CustomerOrderDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['performerOrders'] });
       // Инвалидируем кэш откликов исполнителя, чтобы утвержденный отклик появился в разделе утвержденных
       queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
-      // Уведомление показывается в sendEmailMutation.onSuccess
+      toast.success('Исполнитель одобрен');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Ошибка при одобрении исполнителя');
     },
   });
 
@@ -238,18 +287,14 @@ export default function CustomerOrderDetailPage() {
     mutationFn: (data: { orderId?: number; performerId?: number; text?: string; document?: File }) =>
       customerApi.sendEmail(data),
     onSuccess: () => {
-      // После успешной отправки ТЗ утверждаем исполнителя
-      if (selectedPerformer && order) {
-        addPerformerMutation.mutate({
-          orderId: order.id,
-          performerId: selectedPerformer,
-        });
-      }
-      toast.success('ТЗ отправлено и исполнитель утвержден');
+      toast.success('ТЗ отправлено исполнителю');
       setShowEmailForm(false);
       setEmailText('');
       setEmailFile(null);
       setSelectedPerformer(null);
+      // Обновляем данные заказа, чтобы увидеть обновленный статус
+      queryClient.invalidateQueries({ queryKey: ['customerOrder', id] });
+      queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Ошибка при отправке ТЗ');
@@ -349,9 +394,25 @@ export default function CustomerOrderDetailPage() {
   };
 
   const handleApproveReply = (performerId: number) => {
-    // Только открываем форму для отправки ТЗ, не утверждаем сразу
-    setSelectedPerformer(performerId);
-    setShowEmailForm(true);
+    // Показываем модальное окно подтверждения
+    setPerformerToApprove(performerId);
+    setShowApproveConfirm(true);
+  };
+
+  const handleConfirmApprove = () => {
+    if (!order || !performerToApprove) return;
+    setSelectedPerformer(performerToApprove);
+    addPerformerMutation.mutate({
+      orderId: order.id,
+      performerId: performerToApprove,
+    });
+    setShowApproveConfirm(false);
+    setPerformerToApprove(null);
+  };
+
+  const handleCancelApprove = () => {
+    setShowApproveConfirm(false);
+    setPerformerToApprove(null);
   };
 
   const handleSendEmail = () => {
@@ -441,14 +502,30 @@ export default function CustomerOrderDetailPage() {
                   {t('orderDetail.created')}: {format(new Date(order.publicationTime), 'd MMMM yyyy HH:mm', { locale: ru })}
                 </span>
               )}
-              {order.howReplies !== undefined && (
+              {order.howReplies !== undefined && !order.performerId && (
                 <span>{t('orderDetail.replies')}: {order.howReplies}</span>
               )}
             </div>
           </div>
           <div className="flex flex-col gap-2 items-end w-[240px]">
+            {/* Кнопка "Отправить ТЗ" показывается если исполнитель одобрен, но ТЗ еще не отправлено и заказ не завершен */}
+            {(order.status !== 'DONE' && !order.isDone) && 
+             (order.status !== 'ON_CHECK' && !order.isOnCheck) &&
+             order.performerId && 
+             !order.isSpecSent && (
+              <button
+                onClick={() => {
+                  setSelectedPerformer(order.performerId!);
+                  setShowEmailForm(true);
+                }}
+                className="btn btn-primary flex items-center"
+              >
+                <Send className="w-4 h-4 mr-1" />
+                Отправить ТЗ
+              </button>
+            )}
             {/* Кнопки показываются только если заказ на проверке (когда исполнитель завершил задачу) */}
-            {order.isOnCheck && !order.isDone && (
+            {(order.status === 'ON_CHECK' || order.isOnCheck) && (order.status !== 'DONE' && !order.isDone) && (
               <>
                 <button
                   onClick={() => setShowCorrectionsForm(true)}
@@ -467,7 +544,8 @@ export default function CustomerOrderDetailPage() {
               </>
             )}
             {/* Кнопка удаления для активных заказов без исполнителя */}
-            {order.isActived && !order.isDone && !order.performerId && (
+            {/* Кнопка удаления только для заказов, которые не в работе (нет исполнителя) */}
+            {!order.performerId && (order.status === 'ACTIVE' || order.isActived) && (order.status !== 'DONE' && !order.isDone) && (
               <button
                 onClick={handleDeleteClick}
                 className="btn btn-danger flex items-center w-full"
@@ -476,8 +554,8 @@ export default function CustomerOrderDetailPage() {
                 {t('orderList.delete')}
               </button>
             )}
-            {/* Кнопка удаления для неактивных заказов */}
-            {!order.isActived && !order.isDone && (
+            {/* Кнопка удаления для неактивных заказов (только если нет исполнителя) */}
+            {!order.performerId && (order.status !== 'ACTIVE' && !order.isActived) && (order.status !== 'DONE' && !order.isDone) && (
               <button
                 onClick={handleDeleteClick}
                 className="btn btn-danger flex items-center w-full"
@@ -535,8 +613,28 @@ export default function CustomerOrderDetailPage() {
                   <User className="w-4 h-4 mr-1" />
                   {t('orderDetail.viewProfile')}
                 </button>
+                {/* Кнопка чата показывается если есть чат с исполнителем */}
+                {chatWithPerformer && (
+                  <button
+                    onClick={() => navigate(`/chat/${chatWithPerformer.id}`)}
+                    className="btn btn-primary flex items-center"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-1" />
+                    {t('chats.chat')}
+                  </button>
+                )}
+                {/* Кнопка "Отказаться от исполнителя" показывается только если заказ не завершен */}
+                {(order.status !== 'DONE' && !order.isDone) && (
+                  <button
+                    onClick={() => setShowRefusePerformerConfirm(true)}
+                    className="btn btn-danger flex items-center"
+                  >
+                    <X className="w-4 h-4 mr-1" />
+                    {t('orderDetail.refuse')}
+                  </button>
+                )}
                 {/* Кнопка "Оставить отзыв" показывается после завершения заказа */}
-                {order.isDone && order.performerId && (
+                {(order.status === 'DONE' || order.isDone) && order.performerId && (
                   <button
                     onClick={() => {
                       setReviewData({ ...reviewData, performerId: order.performerId || 0 });
@@ -546,16 +644,6 @@ export default function CustomerOrderDetailPage() {
                   >
                     <Star className="w-4 h-4 mr-1" />
                     {t('orderDetail.review')}
-                  </button>
-                )}
-                {/* Кнопка "Отказаться от исполнителя" показывается только если заказ не завершен */}
-                {!order.isDone && (
-                  <button
-                    onClick={() => setShowRefusePerformerConfirm(true)}
-                    className="btn btn-danger flex items-center"
-                  >
-                    <X className="w-4 h-4 mr-1" />
-                    {t('orderDetail.refuse')}
                   </button>
                 )}
               </div>
@@ -1003,61 +1091,51 @@ export default function CustomerOrderDetailPage() {
                 <div>
                   {isLoadingPortfolio ? (
                     <div className="text-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-primary-600" />
                       <div className="text-lg text-gray-600">Загрузка портфолио...</div>
+                    </div>
+                  ) : portfolioError ? (
+                    <div className="text-center py-12">
+                      <AlertTriangle className="w-8 h-8 mx-auto mb-4 text-red-500" />
+                      <p className="text-red-600 dark:text-red-400 font-semibold mb-2">Исполнитель не найден</p>
+                      <p className="text-gray-500 dark:text-slate-400 text-sm">
+                        {portfolioError instanceof Error ? portfolioError.message : 'Не удалось загрузить портфолио исполнителя'}
+                      </p>
                     </div>
                   ) : portfolio ? (
                     <div className="space-y-4">
-                      {portfolio.name && (
                         <div>
                           <h3 className="font-semibold mb-2 dark:text-slate-100">Имя</h3>
-                          <p className="text-gray-700 dark:text-slate-300">{portfolio.name}</p>
+                        <p className="text-gray-700 dark:text-slate-300">{portfolio.name || 'Не указано'}</p>
                         </div>
-                      )}
-                      {portfolio.email && (
                         <div>
                           <h3 className="font-semibold mb-2 dark:text-slate-100">Email</h3>
-                          <p className="text-gray-700">{portfolio.email}</p>
+                        <p className="text-gray-700 dark:text-slate-300">{portfolio.email || 'Не указано'}</p>
                         </div>
-                      )}
-                      {portfolio.phone && (
                         <div>
                           <h3 className="font-semibold mb-2 dark:text-slate-100">Телефон</h3>
-                          <p className="text-gray-700">{portfolio.phone}</p>
+                        <p className="text-gray-700 dark:text-slate-300">{portfolio.phone || 'Не указано'}</p>
                         </div>
-                      )}
-                      {portfolio.specializations && (
                         <div>
                           <h3 className="font-semibold mb-2 dark:text-slate-100">Специализации</h3>
-                          <p className="text-gray-700">{portfolio.specializations}</p>
+                        <p className="text-gray-700 dark:text-slate-300">{portfolio.specializations || 'Не указано'}</p>
                         </div>
-                      )}
-                      {portfolio.experience && (
                         <div>
                           <h3 className="font-semibold mb-2 dark:text-slate-100">Опыт</h3>
-                          <p className="text-gray-700">{portfolio.experience}</p>
+                        <p className="text-gray-700 dark:text-slate-300">{portfolio.experience || 'Не указано'}</p>
                         </div>
-                      )}
-                      {portfolio.employment && (
                         <div>
                           <h3 className="font-semibold mb-2 dark:text-slate-100">Занятость</h3>
-                          <p className="text-gray-700">{portfolio.employment}</p>
+                        <p className="text-gray-700 dark:text-slate-300">{portfolio.employment || 'Не указано'}</p>
                         </div>
-                      )}
-                      {portfolio.townCountry && (
                         <div>
-                          <h3 className="font-semibold mb-2">Местоположение</h3>
-                          <p className="text-gray-700">{portfolio.townCountry}</p>
+                        <h3 className="font-semibold mb-2 dark:text-slate-100">Местоположение</h3>
+                        <p className="text-gray-700 dark:text-slate-300">{portfolio.townCountry || 'Не указано'}</p>
                         </div>
-                      )}
-                      {(!portfolio.name && !portfolio.email && !portfolio.phone && !portfolio.specializations && !portfolio.experience && !portfolio.employment && !portfolio.townCountry) && (
-                        <div className="text-center py-12">
-                          <p className="text-gray-500">Портфолио не заполнено</p>
-                        </div>
-                      )}
                     </div>
                   ) : (
                     <div className="text-center py-12">
-                      <p className="text-gray-500">{t('portfolio.title')} {t('common.noData')}</p>
+                      <p className="text-gray-500 dark:text-slate-400">Портфолио исполнителя не заполнено</p>
                     </div>
                   )}
                 </div>
@@ -1167,6 +1245,58 @@ export default function CustomerOrderDetailPage() {
         document.body
       )}
 
+      {/* Модальное окно подтверждения одобрения исполнителя */}
+      <Modal isOpen={showApproveConfirm} onClose={handleCancelApprove}>
+        <div className="card max-w-md w-full mx-4">
+          <div className="flex items-center mb-4">
+            <CheckCircle className="w-8 h-8 text-green-600 mr-3" />
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Подтверждение одобрения</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+              <p className="text-green-800 dark:text-green-200 font-semibold mb-2">
+                ✓ Подтверждение одобрения исполнителя
+              </p>
+              <p className="text-green-700 dark:text-green-300 text-sm">
+                Вы собираетесь одобрить этого исполнителя для работы над заказом. После одобрения вам нужно будет отправить техническое задание.
+              </p>
+            </div>
+            
+            <p className="text-gray-700 dark:text-slate-300">
+              Вы уверены, что хотите одобрить этого исполнителя?
+            </p>
+            
+            <div className="flex space-x-2 pt-4">
+              <button
+                onClick={handleConfirmApprove}
+                disabled={addPerformerMutation.isPending}
+                className="btn btn-primary flex items-center flex-1"
+              >
+                {addPerformerMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Одобрение...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-4 h-4 mr-2" />
+                    Да, одобрить
+                  </>
+                )}
+              </button>
+              <button
+                onClick={handleCancelApprove}
+                disabled={addPerformerMutation.isPending}
+                className="btn btn-secondary flex-1"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      </Modal>
+
       {/* Модальное окно подтверждения отказа от исполнителя */}
       <Modal isOpen={showRefusePerformerConfirm} onClose={() => setShowRefusePerformerConfirm(false)}>
         <div className="card max-w-md w-full mx-4">
@@ -1200,8 +1330,17 @@ export default function CustomerOrderDetailPage() {
                 disabled={refusePerformerMutation.isPending}
                 className="btn btn-danger flex items-center flex-1"
               >
+                {refusePerformerMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Отказ...
+                  </>
+                ) : (
+                  <>
                 <X className="w-4 h-4 mr-2" />
-                {refusePerformerMutation.isPending ? 'Отказ...' : 'Да, отказаться'}
+                    Да, отказаться
+                  </>
+                )}
               </button>
               <button
                 onClick={() => setShowRefusePerformerConfirm(false)}
@@ -1287,25 +1426,38 @@ export default function CustomerOrderDetailPage() {
             
             <div className="flex space-x-2 pt-4">
               <button
-                onClick={() => {
-                  if (order) {
-                    // Завершаем заказ
+                onClick={async () => {
+                  if (order && order.performerId) {
+                    try {
+                      // Сначала завершаем заказ
+                      await updateStatusMutation.mutateAsync({
+                        orderId: order.id,
+                        isDone: true,
+                      });
+                      
+                      // Затем отправляем отзыв, если есть performerId
+                      // Отзыв отправляется всегда (даже если нет текста, только с оценкой)
+                      await addReviewMutation.mutateAsync({
+                        name: currentUserName,
+                        mark: completeReviewData.mark,
+                        text: completeReviewData.text.trim() || '',
+                        performerId: order.performerId,
+                        orderId: order.id,
+                      });
+                      
+                      setShowCompleteConfirm(false);
+                      setCompleteReviewData({ mark: 5, text: '' });
+                    } catch (error) {
+                      // Если что-то пошло не так, все равно закрываем модальное окно
+                      setShowCompleteConfirm(false);
+                      setCompleteReviewData({ mark: 5, text: '' });
+                    }
+                  } else if (order) {
+                    // Если нет performerId, просто завершаем заказ
                     updateStatusMutation.mutate({
                       orderId: order.id,
                       isDone: true,
                     });
-                    
-                    // Если заполнен комментарий, отправляем отзыв
-                    if (completeReviewData.text.trim()) {
-                      addReviewMutation.mutate({
-                        name: currentUserName,
-                        mark: completeReviewData.mark,
-                        text: completeReviewData.text.trim(),
-                        performerId: order.performerId || 0,
-                        orderId: order.id,
-                      });
-                    }
-                    
                     setShowCompleteConfirm(false);
                     setCompleteReviewData({ mark: 5, text: '' });
                   }

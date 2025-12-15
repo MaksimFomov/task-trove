@@ -12,7 +12,6 @@ import java.util.Objects;
 @Entity
 @Table(name = "accounts", indexes = {
     @Index(name = "idx_accounts_email", columnList = "email"),
-    @Index(name = "idx_accounts_login", columnList = "login"),
     @Index(name = "idx_accounts_role_id", columnList = "role_id")
 })
 @Getter
@@ -22,9 +21,6 @@ public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
-    @Column(name = "login", nullable = false, unique = true, length = 255)
-    private String login;
 
     @Column(name = "email", nullable = false, unique = true, length = 255)
     private String email;

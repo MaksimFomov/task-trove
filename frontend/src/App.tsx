@@ -23,6 +23,7 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
 import AdminStatisticsPage from './pages/admin/AdminStatisticsPage';
 import ChatPage from './pages/ChatPage';
+import PerformerRatingPage from './pages/PerformerRatingPage';
 import NotificationsPage from './pages/NotificationsPage';
 import { Loader2 } from 'lucide-react';
 
@@ -184,6 +185,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['Performer']}>
                 <PerformerPortfolioPage />
+              </ProtectedRoute>
+            }
+          />
+          {/* Rating page for customers and performers */}
+          <Route
+            path="/rating"
+            element={
+              <ProtectedRoute allowedRoles={['Customer', 'Performer']}>
+                <PerformerRatingPage />
               </ProtectedRoute>
             }
           />

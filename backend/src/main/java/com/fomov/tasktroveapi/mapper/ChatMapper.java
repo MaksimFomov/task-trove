@@ -38,10 +38,29 @@ public class ChatMapper {
             dto.setPerformerName(entity.getPerformer().getFullName());
         }
         
-        // Извлекаем название заказа из roomName
-        // Формат: "Order #14: Сделать сайт" -> "Сделать сайт"
+        // Извлекаем названия проектов из roomName
+        // Формат: "Order #14: Сделать сайт" или "Order #14: Сайт, Order #15: Приложение"
         String roomName = entity.getRoomName();
-        if (roomName != null && roomName.contains(": ")) {
+        if (roomName != null) {
+            // Если есть несколько проектов через запятую, извлекаем все названия
+            if (roomName.contains(", ")) {
+                // Разделяем по ", " и извлекаем названия после ": "
+                StringBuilder titles = new StringBuilder();
+                String[] parts = roomName.split(", ");
+                for (String part : parts) {
+                    if (part.contains(": ")) {
+                        String[] orderParts = part.split(": ", 2);
+                        if (orderParts.length == 2) {
+                            if (titles.length() > 0) {
+                                titles.append(", ");
+                            }
+                            titles.append(orderParts[1]);
+                        }
+                    }
+                }
+                dto.setOrderTitle(titles.length() > 0 ? titles.toString() : roomName);
+            } else if (roomName.contains(": ")) {
+                // Один проект
             String[] parts = roomName.split(": ", 2);
             if (parts.length == 2) {
                 dto.setOrderTitle(parts[1]);
@@ -50,6 +69,9 @@ public class ChatMapper {
             }
         } else {
             dto.setOrderTitle(roomName);
+            }
+        } else {
+            dto.setOrderTitle(null);
         }
         
         // Добавляем информацию об удалении

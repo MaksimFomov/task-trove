@@ -20,4 +20,7 @@ public interface PerformerRepository extends JpaRepository<Performer, Integer> {
     
     @Query("SELECT p FROM Performer p LEFT JOIN FETCH p.account WHERE p.id = :id")
     Optional<Performer> findByIdWithAccount(@Param("id") Integer id);
+    
+    @Query("SELECT p FROM Performer p LEFT JOIN FETCH p.account")
+    java.util.List<Performer> findAllOrderByRatingDesc();
 }

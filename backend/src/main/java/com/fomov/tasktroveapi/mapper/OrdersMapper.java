@@ -1,5 +1,6 @@
 package com.fomov.tasktroveapi.mapper;
 
+import com.fomov.tasktroveapi.model.OrderStatus;
 import com.fomov.tasktroveapi.model.Orders;
 import com.fomov.tasktroveapi.dto.AddOrderDto;
 import org.mapstruct.AfterMapping;
@@ -15,12 +16,7 @@ public interface OrdersMapper {
     @Mapping(target = "replies", ignore = true)
     @Mapping(target = "replyBind", ignore = true)
     @Mapping(target = "publicationTime", ignore = true)
-    @Mapping(target = "isActived", ignore = true)
-    @Mapping(target = "isInProcess", ignore = true)
-    @Mapping(target = "isOnCheck", ignore = true)
-    @Mapping(target = "isDone", ignore = true)
-    @Mapping(target = "isOnReview", ignore = true)
-    @Mapping(target = "isRejected", ignore = true)
+    @Mapping(target = "status", ignore = true)
     @Mapping(target = "techStack", ignore = true)
     Orders toEntity(AddOrderDto dto);
     
@@ -32,12 +28,13 @@ public interface OrdersMapper {
     @Mapping(target = "custOfOrder", ignore = true)
     @Mapping(target = "howReplies", ignore = true)
     @Mapping(target = "stackS", source = "techStack")
-    @Mapping(target = "actived", source = "isActived")
-    @Mapping(target = "inProcess", source = "isInProcess")
-    @Mapping(target = "onCheck", source = "isOnCheck")
-    @Mapping(target = "done", source = "isDone")
-    @Mapping(target = "onReview", source = "isOnReview")
-    @Mapping(target = "rejected", source = "isRejected")
+    @Mapping(target = "status", source = "status")
+    @Mapping(target = "actived", ignore = true)
+    @Mapping(target = "inProcess", ignore = true)
+    @Mapping(target = "onCheck", ignore = true)
+    @Mapping(target = "done", ignore = true)
+    @Mapping(target = "onReview", ignore = true)
+    @Mapping(target = "rejected", ignore = true)
     AddOrderDto toDto(Orders entity);
     
     @AfterMapping
@@ -49,20 +46,29 @@ public interface OrdersMapper {
         if (orders.getReplyBind() == null) {
             orders.setReplyBind(0);
         }
-        if (orders.getIsActived() == null) {
-            orders.setIsActived(true);
-        }
-        if (orders.getIsInProcess() == null) {
-            orders.setIsInProcess(false);
-        }
-        if (orders.getIsOnCheck() == null) {
-            orders.setIsOnCheck(false);
-        }
-        if (orders.getIsDone() == null) {
-            orders.setIsDone(false);
-        }
-        if (orders.getIsOnReview() == null) {
-            orders.setIsOnReview(false);
+        // Маппинг status из DTO или из boolean полей для обратной совместимости
+        if (dto.getStatus() != null && !dto.getStatus().isEmpty()) {
+            try {
+                orders.setStatus(OrderStatus.valueOf(dto.getStatus()));
+            } catch (IllegalArgumentException e) {
+                // Если статус невалидный, используем значения по умолчанию
+                orders.setStatus(OrderStatus.ACTIVE);
+            }
+        } else {
+            // Обратная совместимость: маппинг из boolean полей
+            if (dto.isRejected()) {
+                orders.setStatus(OrderStatus.REJECTED);
+            } else if (dto.isDone()) {
+                orders.setStatus(OrderStatus.DONE);
+            } else if (dto.isOnReview()) {
+                orders.setStatus(OrderStatus.ON_REVIEW);
+            } else if (dto.isOnCheck()) {
+                orders.setStatus(OrderStatus.ON_CHECK);
+            } else if (dto.isInProcess()) {
+                orders.setStatus(OrderStatus.IN_PROCESS);
+            } else {
+                orders.setStatus(OrderStatus.ACTIVE);
+            }
         }
         // Маппинг stackS -> techStack
         if (dto.getStackS() != null && orders.getTechStack() == null) {
@@ -84,12 +90,8 @@ public interface OrdersMapper {
                     customerEmail = orders.getCustomer().getAccount().getEmail();
                 }
                 dto.setCustomerEmail(customerEmail != null ? customerEmail : "");
-                // Используем accountId вместо customerId для правильной работы getUserDetails
-                if (orders.getCustomer().getAccount() != null) {
-                    dto.setCustomerId(orders.getCustomer().getAccount().getId());
-                } else {
+                // Используем customer.id (не accountId), так как методы поиска используют customer.id
                     dto.setCustomerId(orders.getCustomer().getId());
-                }
             }
         } catch (Exception e) {
             // Lazy loading exception - игнорируем
@@ -105,12 +107,8 @@ public interface OrdersMapper {
                     performerEmail = orders.getPerformer().getAccount().getEmail();
                 }
                 dto.setPerformerEmail(performerEmail != null ? performerEmail : "");
-                // Используем accountId вместо performerId для правильной работы getUserDetails
-                if (orders.getPerformer().getAccount() != null) {
-                    dto.setPerformerId(orders.getPerformer().getAccount().getId());
-                } else {
+                // Используем performer.id (не accountId), так как методы поиска используют performer.id
                     dto.setPerformerId(orders.getPerformer().getId());
-                }
             }
         } catch (Exception e) {
             // Lazy loading exception - игнорируем
@@ -130,25 +128,18 @@ public interface OrdersMapper {
         if (orders.getTechStack() != null && dto.getStackS() == null) {
             dto.setStackS(orders.getTechStack());
         }
-        // Маппинг boolean полей из Orders в AddOrderDto
-        // Значения уже установлены через @Mapping аннотации выше
-        if (orders.getIsActived() != null) {
-            dto.setActived(orders.getIsActived());
+        // Маппинг status в строку
+        if (orders.getStatus() != null) {
+            dto.setStatus(orders.getStatus().name());
         }
-        if (orders.getIsInProcess() != null) {
-            dto.setInProcess(orders.getIsInProcess());
-        }
-        if (orders.getIsOnCheck() != null) {
-            dto.setOnCheck(orders.getIsOnCheck());
-        }
-        if (orders.getIsDone() != null) {
-            dto.setDone(orders.getIsDone());
-        }
-        if (orders.getIsOnReview() != null) {
-            dto.setOnReview(orders.getIsOnReview());
-        }
-        if (orders.getIsRejected() != null) {
-            dto.setRejected(orders.getIsRejected());
+        // Маппинг boolean полей из Orders в AddOrderDto для обратной совместимости
+        if (orders.getStatus() != null) {
+            dto.setActived(orders.getStatus() == OrderStatus.ACTIVE);
+            dto.setInProcess(orders.getStatus() == OrderStatus.IN_PROCESS);
+            dto.setOnCheck(orders.getStatus() == OrderStatus.ON_CHECK);
+            dto.setDone(orders.getStatus() == OrderStatus.DONE);
+            dto.setOnReview(orders.getStatus() == OrderStatus.ON_REVIEW);
+            dto.setRejected(orders.getStatus() == OrderStatus.REJECTED);
         }
     }
 }

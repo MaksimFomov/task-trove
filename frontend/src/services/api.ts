@@ -125,6 +125,7 @@ export const customerApi = {
   getPerformerPortfolio: (performerId: number) => api.get<Portfolio>(`/customers/performer/${performerId}/portfolio`),
   refusePerformer: (orderId: number) => api.post(`/customers/refuse-performer/${orderId}`),
   deleteChat: (chatId: number) => api.delete(`/customers/chats/${chatId}`),
+  getTopPerformers: () => api.get<{ performers: any[] }>('/customers/top-performers'),
 };
 
 // Performer API
@@ -156,6 +157,7 @@ export const performerApi = {
   getMyReviews: () => api.get<{ reviews: WorkExperience[] }>('/performers/reviews'),
   addReview: (data: WorkExperience) => api.post('/performers/addreview', data),
   deleteChat: (chatId: number) => api.delete(`/performers/chats/${chatId}`),
+  getTopPerformers: () => api.get<{ performers: any[] }>('/performers/top-performers'),
 };
 
 // Admin API
@@ -167,10 +169,14 @@ export const adminApi = {
   disactivate: (userId: number) => api.post<Portfolio>('/admin/disactivate', null, { params: { userId } }),
   deleteComment: (id: number) => api.delete('/admin/deletecomment', { params: { id } }),
   // User management
-  getUserDetails: (userId: number) => api.get<any>(`/admin/users/${userId}`),
+  getUserDetails: (userId: number, type?: 'customer' | 'performer') => {
+    const params = type ? { type } : {};
+    return api.get<any>(`/admin/users/${userId}`, { params });
+  },
   createCustomer: (data: RegisterCustomerRequest) => api.post('/admin/users/create-customer', data),
   createPerformer: (data: RegisterPerformerRequest) => api.post('/admin/users/create-performer', data),
-  createAdministrator: (data: { login: string; password: string; name: string }) => api.post('/admin/users/create-administrator', data),
+  sendAdminVerification: (email: string) => api.post('/admin/users/send-admin-verification', { email }),
+  createAdministrator: (data: { email: string; password: string; name: string; verificationCode: string }) => api.post('/admin/users/create-administrator', data),
   updateUser: (userId: number, data: any) => api.put(`/admin/users/${userId}`, data),
   deleteUser: (userId: number) => api.delete(`/admin/users/${userId}`),
   // Orders management
@@ -191,6 +197,8 @@ export const adminApi = {
   // Performer data for admin
   getPerformerDoneOrders: (performerId: number) => api.get<{ orders: Order[] }>(`/admin/performer/${performerId}/done-orders`),
   getPerformerReviews: (performerId: number) => api.get<{ reviews: WorkExperience[] }>(`/admin/performer/${performerId}/reviews`),
+  // Reviews management
+  deleteReview: (reviewId: number) => api.delete<{ success: boolean; message: string }>(`/admin/reviews/${reviewId}`),
 };
 
 // Notifications API

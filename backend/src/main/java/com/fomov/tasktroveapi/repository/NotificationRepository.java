@@ -11,11 +11,13 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Integer> {
     
-    List<Notification> findByAccountIdOrderByCreatedAtDesc(Integer accountId);
+    @Query("SELECT n FROM Notification n WHERE n.account.id = :accountId ORDER BY n.createdAt DESC")
+    List<Notification> findByAccountIdOrderByCreatedAtDesc(@Param("accountId") Integer accountId);
     
-    List<Notification> findByAccountIdAndIsReadOrderByCreatedAtDesc(Integer accountId, Boolean isRead);
+    @Query("SELECT n FROM Notification n WHERE n.account.id = :accountId AND n.isRead = :isRead ORDER BY n.createdAt DESC")
+    List<Notification> findByAccountIdAndIsReadOrderByCreatedAtDesc(@Param("accountId") Integer accountId, @Param("isRead") Boolean isRead);
     
-    @Query("SELECT COUNT(n) FROM Notification n WHERE n.accountId = :accountId AND n.isRead = false")
+    @Query("SELECT COUNT(n) FROM Notification n WHERE n.account.id = :accountId AND n.isRead = false")
     Long countUnreadByAccountId(@Param("accountId") Integer accountId);
 }
 

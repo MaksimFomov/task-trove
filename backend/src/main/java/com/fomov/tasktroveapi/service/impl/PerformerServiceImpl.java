@@ -157,7 +157,7 @@ public class PerformerServiceImpl implements PerformerService {
         orders = orders.stream()
                 .filter(order -> order.getPerformer() != null && 
                                order.getPerformer().getId().equals(performer.getId()))
-                .filter(order -> order.getIsDone() == null || !order.getIsDone())
+                .filter(order -> order.getStatus() != com.fomov.tasktroveapi.model.OrderStatus.DONE)
                 .collect(Collectors.toList());
         
         // Apply search if specified
@@ -197,10 +197,10 @@ public class PerformerServiceImpl implements PerformerService {
         
         // Проверяем доступ к заказу
         boolean isOrderDeleted = Boolean.TRUE.equals(order.getIsDeletedByCustomer());
-        boolean isOrderActive = Boolean.TRUE.equals(order.getIsActived());
+        boolean isOrderActive = order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.ACTIVE;
         
         // Если заказ удален заказчиком, исполнитель может видеть его только если он назначен и заказ завершен
-        if (isOrderDeleted && (!isAssignedToPerformer || !Boolean.TRUE.equals(order.getIsDone()))) {
+        if (isOrderDeleted && (!isAssignedToPerformer || order.getStatus() != com.fomov.tasktroveapi.model.OrderStatus.DONE)) {
             throw new NotFoundException("Order", orderId);
         }
         
@@ -249,9 +249,16 @@ public class PerformerServiceImpl implements PerformerService {
                     if ("done".equalsIgnoreCase(tab) || "history".equalsIgnoreCase(tab)) {
                         return true;
                     }
-                    // Для остальных вкладок показываем только активные и не удаленные заказчиком
-                    return Boolean.TRUE.equals(order.getIsActived()) && 
-                           !Boolean.TRUE.equals(order.getIsDeletedByCustomer());
+                    // Для остальных вкладок показываем заказы, которые:
+                    // 1. Не удалены заказчиком
+                    // 2. Либо активные (ACTIVE), либо назначены на текущего исполнителя (IN_PROCESS, ON_CHECK)
+                    boolean notDeleted = !Boolean.TRUE.equals(order.getIsDeletedByCustomer());
+                    boolean isActive = order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.ACTIVE;
+                    boolean isAssignedToMe = order.getPerformer() != null && 
+                                            order.getPerformer().getId().equals(performer.getId()) &&
+                                            (order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.IN_PROCESS ||
+                                             order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.ON_CHECK);
+                    return notDeleted && (isActive || isAssignedToMe);
                 })
                 .collect(Collectors.toList());
         
@@ -291,7 +298,7 @@ public class PerformerServiceImpl implements PerformerService {
                     if (orderId != null) {
                         dto.setOrderId(orderId);
                         ordersService.findById(orderId).ifPresent(order -> {
-                            dto.setOrderIsDone(order.getIsDone());
+                            dto.setOrderIsDone(order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE);
                             dto.setOrderPerformerId(order.getPerformer() != null ? order.getPerformer().getId() : null);
                         });
                     }
@@ -312,7 +319,10 @@ public class PerformerServiceImpl implements PerformerService {
         Chat chat = chatService.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("Chat", chatId));
         
-        if (!chat.getPerformer().getId().equals(performer.getId())) {
+        // Проверяем доступ: сравниваем accountId, а не performer.id
+        if (chat.getPerformer() == null || 
+            chat.getPerformer().getAccount() == null ||
+            !chat.getPerformer().getAccount().getId().equals(accountId)) {
             throw new SecurityException("Access denied to chat " + chatId);
         }
         
@@ -398,22 +408,12 @@ public class PerformerServiceImpl implements PerformerService {
             throw new SecurityException("Access denied to reply " + dto.getId());
         }
         
-        if (dto.getIsDoneThisTask() != null) {
-            reply.setIsDoneThisTask(dto.getIsDoneThisTask());
-            
-            // When performer completes task, order automatically goes to check
-            if (dto.getIsDoneThisTask() && reply.getOrderId() != null) {
-                handleTaskCompletion(reply, performer);
-            }
-        }
-        if (dto.getIsOnCustomer() != null) {
-            reply.setIsOnCustomer(dto.getIsOnCustomer());
-        }
-        if (dto.getDonned() != null) {
-            reply.setDonned(dto.getDonned());
+        // Когда исполнитель завершает задачу, заказ автоматически переходит в ON_CHECK
+        if (dto.getIsDoneThisTask() != null && dto.getIsDoneThisTask() && reply.getOrderId() != null) {
+            handleTaskCompletion(reply, performer);
         }
         
-        replyService.save(reply);
+        // Флаги больше не сохраняются в Reply, статус определяется через Order.status
     }
 
     @Override
@@ -469,8 +469,10 @@ public class PerformerServiceImpl implements PerformerService {
             throw new SecurityException("Access denied to reply " + replyId);
         }
         
-        // Проверяем, что отклик действительно завершен
-        if (!Boolean.TRUE.equals(reply.getDonned())) {
+        // Проверяем, что заказ действительно завершен (Order.status == DONE)
+        Orders order = reply.getOrders();
+        if (order == null || order.getStatus() != com.fomov.tasktroveapi.model.OrderStatus.DONE ||
+            order.getPerformer() == null || !order.getPerformer().getId().equals(reply.getPerformerId())) {
             throw new IllegalStateException("Can only delete completed replies");
         }
         
@@ -499,8 +501,10 @@ public class PerformerServiceImpl implements PerformerService {
         String orderTitle = order.getTitle() != null ? order.getTitle() : "заказ #" + order.getId();
         String performerName = performer.getFullName() != null ? performer.getFullName() : "Исполнитель";
         
-        // Delete this performer's reply (other performers' replies remain)
-        replyService.deleteByOrderIdAndPerformerId(orderId, performerId);
+        // Удаляем все отклики для этого заказа, чтобы при возврате в статус ACTIVE заказ был "чистым"
+        // Исполнители смогут откликнуться заново
+        replyService.deleteAllByOrderId(orderId);
+        logger.info("Deleted all replies for order {} after performer {} refused", orderId, performerId);
         
         // Reload order from DB to avoid issues with deleted reply in collection
         order = ordersService.findById(orderId)
@@ -508,7 +512,7 @@ public class PerformerServiceImpl implements PerformerService {
         
         // Remove performer from order and return to active status
         order.setPerformer(null);
-        order.setIsInProcess(false);
+        order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.ACTIVE);
         ordersService.save(order);
         
         // Создаем уведомление для заказчика об отказе исполнителя
@@ -579,14 +583,35 @@ public class PerformerServiceImpl implements PerformerService {
         switch (tab.toLowerCase()) {
             case "done":
             case "history":
+                // Завершенные отклики: Order.status == DONE и performer_id совпадает
                 return replies.stream()
-                        .filter(r -> Boolean.TRUE.equals(r.getDonned()))
+                        .filter(r -> {
+                            try {
+                                Orders order = r.getOrders();
+                                return order != null && 
+                                       order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE &&
+                                       order.getPerformer() != null &&
+                                       order.getPerformer().getId().equals(r.getPerformerId());
+                            } catch (Exception e) {
+                                return false;
+                            }
+                        })
                         .collect(Collectors.toList());
             case "approved":
             case "pending":
+                // Утвержденные отклики в работе: Order.status == IN_PROCESS и performer_id совпадает
                 return replies.stream()
-                        .filter(r -> Boolean.TRUE.equals(r.getIsOnCustomer()) && 
-                                   !Boolean.TRUE.equals(r.getIsDoneThisTask()))
+                        .filter(r -> {
+                            try {
+                                Orders order = r.getOrders();
+                                return order != null && 
+                                       order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.IN_PROCESS &&
+                                       order.getPerformer() != null &&
+                                       order.getPerformer().getId().equals(r.getPerformerId());
+                            } catch (Exception e) {
+                                return false;
+                            }
+                        })
                         .collect(Collectors.toList());
             default:
                 return replies;
@@ -608,6 +633,29 @@ public class PerformerServiceImpl implements PerformerService {
             
             List<Reply> orderReplies = replyService.findByOrderId(order.getId());
             dto.setOrderHowReplies(orderReplies != null ? orderReplies.size() : 0);
+            
+            // Определяем, одобрен ли отклик: используем флаг isApprovedByCustomer из модели Reply
+            // или проверяем, соответствует ли исполнитель отклика назначенному исполнителю заказа
+            boolean isApproved = reply.getIsApprovedByCustomer() != null && reply.getIsApprovedByCustomer();
+            
+            // Если флаг не установлен, но исполнитель назначен на заказ - считаем одобренным
+            // (синхронизация для старых данных, где флаг мог не быть установлен)
+            if (!isApproved && order.getPerformer() != null && 
+                order.getPerformer().getId().equals(reply.getPerformerId())) {
+                isApproved = true;
+            }
+            
+            boolean isInProcess = isApproved && order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.IN_PROCESS;
+            boolean isOnCheck = isApproved && order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.ON_CHECK;
+            boolean isDone = isApproved && order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE;
+            
+            // Устанавливаем вычисляемые флаги в DTO для обратной совместимости
+            dto.setIsOnCustomer(isApproved);
+            dto.setIsDoneThisTask(isOnCheck);
+            dto.setDonned(isDone);
+            
+            // Устанавливаем флаг одобрения заказчиком (используем вычисленное значение)
+            dto.setIsApprovedByCustomer(isApproved);
         }
         if (reply.getPerformer() != null) {
             dto.setPerfName(reply.getPerformer().getFullName());
@@ -620,7 +668,7 @@ public class PerformerServiceImpl implements PerformerService {
     private void handleTaskCompletion(Reply reply, Performer performer) {
         Orders order = ordersService.findById(reply.getOrderId())
                 .orElseThrow(() -> new NotFoundException("Order", reply.getOrderId()));
-        order.setIsOnCheck(true);
+        order.setStatus(com.fomov.tasktroveapi.model.OrderStatus.ON_CHECK);
         ordersService.save(order);
         
         // Send email to customer about completed work
@@ -660,7 +708,7 @@ public class PerformerServiceImpl implements PerformerService {
                     .orElseThrow(() -> new NotFoundException("Order", dto.getOrderId()));
             
             // Проверяем, что заказ завершен
-            if (!Boolean.TRUE.equals(order.getIsDone())) {
+            if (order.getStatus() != com.fomov.tasktroveapi.model.OrderStatus.DONE) {
                 throw new IllegalStateException("Cannot add review for order that is not completed");
             }
             
@@ -697,6 +745,22 @@ public class PerformerServiceImpl implements PerformerService {
         workExperience.setReviewerType(ReviewerType.PERFORMER); // Исполнитель оставляет отзыв о заказчике
         workExperience.setOrder(order);
         workExperienceService.save(workExperience);
+        
+        // Создаем уведомление для заказчика о том, что его оценили
+        if (customer.getAccount() != null) {
+            String orderTitle = order != null && order.getTitle() != null ? order.getTitle() : "заказ #" + (order != null ? order.getId() : "");
+            String performerName = performer.getFullName() != null ? performer.getFullName() : "Исполнитель";
+            Integer mark = dto.getRate() != null ? dto.getRate() : 5;
+            Integer orderId = order != null ? order.getId() : null;
+            notificationService.createCustomerReviewNotification(
+                customer.getAccount().getId(),
+                performer.getId(),
+                orderId,
+                orderTitle,
+                performerName,
+                mark
+            );
+        }
     }
 
     @Override
@@ -708,49 +772,50 @@ public class PerformerServiceImpl implements PerformerService {
         Chat chat = chatService.findById(chatId)
                 .orElseThrow(() -> new NotFoundException("Chat", chatId));
         
+        // Проверяем, что чат принадлежит этому исполнителю
         if (!chat.getPerformerId().equals(performer.getId())) {
             throw new SecurityException("Access denied to chat " + chatId);
         }
         
-        // Извлекаем ID заказа из roomName (формат: "Order #14: Название")
-        Integer orderId = extractOrderIdFromRoomName(chat.getRoomName());
-        if (orderId == null) {
-            throw new IllegalStateException("Cannot extract order ID from chat roomName");
-        }
-        
-        Orders order = ordersService.findById(orderId)
-                .orElseThrow(() -> new NotFoundException("Order", orderId));
-        
-        // Проверяем условия: заказ завершен ИЛИ исполнитель не привязан
-        boolean canDelete = Boolean.TRUE.equals(order.getIsDone()) || 
-                           order.getPerformer() == null;
-        
-        if (!canDelete) {
-            throw new IllegalStateException("Chat can only be deleted for completed orders or orders without assigned performer");
-        }
-        
-        // Помечаем чат как удаленный для исполнителя
+        // Помечаем чат как удаленный для исполнителя (мягкое удаление - чат скрыт только для исполнителя)
         chat.setDeletedByPerformer(true);
         chatService.save(chat);
         
-        logger.info("Chat {} deleted by performer {}", chatId, performer.getId());
+        logger.info("Chat {} deleted by performer {} (soft delete)", chatId, performer.getId());
     }
     
     private Integer extractOrderIdFromRoomName(String roomName) {
-        if (roomName == null || !roomName.startsWith("Order #")) {
+        if (roomName == null || !roomName.contains("Order #")) {
             return null;
         }
         try {
-            // Формат: "Order #14: Название"
-            String[] parts = roomName.split(":");
-            if (parts.length > 0) {
-                String orderPart = parts[0].trim(); // "Order #14"
-                String idStr = orderPart.replace("Order #", "").trim();
-                return Integer.parseInt(idStr);
+            // Формат может быть: "Order #14: Название" или "Order #14: Название, Order #15: Название2"
+            // Извлекаем первый orderId из строки
+            int orderIndex = roomName.indexOf("Order #");
+            if (orderIndex >= 0) {
+                String remaining = roomName.substring(orderIndex + "Order #".length());
+                // Ищем конец числа (пробел, двоеточие или запятая)
+                StringBuilder idStr = new StringBuilder();
+                for (char c : remaining.toCharArray()) {
+                    if (Character.isDigit(c)) {
+                        idStr.append(c);
+                    } else {
+                        break;
+                    }
+                }
+                if (idStr.length() > 0) {
+                    return Integer.parseInt(idStr.toString());
+                }
             }
         } catch (NumberFormatException e) {
             logger.error("Failed to extract order ID from roomName: {}", roomName, e);
         }
         return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Performer> getTopPerformers() {
+        return repository.findAllOrderByRatingDesc();
     }
 }

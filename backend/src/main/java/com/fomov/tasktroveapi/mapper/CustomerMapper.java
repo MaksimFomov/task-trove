@@ -12,10 +12,7 @@ public class CustomerMapper {
         c.setLastName(dto.getLastName());
         c.setFirstName(dto.getFirstName());
         c.setMiddleName(dto.getMiddleName());
-        // email устанавливается в Account через RegistrationService
-        c.setPhone(dto.getPhone());
-        c.setDescription(dto.getDescription());
-        c.setScopeS(dto.getScopeS());
+        // phone, description, scopeS теперь хранятся в Portfolio, не в Customer
         return c;
     }
 
@@ -26,9 +23,7 @@ public class CustomerMapper {
         dto.setMiddleName(e.getMiddleName());
         // email получается из Account через метод getEmail()
         dto.setEmail(e.getEmail());
-        dto.setPhone(e.getPhone());
-        dto.setDescription(e.getDescription());
-        dto.setScopeS(e.getScopeS());
+        // phone, description, scopeS теперь получаются из Portfolio, не из Customer
         dto.setPasswordUser("");
         return dto;
     }

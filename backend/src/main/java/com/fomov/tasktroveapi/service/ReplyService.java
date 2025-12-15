@@ -15,7 +15,7 @@ public interface ReplyService {
     boolean existsByOrderIdAndPerformerId(Integer orderId, Integer performerId);
     List<Reply> findByPerformerIdWithRelations(Integer performerId);
     List<Reply> findByOrderIdWithRelations(Integer orderId);
-    int updateIsOnCustomerByOrderIdAndPerformerId(Integer orderId, Integer performerId);
     int deleteByOrderIdAndPerformerId(Integer orderId, Integer performerId);
+    int deleteAllByOrderId(Integer orderId);
 }
 

@@ -23,63 +23,31 @@ public class ReplyUpdateServiceImpl implements ReplyUpdateService {
     }
 
     @Override
+    @Deprecated
     public int updateReplyOnPerformerAssignment(Integer orderId, Integer performerId) {
-        logger.info("Updating reply for orderId={}, performerId={}", orderId, performerId);
-        int updatedRows = replyService.updateIsOnCustomerByOrderIdAndPerformerId(orderId, performerId);
-        logger.info("Updated rows: {}", updatedRows);
-        
-        if (updatedRows == 0) {
-            logger.error("Reply not found for performer {} and order {}", performerId, orderId);
-            List<Reply> allReplies = replyService.findByOrderId(orderId);
-            logger.info("Total replies for order {}: {}", orderId, allReplies.size());
-            for (Reply r : allReplies) {
-                logger.info("Reply id={}, performerId={}, orderId={}", r.getId(), r.getPerformerId(), r.getOrderId());
-            }
-        }
-        
-        return updatedRows;
+        // Флаги удалены, статус определяется через Order.status и Order.performer_id
+        logger.debug("updateReplyOnPerformerAssignment called but no longer needed - status is determined by Order.status");
+        return 0;
     }
 
     @Override
+    @Deprecated
     public void updateReplyOnTaskCompletion(Integer orderId, Integer performerId) {
-        logger.info("Marking task as done for orderId={}, performerId={}", orderId, performerId);
-        List<Reply> replies = replyService.findByOrderId(orderId);
-        for (Reply reply : replies) {
-            if (reply.getPerformerId().equals(performerId)) {
-                reply.setIsDoneThisTask(true);
-                replyService.save(reply);
-                logger.info("Reply {} marked as done", reply.getId());
-                break;
-            }
-        }
+        // Флаги удалены, статус определяется через Order.status
+        logger.debug("updateReplyOnTaskCompletion called but no longer needed - status is determined by Order.status");
     }
 
     @Override
+    @Deprecated
     public void updateReplyOnOrderCompletion(Integer orderId, Integer performerId) {
-        logger.info("Marking order as completed for orderId={}, performerId={}", orderId, performerId);
-        List<Reply> replies = replyService.findByOrderId(orderId);
-        for (Reply reply : replies) {
-            if (reply.getPerformerId().equals(performerId)) {
-                reply.setDonned(true);
-                reply.setIsDoneThisTask(false);
-                replyService.save(reply);
-                logger.info("Reply {} marked as completed", reply.getId());
-                break;
-            }
-        }
+        // Флаги удалены, статус определяется через Order.status
+        logger.debug("updateReplyOnOrderCompletion called but no longer needed - status is determined by Order.status");
     }
 
     @Override
+    @Deprecated
     public void resetReplyOnCorrection(Integer orderId, Integer performerId) {
-        logger.info("Resetting reply status for corrections: orderId={}, performerId={}", orderId, performerId);
-        List<Reply> replies = replyService.findByOrderId(orderId);
-        for (Reply reply : replies) {
-            if (reply.getPerformerId().equals(performerId)) {
-                reply.setIsDoneThisTask(false);
-                replyService.save(reply);
-                logger.info("Reply {} reset for corrections", reply.getId());
-                break;
-            }
-        }
+        // Флаги удалены, статус определяется через Order.status
+        logger.debug("resetReplyOnCorrection called but no longer needed - status is determined by Order.status");
     }
 }

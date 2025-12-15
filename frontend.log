@@ -1,0 +1,14 @@
+npm warn Unknown user config "node_gyp". This will stop working in the next major version of npm.
+
+> tasktrove-frontend@1.0.0 dev
+> vite
+
+
+  VITE v5.4.21  ready in 173 ms
+
+  ➜  Local:   http://localhost:3000/
+  ➜  Network: use --host to expose
+2:48:16 PM [vite] http proxy error: /api/auth/login
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1139:18)
+    at afterConnectMultiple (node:net:1712:7)

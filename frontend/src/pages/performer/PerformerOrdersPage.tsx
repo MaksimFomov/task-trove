@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { performerApi } from '../../services/api';
-import { Search, Eye, CheckCircle, Clock, X, AlertTriangle, Loader2, Trash2, MessageSquare } from 'lucide-react';
+import { performerApi, notificationApi } from '../../services/api';
+import { Search, Eye, CheckCircle, Clock, X, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import Modal from '../../components/Modal';
-import type { Order, Reply, UpdateReplyDto, Chat } from '../../types';
+import type { Order, Reply, UpdateReplyDto, Notification } from '../../types';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
 import { saveState, loadState } from '../../utils/stateStorage';
 
@@ -91,6 +91,40 @@ export default function PerformerOrdersPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Отслеживание уведомлений для автоматического обновления списка заказов и откликов
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationApi.getAll().then((res) => res.data),
+    refetchInterval: 1000, // Проверяем уведомления каждую секунду
+    enabled: true,
+  });
+
+  const previousNotificationsRef = useRef<Notification[]>([]);
+
+  useEffect(() => {
+    if (notificationsData?.notifications) {
+      const currentNotifications = notificationsData.notifications;
+      const previousNotifications = previousNotificationsRef.current;
+
+      // Проверяем, есть ли новые непрочитанные уведомления ASSIGNED, REFUSED, CORRECTION, COMPLETED
+      const relevantNotificationTypes = ['ASSIGNED', 'REFUSED', 'CORRECTION', 'COMPLETED'];
+      const newRelevantNotifications = currentNotifications.filter(
+        (notif: Notification) =>
+          !notif.isRead &&
+          relevantNotificationTypes.includes(notif.type) &&
+          !previousNotifications.some((prev: Notification) => prev.id === notif.id)
+      );
+
+      // Если найдены новые релевантные уведомления, обновляем списки
+      if (newRelevantNotifications.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['performerOrders'] });
+        queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
+      }
+
+      previousNotificationsRef.current = currentNotifications;
+    }
+  }, [notificationsData, queryClient]);
+
   // Запрос для новых заказов (доступные для отклика)
   const { data: newOrdersData, isLoading: isLoadingNew } = useQuery({
     queryKey: ['performerOrders', page],
@@ -101,7 +135,7 @@ export default function PerformerOrdersPage() {
     enabled: activeTab === 'new',
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   // Запрос для откликов (используется для вкладок: pending, active, completed)
@@ -115,16 +149,9 @@ export default function PerformerOrdersPage() {
       return performerApi.getReplies(tab || undefined).then((res) => res.data.reply);
     },
     enabled: activeTab === 'pending' || activeTab === 'completed' || activeTab === 'active',
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
-  // Запрос чатов для отображения кнопки чата в списке
-  const { data: chatsData } = useQuery({
-    queryKey: ['performerChats'],
-    queryFn: () => performerApi.getChats().then((res) => res.data.chats),
-    enabled: activeTab === 'active' || activeTab === 'completed',
-    refetchInterval: 15000, // Автоматическое обновление каждые 15 секунд
-  });
 
   const isLoading = activeTab === 'new' ? isLoadingNew : isLoadingReplies;
 
@@ -198,7 +225,7 @@ export default function PerformerOrdersPage() {
     if (activeTab === 'new') {
       // Новые заказы
       if (!newOrdersData) return [];
-      let orders = newOrdersData.filter((order) => order.isActived === true);
+      let orders = newOrdersData.filter((order) => order.status === 'ACTIVE' || order.isActived === true);
       
       if (showOnlyWithoutReplies) {
         orders = orders.filter((order) => !order.hasReplied);
@@ -424,22 +451,6 @@ export default function PerformerOrdersPage() {
                             <Eye className="w-4 h-4 mr-1" />
                             {t('orderList.view')}
                           </button>
-                          {/* Кнопка чата для заказов в работе */}
-                          {chatsData && (() => {
-                            const chatWithCustomer = chatsData.find(
-                              (chat: Chat) => chat.orderId === reply.orderId
-                            );
-                            return chatWithCustomer ? (
-                              <button
-                                onClick={() => navigate(`/chat/${chatWithCustomer.id}`)}
-                                className="btn btn-primary"
-                                title={t('chats.chat')}
-                              >
-                                <MessageSquare className="w-4 h-4 mr-1" />
-                                {t('chats.chat')}
-                              </button>
-                            ) : null;
-                          })()}
                         </div>
                       )}
                       {/* Кнопка просмотра для неутвержденных откликов */}
@@ -462,22 +473,6 @@ export default function PerformerOrdersPage() {
                             <Eye className="w-4 h-4 mr-1" />
                             {t('orderList.view')}
                           </button>
-                          {/* Кнопка чата для завершенных заказов */}
-                          {chatsData && (() => {
-                            const chatWithCustomer = chatsData.find(
-                              (chat: Chat) => chat.orderId === reply.orderId
-                            );
-                            return chatWithCustomer ? (
-                              <button
-                                onClick={() => navigate(`/chat/${chatWithCustomer.id}`)}
-                                className="btn btn-primary"
-                                title={t('chats.chat')}
-                              >
-                                <MessageSquare className="w-4 h-4 mr-1" />
-                                {t('chats.chat')}
-                              </button>
-                            ) : null;
-                          })()}
                         </div>
                       )}
                     </div>

@@ -1,6 +1,7 @@
 package com.fomov.tasktroveapi.controller;
 
 import com.fomov.tasktroveapi.model.Orders;
+import com.fomov.tasktroveapi.model.OrderStatus;
 import com.fomov.tasktroveapi.dto.AddOrderDto;
 import com.fomov.tasktroveapi.mapper.OrdersMapper;
 import com.fomov.tasktroveapi.service.OrdersService;
@@ -25,21 +26,32 @@ public class OrdersController {
 
     @GetMapping
     public List<AddOrderDto> list(@RequestParam(value = "searchTerm", required = false) String searchTerm,
+                                  @RequestParam(value = "status", required = false) String status,
                                   @RequestParam(value = "isActived", required = false) Boolean isActived,
                                   @RequestParam(value = "isInProcess", required = false) Boolean isInProcess,
                                   @RequestParam(value = "isOnCheck", required = false) Boolean isOnCheck,
                                   @RequestParam(value = "isDone", required = false) Boolean isDone) {
+        // Поддержка нового параметра status
+        if (status != null && !status.isBlank()) {
+            try {
+                OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
+                return service.findByStatus(orderStatus).stream().map(mapper::toDto).collect(Collectors.toList());
+            } catch (IllegalArgumentException e) {
+                // Игнорируем неверный статус
+            }
+        }
+        // Обратная совместимость со старыми параметрами
         if (Boolean.TRUE.equals(isActived)) {
-            return service.findByIsActived(true).stream().map(mapper::toDto).collect(Collectors.toList());
+            return service.findByStatus(OrderStatus.ACTIVE).stream().map(mapper::toDto).collect(Collectors.toList());
         }
         if (Boolean.TRUE.equals(isInProcess)) {
-            return service.findByIsInProcess(true).stream().map(mapper::toDto).collect(Collectors.toList());
+            return service.findByStatus(OrderStatus.IN_PROCESS).stream().map(mapper::toDto).collect(Collectors.toList());
         }
         if (Boolean.TRUE.equals(isOnCheck)) {
-            return service.findByIsOnCheck(true).stream().map(mapper::toDto).collect(Collectors.toList());
+            return service.findByStatus(OrderStatus.ON_CHECK).stream().map(mapper::toDto).collect(Collectors.toList());
         }
         if (Boolean.TRUE.equals(isDone)) {
-            return service.findByIsDone(true).stream().map(mapper::toDto).collect(Collectors.toList());
+            return service.findByStatus(OrderStatus.DONE).stream().map(mapper::toDto).collect(Collectors.toList());
         }
         if (searchTerm != null && !searchTerm.isBlank()) {
             return service.findByTitleContaining(searchTerm).stream().map(mapper::toDto).collect(Collectors.toList());

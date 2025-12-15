@@ -14,7 +14,7 @@ public class ChatDto {
     private Integer orderPerformerId;
     private Boolean deletedByCustomer;
     private Boolean deletedByPerformer;
-    private java.time.LocalDateTime lastMessageTime;
+    private java.time.OffsetDateTime lastMessageTime;
 
     public ChatDto() {}
 
@@ -51,8 +51,8 @@ public class ChatDto {
     public void setDeletedByCustomer(Boolean deletedByCustomer) { this.deletedByCustomer = deletedByCustomer; }
     public Boolean getDeletedByPerformer() { return deletedByPerformer; }
     public void setDeletedByPerformer(Boolean deletedByPerformer) { this.deletedByPerformer = deletedByPerformer; }
-    public java.time.LocalDateTime getLastMessageTime() { return lastMessageTime; }
-    public void setLastMessageTime(java.time.LocalDateTime lastMessageTime) { this.lastMessageTime = lastMessageTime; }
+    public java.time.OffsetDateTime getLastMessageTime() { return lastMessageTime; }
+    public void setLastMessageTime(java.time.OffsetDateTime lastMessageTime) { this.lastMessageTime = lastMessageTime; }
 }
 
 

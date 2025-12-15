@@ -209,14 +209,14 @@ SET @order5_id = LAST_INSERT_ID();
 -- ============================================
 
 -- Отклики на заказ 1
-INSERT INTO replies (order_id, performer_id, is_done_this_task, is_on_customer, donned, work_bind) VALUES
-(@order1_id, @performer1_id, 0, 0, 0, 0),
-(@order1_id, @performer3_id, 0, 0, 0, 0);
+INSERT INTO replies (order_id, performer_id, is_done_this_task, is_on_customer, donned) VALUES
+(@order1_id, @performer1_id, 0, 0, 0),
+(@order1_id, @performer3_id, 0, 0, 0);
 
 -- Отклики на заказ 2
-INSERT INTO replies (order_id, performer_id, is_done_this_task, is_on_customer, donned, work_bind) VALUES
-(@order2_id, @performer4_id, 0, 0, 0, 0),
-(@order2_id, @performer2_id, 0, 0, 0, 0);
+INSERT INTO replies (order_id, performer_id, is_done_this_task, is_on_customer, donned) VALUES
+(@order2_id, @performer4_id, 0, 0, 0),
+(@order2_id, @performer2_id, 0, 0, 0);
 
 -- ============================================
 -- СОЗДАНИЕ ОПЫТА РАБОТЫ (WORK_EXPERIENCES)
@@ -232,14 +232,14 @@ INSERT INTO work_experiences (name, rate, text, reviewer_type, order_id, custome
 -- ============================================
 
 -- Чат для заказа 3
-INSERT INTO chats (customer_id, performer_id, administrator_id, room_name, last_message_time, check_by_customer, check_by_performer, check_by_administrator) VALUES
-(@customer3_id, @performer1_id, NULL, CONCAT('chat_', @customer3_id, '_', @performer1_id, '_', @order3_id), DATE_SUB(NOW(), INTERVAL 1 HOUR), 1, 0, 0);
+INSERT INTO chats (customer_id, performer_id, room_name, last_message_time, check_by_customer, check_by_performer) VALUES
+(@customer3_id, @performer1_id, CONCAT('chat_', @customer3_id, '_', @performer1_id, '_', @order3_id), DATE_SUB(NOW(), INTERVAL 1 HOUR), 1, 0);
 
 SET @chat1_id = LAST_INSERT_ID();
 
 -- Чат для заказа 4
-INSERT INTO chats (customer_id, performer_id, administrator_id, room_name, last_message_time, check_by_customer, check_by_performer, check_by_administrator) VALUES
-(@customer1_id, @performer3_id, NULL, CONCAT('chat_', @customer1_id, '_', @performer3_id, '_', @order4_id), DATE_SUB(NOW(), INTERVAL 2 HOUR), 0, 1, 0);
+INSERT INTO chats (customer_id, performer_id, room_name, last_message_time, check_by_customer, check_by_performer) VALUES
+(@customer1_id, @performer3_id, CONCAT('chat_', @customer1_id, '_', @performer3_id, '_', @order4_id), DATE_SUB(NOW(), INTERVAL 2 HOUR), 0, 1);
 
 SET @chat2_id = LAST_INSERT_ID();
 

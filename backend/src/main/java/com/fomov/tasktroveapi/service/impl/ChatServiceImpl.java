@@ -49,6 +49,16 @@ public class ChatServiceImpl implements ChatService {
     public List<Chat> findByPerformerId(Integer performerId) { 
         return repository.findByPerformerIdWithRelations(performerId); 
     }
+
+    @Override
+    public List<Chat> findByCustomerIdAndPerformerId(Integer customerId, Integer performerId) {
+        return repository.findByCustomerIdAndPerformerIdWithRelations(customerId, performerId);
+    }
+    
+    @Override
+    public List<Chat> findByCustomerIdAndPerformerIdIgnoreDeleted(Integer customerId, Integer performerId) {
+        return repository.findByCustomerIdAndPerformerIdIgnoreDeleted(customerId, performerId);
+    }
 }
 
 

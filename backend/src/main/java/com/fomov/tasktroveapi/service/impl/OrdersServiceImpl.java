@@ -1,5 +1,6 @@
 package com.fomov.tasktroveapi.service.impl;
 
+import com.fomov.tasktroveapi.model.OrderStatus;
 import com.fomov.tasktroveapi.model.Orders;
 import com.fomov.tasktroveapi.repository.OrdersRepository;
 import com.fomov.tasktroveapi.service.OrdersService;
@@ -50,28 +51,8 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     @Override
-    public List<Orders> findByIsDone(boolean isDone) {
-        return repository.findByIsDone(isDone);
-    }
-
-    @Override
-    public List<Orders> findByIsActived(boolean isActived) {
-        return repository.findByIsActived(isActived);
-    }
-
-    @Override
-    public List<Orders> findByIsInProcess(boolean isInProcess) {
-        return repository.findByIsInProcess(isInProcess);
-    }
-
-    @Override
-    public List<Orders> findByIsOnCheck(boolean isOnCheck) {
-        return repository.findByIsOnCheck(isOnCheck);
-    }
-
-    @Override
-    public List<Orders> findByIsOnReview(boolean isOnReview) {
-        return repository.findByIsOnReview(isOnReview);
+    public List<Orders> findByStatus(OrderStatus status) {
+        return repository.findByStatus(status);
     }
 
     @Override

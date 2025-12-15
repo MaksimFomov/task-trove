@@ -77,7 +77,8 @@ public class RegistrationServiceImpl implements RegistrationService {
     public Customer registerCustomer(RegistrationCustDto dto) {
         // Нормализуем email
         String normalizedEmail = dto.getEmail() != null ? dto.getEmail().trim().toLowerCase() : null;
-        logger.info("Registering new customer with email: {}", normalizedEmail);
+        logger.info("Registering new customer with email: {}, phone: {}, description: {}, scopeS: {}", 
+            normalizedEmail, dto.getPhone(), dto.getDescription(), dto.getScopeS());
         
         // Проверяем email
         if (emailExists(normalizedEmail)) {
@@ -90,7 +91,6 @@ public class RegistrationServiceImpl implements RegistrationService {
         
         // Создаем Account
         Account account = new Account();
-        account.setLogin(normalizedEmail);
         account.setEmail(normalizedEmail);
         account.setPassword(passwordEncoder.encode(dto.getPasswordUser()));
         account.setRole(customerRole);
@@ -101,6 +101,37 @@ public class RegistrationServiceImpl implements RegistrationService {
         Customer customer = customerMapper.toEntity(dto);
         customer.setAccount(savedAccount);
         Customer saved = customerService.save(customer);
+        
+        // Создаем Portfolio для заказчика
+        Portfolio portfolio = new Portfolio();
+        portfolio.setCustomer(saved);
+        portfolio.setOwnerType("CUSTOMER");
+        // Формируем имя из ФИО для Portfolio
+        StringBuilder fullName = new StringBuilder();
+        if (dto.getLastName() != null && !dto.getLastName().trim().isEmpty()) {
+            fullName.append(dto.getLastName().trim());
+        }
+        if (dto.getFirstName() != null && !dto.getFirstName().trim().isEmpty()) {
+            if (fullName.length() > 0) fullName.append(" ");
+            fullName.append(dto.getFirstName().trim());
+        }
+        if (dto.getMiddleName() != null && !dto.getMiddleName().trim().isEmpty()) {
+            if (fullName.length() > 0) fullName.append(" ");
+            fullName.append(dto.getMiddleName().trim());
+        }
+        portfolio.setName(fullName.length() > 0 ? fullName.toString() : "");
+        portfolio.setEmail(normalizedEmail);
+        // Устанавливаем phone, description и scopeS из DTO напрямую (без проверки на пустую строку для обязательных полей)
+        portfolio.setPhone(dto.getPhone());
+        portfolio.setDescription(dto.getDescription());
+        portfolio.setScopeS(dto.getScopeS());
+        portfolio.setIsActive(false);
+        
+        logger.info("Creating portfolio for customer ID: {}, phone: {}, description: {}, scopeS: {}", 
+            saved.getId(), portfolio.getPhone(), portfolio.getDescription(), portfolio.getScopeS());
+        
+        Portfolio savedPortfolio = portfolioService.save(portfolio);
+        logger.info("Portfolio created successfully with ID: {}", savedPortfolio.getId());
         
         logger.info("Customer registered successfully with ID: {}", saved.getId());
         return saved;
@@ -124,7 +155,6 @@ public class RegistrationServiceImpl implements RegistrationService {
         
         // Создаем Account
         Account account = new Account();
-        account.setLogin(normalizedEmail);
         account.setEmail(normalizedEmail);
         account.setPassword(passwordEncoder.encode(dto.getPasswordUser()));
         account.setRole(performerRole);
@@ -139,6 +169,7 @@ public class RegistrationServiceImpl implements RegistrationService {
         // Создаем Portfolio для исполнителя
         Portfolio portfolio = new Portfolio();
         portfolio.setPerformer(saved);
+        portfolio.setOwnerType("PERFORMER");
         // Формируем имя из ФИО для Portfolio
         StringBuilder fullName = new StringBuilder();
         if (dto.getLastName() != null && !dto.getLastName().trim().isEmpty()) {

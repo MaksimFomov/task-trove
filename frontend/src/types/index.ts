@@ -1,12 +1,14 @@
 export interface User {
   id: number;
-  login?: string;
+  email?: string; // Заменено login на email
   role?: string;
   token?: string;
+  // Deprecated: Use email instead
+  login?: string;
 }
 
 export interface LoginRequest {
-  login: string;
+  login: string; // Оставляем для обратной совместимости, но это теперь email
   password: string;
 }
 
@@ -43,18 +45,20 @@ export interface Order {
   stackS?: string;
   customerId?: number;
   performerId?: number;
-  isActived: boolean;
-  isInProcess: boolean;
-  isOnCheck: boolean;
-  isDone: boolean;
+  status?: 'ACTIVE' | 'IN_PROCESS' | 'ON_CHECK' | 'ON_REVIEW' | 'DONE' | 'REJECTED';
+  // Deprecated: Use status field instead
+  isActived?: boolean;
+  isInProcess?: boolean;
+  isOnCheck?: boolean;
+  isDone?: boolean;
   isOnReview?: boolean;
   isRejected?: boolean;
   isDeletedByCustomer?: boolean;
   publicationTime?: string;
   startTime?: string;
   endTime?: string;
-  documentName?: string;
-  resultLink?: string;
+  budget?: number;
+  isSpecSent?: boolean;
   replyBind?: number;
   custOfOrder?: string;
   howReplies?: number;
@@ -71,10 +75,11 @@ export interface Reply {
   orderName: string;
   orderId: number;
   performerId: number;
+  // Computed fields for frontend (based on Order.status and Order.performer_id)
   isDoneThisTask: boolean;
   isOnCustomer: boolean;
   donned: boolean;
-  workBind?: number;
+  isApprovedByCustomer: boolean;
   orderNameByOrder?: string; // Alias for orderName, kept for backward compatibility
   orderDescription?: string;
   orderScope?: string;
@@ -122,6 +127,9 @@ export interface Message {
 export interface Portfolio {
   id?: number;
   userId?: number;
+  performerId?: number;
+  customerId?: number;
+  ownerType?: 'PERFORMER' | 'CUSTOMER';
   name?: string;
   lastName?: string;
   firstName?: string;
@@ -132,7 +140,10 @@ export interface Portfolio {
   specializations?: string;
   employment?: string;
   experience?: string;
+  description?: string; // For Customer
+  scopeS?: string; // For Customer
   status?: string;
+  isActive?: boolean;
 }
 
 export interface UpdatePortfolioDto {
@@ -201,12 +212,13 @@ export interface ReadyOrderDto {
 export interface Account {
   isActive?: boolean;
   id: number;
-  login: string;
-  email?: string;
+  email: string;
   role?: {
     id: number;
     name: string;
   };
+  // Deprecated: Use email instead
+  login?: string;
 }
 
 // Standardized API Response Types

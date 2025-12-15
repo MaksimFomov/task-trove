@@ -64,7 +64,7 @@ export default function ChatPage() {
     enabled: !!chatId && (isCustomer || isPerformer),
     refetchOnMount: true, // Всегда загружаем при монтировании (открытии чата)
     refetchOnWindowFocus: true, // Обновляем при возврате на вкладку
-    refetchInterval: 5000, // Автоматическое обновление каждые 5 секунд для синхронизации
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду для синхронизации
     // При каждом запросе getChatMessages бэкенд автоматически обновляет lastCheckedTime,
     // что помечает все сообщения как прочитанные и обновляет счетчик непрочитанных
     onSuccess: () => {
@@ -128,10 +128,19 @@ export default function ChatPage() {
   }, [chatId, isCustomer, isPerformer, queryClient]);
 
   useEffect(() => {
+    // Очищаем сообщения при смене чата
+    setMessages([]);
+  }, [chatId]);
+
+  useEffect(() => {
     if (initialMessages) {
-      setMessages(initialMessages);
+      // Фильтруем сообщения по chatId для безопасности
+      const filteredMessages = initialMessages.filter(m => 
+        !m.chatId || m.chatId === Number(chatId)
+      );
+      setMessages(filteredMessages);
     }
-  }, [initialMessages]);
+  }, [initialMessages, chatId]);
 
   // Проверяем, удален ли чат другим участником
   useEffect(() => {
@@ -180,6 +189,12 @@ export default function ChatPage() {
         try {
           const data = JSON.parse(message.body);
           console.log('Received message:', data);
+          
+          // Проверяем, что сообщение относится к текущему чату
+          if (data.chatId !== Number(chatId)) {
+            console.warn('Received message for different chat:', data.chatId, 'current chat:', chatId);
+            return;
+          }
           
           if (data.type === 'CHAT' && data.content) {
             // Добавляем сообщение в локальное состояние
@@ -241,7 +256,7 @@ export default function ChatPage() {
         destination: '/app/chat.addUser',
         body: JSON.stringify({
           chatId: Number(chatId),
-          sender: user?.login,
+          sender: user?.email || user?.login,
           type: 'JOIN',
         }),
       });
@@ -265,7 +280,7 @@ export default function ChatPage() {
         client.deactivate();
       }
     };
-  }, [chatId, user?.login]);
+  }, [chatId, user?.email || user?.login]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -325,12 +340,13 @@ export default function ChatPage() {
         </button>
         <div className="flex-1">
           <h1 className="text-2xl font-bold dark:text-slate-100">
-            {chatInfo?.orderTitle || chatInfo?.roomName || t('chats.chatNumber', { id: chatId })}
+            {isCustomer && chatInfo?.performerName ? chatInfo.performerName : 
+             isPerformer && chatInfo?.customerName ? chatInfo.customerName :
+             chatInfo?.orderTitle || chatInfo?.roomName || t('chats.chatNumber', { id: chatId })}
           </h1>
-          {chatInfo && (
-            <p className="text-sm text-gray-600">
-              {isCustomer && chatInfo.performerName && `${t('orders.performer')}: ${chatInfo.performerName}`}
-              {isPerformer && chatInfo.customerName && `${t('orders.customer')}: ${chatInfo.customerName}`}
+          {chatInfo?.orderTitle && (
+            <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
+              {chatInfo.orderTitle}
             </p>
           )}
         </div>

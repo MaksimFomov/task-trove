@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { performerApi, customerApi } from '../../services/api';
+import { performerApi, customerApi, notificationApi } from '../../services/api';
 import { toast } from 'react-hot-toast';
-import { ArrowLeft, Send, X, Loader2, CheckCircle, Trash2, AlertTriangle, User, Star, Briefcase, Award } from 'lucide-react';
+import { ArrowLeft, Send, X, Loader2, CheckCircle, Trash2, AlertTriangle, User, Star, Briefcase, Award, MessageSquare } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import type { Reply, Chat, UpdateReplyDto, Account, CustomerPortfolio, WorkExperience, Order } from '../../types';
+import type { Reply, Chat, UpdateReplyDto, Account, CustomerPortfolio, WorkExperience, Order, Notification } from '../../types';
 import Modal from '../../components/Modal';
 
 export default function PerformerOrderDetailPage() {
@@ -18,10 +18,48 @@ export default function PerformerOrderDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
+  // Отслеживание уведомлений для автоматического обновления заказа
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationApi.getAll().then((res) => res.data),
+    refetchInterval: 1000, // Проверяем уведомления каждую секунду
+    enabled: true,
+  });
+
+  const previousNotificationsRef = useRef<Notification[]>([]);
+
+  useEffect(() => {
+    if (notificationsData?.notifications && id) {
+      const currentNotifications = notificationsData.notifications;
+      const previousNotifications = previousNotificationsRef.current;
+
+      // Проверяем, есть ли новые непрочитанные уведомления CORRECTION, COMPLETED, REFUSED для этого заказа
+      const relevantNotificationTypes = ['CORRECTION', 'COMPLETED', 'REFUSED'];
+      const orderId = Number(id);
+      const newRelevantNotifications = currentNotifications.filter(
+        (notif: Notification) =>
+          !notif.isRead &&
+          relevantNotificationTypes.includes(notif.type) &&
+          notif.relatedOrderId === orderId &&
+          !previousNotifications.some((prev: Notification) => prev.id === notif.id)
+      );
+
+      // Если найдены новые релевантные уведомления, обновляем заказ
+      if (newRelevantNotifications.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['performerOrder', id] });
+        queryClient.invalidateQueries({ queryKey: ['performerOrders'] });
+        queryClient.invalidateQueries({ queryKey: ['performerReplies'] });
+        queryClient.invalidateQueries({ queryKey: ['performerChats'] });
+      }
+
+      previousNotificationsRef.current = currentNotifications;
+    }
+  }, [notificationsData, id, queryClient]);
+
   const { data: order, isLoading } = useQuery({
     queryKey: ['performerOrder', id],
     queryFn: () => performerApi.getOrder(Number(id)).then((res) => res.data),
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   // Состояния для модальных окон
@@ -43,7 +81,7 @@ export default function PerformerOrderDetailPage() {
     queryKey: ['performerChats'],
     queryFn: () => performerApi.getChats().then((res) => res.data.chats),
     enabled: !!order?.customerId,
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   // Находим чат с заказчиком этого заказа
@@ -228,7 +266,7 @@ export default function PerformerOrderDetailPage() {
       const userStr = localStorage.getItem('user');
       if (!userStr) return t('roles.performer');
       const user = JSON.parse(userStr);
-      return user.name || user.login || t('roles.performer');
+      return user.name || user.email || t('roles.performer');
     } catch (error) {
       return t('roles.performer');
     }
@@ -355,8 +393,8 @@ export default function PerformerOrderDetailPage() {
   // Проверяем, утвержден ли отклик заказчиком
   const isReplyApproved = currentReply?.isOnCustomer === true;
   
-  // Проверяем статус активности заказа (заказ активен если isActived === true)
-  const isOrderActive = order.isActived === true;
+  // Проверяем статус активности заказа (заказ активен если status === 'ACTIVE')
+  const isOrderActive = order.status === 'ACTIVE' || order.isActived === true;
 
   return (
     <div className="space-y-6">
@@ -375,13 +413,14 @@ export default function PerformerOrderDetailPage() {
                   {t('orderDetail.created')}: {format(new Date(order.publicationTime), 'd MMMM yyyy HH:mm', { locale: ru })}
                 </span>
               )}
-              {order.howReplies !== undefined && <span>{t('orderDetail.replies')}: {order.howReplies}</span>}
+              {order.howReplies !== undefined && !order.performerId && (
+                <span>{t('orderDetail.replies')}: {order.howReplies}</span>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-2 items-end">
-            {isOrderActive && (
-              <>
-                {hasReplied && !isReplyApproved ? (
+            {/* Кнопка отмены отклика - только для активных заказов без одобрения */}
+            {isOrderActive && hasReplied && !isReplyApproved && (
                   <button 
                     onClick={handleCancelReply} 
                     disabled={deleteReplyMutation.isPending || !currentReplyId}
@@ -399,32 +438,13 @@ export default function PerformerOrderDetailPage() {
                       </>
                     )}
                   </button>
-                ) : hasReplied && isReplyApproved ? (
-                  <>
-                    {/* Кнопки для заказов в работе */}
-                    {!currentReply?.isDoneThisTask && !currentReply?.donned && (
-                      <>
-                        <button
-                          onClick={handleRefuseClick}
-                          disabled={refuseOrderMutation.isPending}
-                          className="btn btn-danger flex items-center"
-                        >
-                          {refuseOrderMutation.isPending ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              {t('common.loading')}
-                            </>
-                          ) : (
-                            <>
-                              <X className="w-4 h-4 mr-2" />
-                              {t('orderDetail.refuse')}
-                            </>
-                          )}
-                        </button>
+            )}
+            {/* Кнопка завершения - для заказов в работе (одобренных) */}
+            {hasReplied && isReplyApproved && !currentReply?.isDoneThisTask && !currentReply?.donned && (
                         <button
                           onClick={handleCompleteClick}
                           disabled={completeOrderMutation.isPending}
-                          className="btn bg-green-600 hover:bg-green-700 text-white flex items-center"
+                  className="btn bg-green-600 hover:bg-green-700 text-white flex items-center w-full"
                         >
                           {completeOrderMutation.isPending ? (
                             <>
@@ -438,10 +458,9 @@ export default function PerformerOrderDetailPage() {
                             </>
                           )}
                         </button>
-                      </>
-                    )}
-                  </>
-                ) : (
+            )}
+            {/* Кнопка добавления отклика - только для активных заказов без отклика */}
+            {isOrderActive && !hasReplied && (
                   <button 
                     onClick={handleAddReply} 
                     disabled={addReplyMutation.isPending}
@@ -459,8 +478,6 @@ export default function PerformerOrderDetailPage() {
                       </>
                     )}
                   </button>
-                )}
-              </>
             )}
           </div>
         </div>
@@ -481,14 +498,6 @@ export default function PerformerOrderDetailPage() {
             </div>
           )}
         </div>
-
-        {!isOrderActive && (
-          <div className="mt-6 p-4 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg">
-            <p className="text-gray-600 dark:text-slate-300">
-              {t('orders.orderInactiveOrModeration')}
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Карточка заказчика */}
@@ -499,7 +508,7 @@ export default function PerformerOrderDetailPage() {
             <div className="flex justify-between items-center">
               <div className="flex-1">
                 <p className="font-semibold text-lg">
-                  {order.customerName || customerInfo?.login || t('roles.customer')}
+                  {order.customerName || customerInfo?.email || t('roles.customer')}
                 </p>
                 {customerInfo?.email && (
                   <p className="text-sm text-gray-600">{customerInfo.email}</p>
@@ -517,8 +526,38 @@ export default function PerformerOrderDetailPage() {
                   <User className="w-4 h-4 mr-1" />
                   {t('orderDetail.viewProfile')}
                 </button>
+                {/* Кнопка чата показывается если есть чат с заказчиком */}
+                {chatWithCustomer && (
+                  <button
+                    onClick={() => navigate(`/chat/${chatWithCustomer.id}`)}
+                    className="btn btn-primary flex items-center"
+                  >
+                    <MessageSquare className="w-4 h-4 mr-1" />
+                    {t('chats.chat')}
+                  </button>
+                )}
+                {/* Кнопка "Отказаться от заказа" показывается для заказов в работе */}
+                {hasReplied && isReplyApproved && !currentReply?.isDoneThisTask && !currentReply?.donned && (
+                  <button
+                    onClick={handleRefuseClick}
+                    disabled={refuseOrderMutation.isPending}
+                    className="btn btn-danger flex items-center"
+                  >
+                    {refuseOrderMutation.isPending ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {t('common.loading')}
+                      </>
+                    ) : (
+                      <>
+                        <X className="w-4 h-4 mr-1" />
+                        {t('orders.refuseOrder')}
+                      </>
+                    )}
+                  </button>
+                )}
                 {/* Кнопка "Оставить отзыв" показывается после завершения заказа */}
-                {order.isDone && order.customerId && (
+                {(order.status === 'DONE' || order.isDone) && order.customerId && (
                   <button
                     onClick={() => {
                       setReviewData({ ...reviewData, customerId: order.customerId || 0 });

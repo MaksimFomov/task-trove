@@ -13,7 +13,9 @@ import java.util.Objects;
 @Entity
 @Table(name = "portfolios", indexes = {
     @Index(name = "idx_portfolios_performer_id", columnList = "performer_id"),
-    @Index(name = "idx_portfolios_is_active", columnList = "is_active")
+    @Index(name = "idx_portfolios_customer_id", columnList = "customer_id"),
+    @Index(name = "idx_portfolios_is_active", columnList = "is_active"),
+    @Index(name = "idx_portfolios_owner_type", columnList = "owner_type")
 })
 @Getter
 @Setter
@@ -26,16 +28,26 @@ public class Portfolio {
     private Integer id;
     
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "performer_id", nullable = false,
+    @JoinColumn(name = "performer_id", nullable = true,
                 foreignKey = @ForeignKey(name = "fk_portfolios_performer"))
     @ToString.Exclude
     @JsonIgnore
     private Performer performer;
     
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "customer_id", nullable = true,
+                foreignKey = @ForeignKey(name = "fk_portfolios_customer"))
+    @ToString.Exclude
+    @JsonIgnore
+    private Customer customer;
+    
+    @Column(name = "owner_type", nullable = false, length = 20)
+    private String ownerType; // "PERFORMER" or "CUSTOMER"
+    
     @Column(nullable = false, length = 100)
     private String name;
     
-    @Column(length = 20)
+    @Column(length = 50)
     private String phone;
     
     @Column(length = 255)
@@ -53,17 +65,36 @@ public class Portfolio {
     @Column(columnDefinition = "TEXT")
     private String experience;
     
+    @Column(columnDefinition = "TEXT")
+    private String description; // Для заказчиков
+    
+    @Column(name = "scope_s", length = 255)
+    private String scopeS; // Для заказчиков
+    
     @Column(name = "is_active", nullable = false)
     private Boolean isActive = false;
     
-    // Геттер для обратной совместимости
+    // Геттеры для обратной совместимости
     public Integer getPerformerId() {
         return performer != null ? performer.getId() : null;
+    }
+    
+    public Integer getCustomerId() {
+        return customer != null ? customer.getId() : null;
     }
     
     // Конструкторы
     public Portfolio(Performer performer, String name) {
         this.performer = performer;
+        this.customer = null;
+        this.ownerType = "PERFORMER";
+        this.name = name;
+    }
+    
+    public Portfolio(Customer customer, String name) {
+        this.customer = customer;
+        this.performer = null;
+        this.ownerType = "CUSTOMER";
         this.name = name;
     }
 

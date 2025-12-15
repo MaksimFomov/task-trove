@@ -17,12 +17,18 @@ public interface NotificationService {
     void createReplyNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName);
     void createAssignedNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName);
     void createCompletedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName);
+    void createOrderCompletedByCustomerNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName);
     void createCorrectionNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName);
     void createRefusedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName);
     void createPerformerRefusedNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName);
+    void createPerformerNotSelectedNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName);
     
     // Методы для уведомлений о модерации заказов
     void createOrderReviewNotification(Integer adminAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName);
     void createOrderApprovedNotification(Integer customerAccountId, Integer orderId, String orderTitle);
     void createOrderRejectedNotification(Integer customerAccountId, Integer orderId, String orderTitle, String reason);
+    
+    // Методы для уведомлений о отзывах
+    void createReviewNotification(Integer performerAccountId, Integer customerId, Integer orderId, String orderTitle, String customerName, Integer mark);
+    void createCustomerReviewNotification(Integer customerAccountId, Integer performerId, Integer orderId, String orderTitle, String performerName, Integer mark);
 }

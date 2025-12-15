@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -419,26 +420,26 @@ public class PerformerController {
         }
     }
 
-    @GetMapping("/customer/{accountId}/info")
+    @GetMapping("/customer/{customerId}/info")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<?> getCustomerInfo(@PathVariable Integer accountId) {
+    public ResponseEntity<?> getCustomerInfo(@PathVariable Integer customerId) {
         try {
             Integer currentAccountId = SecurityUtils.getCurrentUserId();
             if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            // Ищем заказчика по accountId (так как в DTO приходит accountId)
-            Optional<Customer> customerOpt = customerService.findByAccountId(accountId);
+            // Ищем заказчика по customerId (в DTO теперь приходит customer.id)
+            Optional<Customer> customerOpt = customerService.findByIdWithAccount(customerId);
             if (customerOpt.isEmpty()) {
-                logger.error("Customer not found for accountId: {}", accountId);
+                logger.error("Customer not found for customerId: {}", customerId);
                 return ResponseEntity.notFound().build();
             }
             
             Customer customer = customerOpt.get();
             
             if (customer.getAccount() == null) {
-                logger.error("Customer account is null for accountId: {}", accountId);
+                logger.error("Customer account is null for customerId: {}", customerId);
                 return ResponseEntity.notFound().build();
             }
             
@@ -449,7 +450,7 @@ public class PerformerController {
             // Создаем простой DTO для ответа, чтобы избежать проблем с сериализацией
             Map<String, Object> accountInfo = new java.util.HashMap<>();
             accountInfo.put("id", account.getId());
-            accountInfo.put("login", account.getLogin() != null ? account.getLogin() : "");
+            accountInfo.put("email", account.getEmail() != null ? account.getEmail() : "");
             accountInfo.put("email", account.getEmail() != null ? account.getEmail() : "");
             
             if (role != null) {
@@ -463,7 +464,7 @@ public class PerformerController {
             
             return ResponseEntity.ok(accountInfo);
         } catch (NotFoundException e) {
-            logger.error("Customer not found for accountId: {}", accountId);
+            logger.error("Customer not found for customerId: {}", customerId);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting customer info: {}", e.getMessage(), e);
@@ -472,18 +473,18 @@ public class PerformerController {
         }
     }
 
-    @GetMapping("/customer/{accountId}/portfolio")
+    @GetMapping("/customer/{customerId}/portfolio")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<?> getCustomerPortfolio(@PathVariable Integer accountId) {
+    public ResponseEntity<?> getCustomerPortfolio(@PathVariable Integer customerId) {
         try {
             Integer currentAccountId = SecurityUtils.getCurrentUserId();
             if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            // Ищем заказчика по accountId (так как в DTO приходит accountId)
-            Customer customer = customerService.findByAccountId(accountId)
-                    .orElseThrow(() -> new NotFoundException("Customer with accountId", accountId));
+            // Ищем заказчика по customerId (в DTO теперь приходит customer.id)
+            Customer customer = customerService.findByIdWithAccount(customerId)
+                    .orElseThrow(() -> new NotFoundException("Customer", customerId));
             
             // Преобразуем Customer в CustomerPortfolio DTO
             Map<String, Object> portfolio = new java.util.HashMap<>();
@@ -493,13 +494,22 @@ public class PerformerController {
             portfolio.put("firstName", customer.getFirstName());
             portfolio.put("middleName", customer.getMiddleName());
             portfolio.put("email", customer.getEmail() != null ? customer.getEmail() : "");
-            portfolio.put("phone", customer.getPhone() != null ? customer.getPhone() : "");
-            portfolio.put("description", customer.getDescription() != null ? customer.getDescription() : "");
-            portfolio.put("scopeS", customer.getScopeS() != null ? customer.getScopeS() : "");
+            // phone, description, scopeS теперь получаются из Portfolio
+            List<Portfolio> customerPortfolios = portfolioService.findByUserId(customer.getId(), "CUSTOMER");
+            if (!customerPortfolios.isEmpty()) {
+                Portfolio customerPortfolio = customerPortfolios.get(0);
+                portfolio.put("phone", customerPortfolio.getPhone() != null ? customerPortfolio.getPhone() : "");
+                portfolio.put("description", customerPortfolio.getDescription() != null ? customerPortfolio.getDescription() : "");
+                portfolio.put("scopeS", customerPortfolio.getScopeS() != null ? customerPortfolio.getScopeS() : "");
+            } else {
+                portfolio.put("phone", "");
+                portfolio.put("description", "");
+                portfolio.put("scopeS", "");
+            }
             
             return ResponseEntity.ok(portfolio);
         } catch (NotFoundException e) {
-            logger.error("Customer not found for accountId: {}", accountId);
+            logger.error("Customer not found for customerId: {}", customerId);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting customer portfolio: {}", e.getMessage(), e);
@@ -507,28 +517,28 @@ public class PerformerController {
         }
     }
 
-    @GetMapping("/customer/{accountId}/done-orders")
+    @GetMapping("/customer/{customerId}/done-orders")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<Map<String, Object>> getCustomerDoneOrders(@PathVariable Integer accountId) {
+    public ResponseEntity<Map<String, Object>> getCustomerDoneOrders(@PathVariable Integer customerId) {
         try {
             Integer currentAccountId = SecurityUtils.getCurrentUserId();
             if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            // Ищем заказчика по accountId (так как в DTO приходит accountId)
-            Customer customer = customerService.findByAccountId(accountId)
-                    .orElseThrow(() -> new NotFoundException("Customer with accountId", accountId));
+            // Ищем заказчика по customerId (в DTO теперь приходит customer.id)
+            Customer customer = customerService.findById(customerId)
+                    .orElseThrow(() -> new NotFoundException("Customer", customerId));
             
             java.util.List<Orders> orders = ordersService.findByCustomerId(customer.getId());
             java.util.List<AddOrderDto> doneOrders = orders.stream()
-                    .filter(o -> Boolean.TRUE.equals(o.getIsDone()))
+                    .filter(o -> o.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE)
                     .map(ordersMapper::toDto)
                     .toList();
             
             return ResponseEntity.ok(Map.of("orders", doneOrders));
         } catch (NotFoundException e) {
-            logger.error("Customer not found for accountId: {}", accountId);
+            logger.error("Customer not found for customerId: {}", customerId);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting customer done orders: {}", e.getMessage(), e);
@@ -536,18 +546,18 @@ public class PerformerController {
         }
     }
 
-    @GetMapping("/customer/{accountId}/reviews")
+    @GetMapping("/customer/{customerId}/reviews")
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<Map<String, Object>> getCustomerReviews(@PathVariable Integer accountId) {
+    public ResponseEntity<Map<String, Object>> getCustomerReviews(@PathVariable Integer customerId) {
         try {
             Integer currentAccountId = SecurityUtils.getCurrentUserId();
             if (currentAccountId == null) {
                 return ResponseEntity.status(401).build();
             }
             
-            // Ищем заказчика по accountId (так как в DTO приходит accountId)
-            Customer customer = customerService.findByAccountId(accountId)
-                    .orElseThrow(() -> new NotFoundException("Customer with accountId", accountId));
+            // Ищем заказчика по customerId (в DTO теперь приходит customer.id)
+            Customer customer = customerService.findByIdWithAccount(customerId)
+                    .orElseThrow(() -> new NotFoundException("Customer", customerId));
             
             // Получаем accountId заказчика, о котором отзыв
             Integer customerAccountId = null;
@@ -563,7 +573,7 @@ public class PerformerController {
             
             return ResponseEntity.ok(Map.of("reviews", reviewDtos));
         } catch (NotFoundException e) {
-            logger.error("Customer not found for accountId: {}", accountId);
+            logger.error("Customer not found for customerId: {}", customerId);
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
             logger.error("Error getting customer reviews: {}", e.getMessage(), e);
@@ -612,6 +622,51 @@ public class PerformerController {
         } catch (Exception e) {
             logger.error("Error deleting chat: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of("error", "Failed to delete chat"));
+        }
+    }
+
+    @GetMapping("/top-performers")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<Map<String, Object>> getTopPerformers() {
+        try {
+            List<Performer> performers = service.getTopPerformers();
+            List<Map<String, Object>> performerDtos = performers.stream()
+                    .map(performer -> {
+                        // Рассчитываем рейтинг на основе отзывов
+                        List<WorkExperience> reviews = workExperienceService.findReviewsAboutPerformer(performer.getId());
+                        int calculatedRating = 0;
+                        if (!reviews.isEmpty()) {
+                            double averageMark = reviews.stream()
+                                    .mapToInt(review -> review.getRate() != null ? review.getRate() : 0)
+                                    .average()
+                                    .orElse(0.0);
+                            // Преобразуем среднюю оценку (1-5) в рейтинг (0-100)
+                            calculatedRating = (int) Math.round(averageMark * 20);
+                        }
+                        
+                        // Подсчитываем количество выполненных заказов
+                        List<Orders> allOrders = ordersService.findByPerformerId(performer.getId());
+                        long completedOrdersCount = allOrders.stream()
+                                .filter(order -> order.getStatus() == com.fomov.tasktroveapi.model.OrderStatus.DONE)
+                                .count();
+                        
+                        Map<String, Object> dto = new java.util.HashMap<>();
+                        dto.put("id", performer.getId());
+                        dto.put("lastName", performer.getLastName());
+                        dto.put("firstName", performer.getFirstName());
+                        dto.put("middleName", performer.getMiddleName());
+                        dto.put("fullName", performer.getFullName());
+                        dto.put("email", performer.getEmail());
+                        dto.put("rating", calculatedRating);
+                        dto.put("completedOrdersCount", completedOrdersCount);
+                        return dto;
+                    })
+                    .sorted((a, b) -> Integer.compare((Integer) b.get("rating"), (Integer) a.get("rating")))
+                    .collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(Map.of("performers", performerDtos));
+        } catch (Exception e) {
+            logger.error("Error getting top performers: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Failed to get top performers"));
         }
     }
 }

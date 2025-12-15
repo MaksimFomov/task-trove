@@ -66,14 +66,14 @@ public class ReplyServiceImpl implements ReplyService {
     
     @Override
     @org.springframework.transaction.annotation.Transactional
-    public int updateIsOnCustomerByOrderIdAndPerformerId(Integer orderId, Integer performerId) {
-        return repository.updateIsOnCustomerByOrderIdAndPerformerId(orderId, performerId);
+    public int deleteByOrderIdAndPerformerId(Integer orderId, Integer performerId) {
+        return repository.deleteByOrderIdAndPerformerId(orderId, performerId);
     }
     
     @Override
     @org.springframework.transaction.annotation.Transactional
-    public int deleteByOrderIdAndPerformerId(Integer orderId, Integer performerId) {
-        return repository.deleteByOrderIdAndPerformerId(orderId, performerId);
+    public int deleteAllByOrderId(Integer orderId) {
+        return repository.deleteAllByOrderId(orderId);
     }
 }
 

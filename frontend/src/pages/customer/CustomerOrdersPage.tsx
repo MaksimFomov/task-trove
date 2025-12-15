@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { customerApi } from '../../services/api';
-import { Plus, Search, Eye, Trash2, CheckCircle, Clock, XCircle, AlertTriangle, Loader2, MessageSquare } from 'lucide-react';
+import { customerApi, notificationApi } from '../../services/api';
+import { Plus, Search, Eye, Trash2, CheckCircle, Clock, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import Modal from '../../components/Modal';
-import type { Order, Chat } from '../../types';
+import type { Order, Notification } from '../../types';
 import { showErrorToast, showSuccessToast } from '../../utils/errorHandler';
 import { saveState, loadState } from '../../utils/stateStorage';
 
@@ -92,6 +92,38 @@ export default function CustomerOrdersPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
+  // Отслеживание уведомлений об одобрении заказов для автоматического обновления списка
+  const { data: notificationsData } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => notificationApi.getAll().then((res) => res.data),
+    refetchInterval: 1000, // Проверяем уведомления каждую секунду
+    enabled: true,
+  });
+
+  const previousNotificationsRef = useRef<Notification[]>([]);
+
+  useEffect(() => {
+    if (notificationsData?.notifications) {
+      const currentNotifications = notificationsData.notifications;
+      const previousNotifications = previousNotificationsRef.current;
+
+      // Проверяем, есть ли новые непрочитанные уведомления ORDER_APPROVED
+      const newApprovedNotifications = currentNotifications.filter(
+        (notif: Notification) =>
+          !notif.isRead &&
+          notif.type === 'ORDER_APPROVED' &&
+          !previousNotifications.some((prev: Notification) => prev.id === notif.id)
+      );
+
+      // Если найдены новые уведомления об одобрении, обновляем список заказов
+      if (newApprovedNotifications.length > 0) {
+        queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
+        queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
+      }
+
+      previousNotificationsRef.current = currentNotifications;
+    }
+  }, [notificationsData, queryClient]);
 
   const { data: allOrders, isLoading: isLoadingAll } = useQuery({
     queryKey: ['customerOrders', debouncedSearchTerm],
@@ -102,7 +134,7 @@ export default function CustomerOrdersPage() {
     },
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
   });
 
   const { data: doneOrders, isLoading: isLoadingDone } = useQuery({
@@ -119,42 +151,40 @@ export default function CustomerOrdersPage() {
     },
     refetchOnWindowFocus: true,
     refetchOnMount: true,
-    refetchInterval: 10000, // Автоматическое обновление каждые 10 секунд
+    refetchInterval: 1000, // Автоматическое обновление каждую секунду
     enabled: true, // Всегда загружаем выполненные заказы
   });
 
-  // Запрос чатов для отображения кнопки чата в списке
-  const { data: chatsData } = useQuery({
-    queryKey: ['customerChats'],
-    queryFn: () => customerApi.getChats().then((res) => res.data.chats),
-    refetchInterval: 15000, // Автоматическое обновление каждые 15 секунд
-  });
 
   // Определяем какие данные использовать в зависимости от вкладки
   const isLoading = activeTab === 'done' ? isLoadingDone : isLoadingAll;
   
   // Функция для определения статуса заказа
   const getOrderStatus = (order: Order) => {
-    // Приоритет: На рассмотрении > Отклонен > Выполнен > На проверке > В процессе > Активен > Неактивен
-    if (order.isOnReview) {
-      return { label: t('orderStatus.onReview'), className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
+    const status = order.status || 
+      (order.isOnReview ? 'ON_REVIEW' : 
+       order.isRejected ? 'REJECTED' : 
+       order.isDone ? 'DONE' : 
+       order.isOnCheck ? 'ON_CHECK' : 
+       order.isInProcess ? 'IN_PROCESS' : 
+       order.isActived ? 'ACTIVE' : 'ACTIVE');
+    
+    switch (status) {
+      case 'ON_REVIEW':
+        return { label: t('orderStatus.onReview'), className: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' };
+      case 'REJECTED':
+        return { label: t('orderStatus.rejected'), className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
+      case 'DONE':
+        return { label: t('orderStatus.done'), className: 'bg-purple-100 text-purple-800' };
+      case 'ON_CHECK':
+        return { label: t('orderStatus.onCheck'), className: 'bg-yellow-100 text-yellow-800' };
+      case 'IN_PROCESS':
+        return { label: t('orderStatus.inProcess'), className: 'bg-blue-100 text-blue-800' };
+      case 'ACTIVE':
+        return { label: t('orderStatus.active'), className: 'bg-green-100 text-green-800' };
+      default:
+        return { label: t('orderStatus.inactive'), className: 'bg-gray-100 text-gray-800' };
     }
-    if (order.isRejected) {
-      return { label: t('orderStatus.rejected'), className: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' };
-    }
-    if (order.isDone) {
-      return { label: t('orderStatus.done'), className: 'bg-purple-100 text-purple-800' };
-    }
-    if (order.isOnCheck) {
-      return { label: t('orderStatus.onCheck'), className: 'bg-yellow-100 text-yellow-800' };
-    }
-    if (order.isInProcess) {
-      return { label: t('orderStatus.inProcess'), className: 'bg-blue-100 text-blue-800' };
-    }
-    if (order.isActived) {
-      return { label: t('orderStatus.active'), className: 'bg-green-100 text-green-800' };
-    }
-    return { label: t('orderStatus.inactive'), className: 'bg-gray-100 text-gray-800' };
   };
 
   // Фильтруем заказы в зависимости от активной вкладки
@@ -168,11 +198,12 @@ export default function CustomerOrdersPage() {
     
     if (activeTab === 'in-progress') {
       // Заказы в работе: заказы в процессе или на проверке, но не выполненные, и с исполнителем
-      return allOrders.filter(order => 
-        !order.isDone && 
-        order.performerId != null &&
-        (order.isInProcess === true || order.isOnCheck === true)
-      );
+      return allOrders.filter(order => {
+        const status = order.status || (order.isDone ? 'DONE' : order.isOnCheck ? 'ON_CHECK' : order.isInProcess ? 'IN_PROCESS' : order.isOnReview ? 'ON_REVIEW' : order.isRejected ? 'REJECTED' : order.isActived ? 'ACTIVE' : 'ACTIVE');
+        return status !== 'DONE' && !order.isDone && 
+               order.performerId != null &&
+               (status === 'IN_PROCESS' || status === 'ON_CHECK' || order.isInProcess === true || order.isOnCheck === true);
+      });
     }
     
     // Все заказы (исключаем отклоненные из основного списка)
@@ -213,7 +244,6 @@ export default function CustomerOrdersPage() {
       // Немедленное обновление всех связанных запросов
       queryClient.invalidateQueries({ queryKey: ['customerOrders'] });
       queryClient.invalidateQueries({ queryKey: ['customerDoneOrders'] });
-      queryClient.invalidateQueries({ queryKey: ['customerChats'] });
       showSuccessToast(t('orders.orderDeleted'));
       setShowDeleteConfirm(false);
       setDeleteOrderId(null);
@@ -419,34 +449,6 @@ export default function CustomerOrdersPage() {
                       {t('orderList.view')}
                     </button>
                     
-                    {/* Кнопка чата для заказов с исполнителем */}
-                    {order.performerId && chatsData && (() => {
-                      const chatWithPerformer = chatsData.find(
-                        (chat: Chat) => chat.orderId === order.id
-                      );
-                      return chatWithPerformer ? (
-                        <button
-                          onClick={() => navigate(`/chat/${chatWithPerformer.id}`)}
-                          className="btn btn-primary flex items-center"
-                          title={t('chats.chat')}
-                        >
-                          <MessageSquare className="w-4 h-4 mr-1" />
-                          {t('chats.chat')}
-                        </button>
-                      ) : null;
-                    })()}
-                    
-                    {/* Для активных незавершенных заказов БЕЗ исполнителя - кнопка "Удалить заказ" */}
-                    {order.isActived && !order.isDone && !order.performerId && (
-                      <button
-                        onClick={() => handleDeleteClick(order.id)}
-                        className="btn btn-danger flex items-center"
-                      >
-                        <Trash2 className="w-4 h-4 mr-1" />
-                        {t('orderList.delete')}
-                      </button>
-                    )}
-                    
                     {/* Информация о статусе модерации для неактивных заказов */}
                     {!order.isActived && !order.isDone && order.isOnReview && (
                       <div className="mt-2 px-3 py-2 bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-md">
@@ -464,12 +466,14 @@ export default function CustomerOrdersPage() {
                           <XCircle className="w-4 h-4 mr-2" />
                           {t('orders.orderRejectedByAdmin')}
                         </p>
+                        <div className="flex justify-center">
                       <button
                           onClick={() => navigate(`/customer/orders/edit/${order.id}`)}
                           className="btn btn-primary text-sm py-1 px-3"
                         >
-                          {t('orders.orderUpdatedForReview')}
+                            {t('orders.changeOrder')}
                         </button>
+                        </div>
                       </div>
                     )}
                   </div>

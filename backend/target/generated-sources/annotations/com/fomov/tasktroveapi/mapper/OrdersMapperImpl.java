@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-12-12T23:27:06+0300",
+    date = "2025-12-15T20:06:13+0300",
     comments = "version: 1.6.3, compiler: javac, environment: Java 25 (Homebrew)"
 )
 @Component
@@ -28,8 +28,8 @@ public class OrdersMapperImpl implements OrdersMapper {
         orders.setDescription( dto.getDescription() );
         orders.setStartTime( dto.getStartTime() );
         orders.setEndTime( dto.getEndTime() );
-        orders.setDocumentName( dto.getDocumentName() );
-        orders.setResultLink( dto.getResultLink() );
+        orders.setBudget( dto.getBudget() );
+        orders.setIsSpecSent( dto.getIsSpecSent() );
 
         afterMappingToEntity( orders, dto );
 
@@ -45,23 +45,8 @@ public class OrdersMapperImpl implements OrdersMapper {
         AddOrderDto addOrderDto = new AddOrderDto();
 
         addOrderDto.setStackS( entity.getTechStack() );
-        if ( entity.getIsActived() != null ) {
-            addOrderDto.setActived( entity.getIsActived() );
-        }
-        if ( entity.getIsInProcess() != null ) {
-            addOrderDto.setInProcess( entity.getIsInProcess() );
-        }
-        if ( entity.getIsOnCheck() != null ) {
-            addOrderDto.setOnCheck( entity.getIsOnCheck() );
-        }
-        if ( entity.getIsDone() != null ) {
-            addOrderDto.setDone( entity.getIsDone() );
-        }
-        if ( entity.getIsOnReview() != null ) {
-            addOrderDto.setOnReview( entity.getIsOnReview() );
-        }
-        if ( entity.getIsRejected() != null ) {
-            addOrderDto.setRejected( entity.getIsRejected() );
+        if ( entity.getStatus() != null ) {
+            addOrderDto.setStatus( entity.getStatus().name() );
         }
         addOrderDto.setId( entity.getId() );
         addOrderDto.setTitle( entity.getTitle() );
@@ -72,8 +57,8 @@ public class OrdersMapperImpl implements OrdersMapper {
         addOrderDto.setPublicationTime( entity.getPublicationTime() );
         addOrderDto.setStartTime( entity.getStartTime() );
         addOrderDto.setEndTime( entity.getEndTime() );
-        addOrderDto.setDocumentName( entity.getDocumentName() );
-        addOrderDto.setResultLink( entity.getResultLink() );
+        addOrderDto.setBudget( entity.getBudget() );
+        addOrderDto.setIsSpecSent( entity.getIsSpecSent() );
         addOrderDto.setReplyBind( entity.getReplyBind() );
 
         afterMappingToDto( addOrderDto, entity );

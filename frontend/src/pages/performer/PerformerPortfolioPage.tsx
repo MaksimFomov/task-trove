@@ -13,28 +13,38 @@ export default function PerformerPortfolioPage() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  // Список специализаций для исполнителей
+  // Список специализаций для исполнителей (только разработка ПО)
   const SPECIALIZATIONS = [
-    t('specializations.web'),
-    t('specializations.mobile'),
-    t('specializations.design'),
-    t('specializations.graphic'),
-    t('specializations.uiux'),
-    t('specializations.copywriting'),
-    t('specializations.translation'),
-    t('specializations.marketing'),
-    t('specializations.smm'),
-    t('specializations.seo'),
-    t('specializations.content'),
-    t('specializations.video'),
-    t('specializations.photography'),
-    t('specializations.animation'),
-    t('specializations.programming'),
-    t('specializations.testing'),
-    t('specializations.admin'),
-    t('specializations.consulting'),
-    t('specializations.training'),
-    t('specializations.other')
+    'Frontend разработка',
+    'Backend разработка',
+    'Full-stack разработка',
+    'Мобильная разработка (iOS)',
+    'Мобильная разработка (Android)',
+    'Мобильная разработка (React Native)',
+    'Мобильная разработка (Flutter)',
+    'Python разработка',
+    'Java разработка',
+    'JavaScript/TypeScript разработка',
+    'C++ разработка',
+    'C# разработка',
+    'Go разработка',
+    'Rust разработка',
+    'PHP разработка',
+    'Ruby разработка',
+    'Тестирование ПО (QA)',
+    'Автоматизированное тестирование',
+    'DevOps',
+    'Системное администрирование',
+    'Базы данных (SQL/NoSQL)',
+    'Микросервисы и архитектура',
+    'API разработка',
+    'Разработка игр',
+    'Machine Learning / AI',
+    'Blockchain разработка',
+    'Cloud разработка (AWS/Azure/GCP)',
+    'Кибербезопасность',
+    'Embedded разработка',
+    'Другое'
   ];
   const [formData, setFormData] = useState<UpdatePortfolioDto>({
     lastName: '',
@@ -424,7 +434,7 @@ export default function PerformerPortfolioPage() {
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               <Clock className="w-4 h-4 inline mr-2" />
-              {t('register.employment')}
+              {t('register.availability')}
             </label>
             <select
               value={formData.employment}

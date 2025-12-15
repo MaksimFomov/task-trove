@@ -27,24 +27,37 @@ public class AddOrderDto {
     private String stackS;
     private Integer customerId;
     private Integer performerId;
+    
+    @JsonProperty("status")
+    private String status; // "ACTIVE", "IN_PROCESS", "ON_CHECK", "ON_REVIEW", "DONE", "REJECTED"
+    
+    // Deprecated: Use status field instead. Kept for backward compatibility
+    @Deprecated
     @JsonProperty("isActived")
     private boolean isActived;
+    @Deprecated
     @JsonProperty("isInProcess")
     private boolean isInProcess;
+    @Deprecated
     @JsonProperty("isOnCheck")
     private boolean isOnCheck;
+    @Deprecated
     @JsonProperty("isDone")
     private boolean isDone;
+    @Deprecated
     @JsonProperty("isOnReview")
     private boolean isOnReview;
+    @Deprecated
     @JsonProperty("isRejected")
     private boolean isRejected;
     @JsonProperty("publicationTime")
     private OffsetDateTime publicationTime;
     private OffsetDateTime startTime;
     private OffsetDateTime endTime;
-    private String documentName;
-    private String resultLink;
+    @JsonProperty("budget")
+    private java.math.BigDecimal budget;
+    @JsonProperty("isSpecSent")
+    private Boolean isSpecSent;
     private Integer replyBind;
     private String custOfOrder;
     private Integer howReplies;
@@ -84,28 +97,74 @@ public class AddOrderDto {
     public void setCustomerId(Integer customerId) { this.customerId = customerId; }
     public Integer getPerformerId() { return performerId; }
     public void setPerformerId(Integer performerId) { this.performerId = performerId; }
-    public boolean isActived() { return isActived; }
-    public void setActived(boolean actived) { isActived = actived; }
-    public boolean isInProcess() { return isInProcess; }
-    public void setInProcess(boolean inProcess) { isInProcess = inProcess; }
-    public boolean isOnCheck() { return isOnCheck; }
-    public void setOnCheck(boolean onCheck) { isOnCheck = onCheck; }
-    public boolean isDone() { return isDone; }
-    public void setDone(boolean done) { isDone = done; }
-    public boolean isOnReview() { return isOnReview; }
-    public void setOnReview(boolean onReview) { isOnReview = onReview; }
-    public boolean isRejected() { return isRejected; }
-    public void setRejected(boolean rejected) { isRejected = rejected; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    
+    // Deprecated methods for backward compatibility
+    @Deprecated
+    public boolean isActived() { 
+        return "ACTIVE".equals(status) || isActived; 
+    }
+    @Deprecated
+    public void setActived(boolean actived) { 
+        isActived = actived;
+        if (actived && status == null) status = "ACTIVE";
+    }
+    @Deprecated
+    public boolean isInProcess() { 
+        return "IN_PROCESS".equals(status) || isInProcess; 
+    }
+    @Deprecated
+    public void setInProcess(boolean inProcess) { 
+        isInProcess = inProcess;
+        if (inProcess && status == null) status = "IN_PROCESS";
+    }
+    @Deprecated
+    public boolean isOnCheck() { 
+        return "ON_CHECK".equals(status) || isOnCheck; 
+    }
+    @Deprecated
+    public void setOnCheck(boolean onCheck) { 
+        isOnCheck = onCheck;
+        if (onCheck && status == null) status = "ON_CHECK";
+    }
+    @Deprecated
+    public boolean isDone() { 
+        return "DONE".equals(status) || isDone; 
+    }
+    @Deprecated
+    public void setDone(boolean done) { 
+        isDone = done;
+        if (done && status == null) status = "DONE";
+    }
+    @Deprecated
+    public boolean isOnReview() { 
+        return "ON_REVIEW".equals(status) || isOnReview; 
+    }
+    @Deprecated
+    public void setOnReview(boolean onReview) { 
+        isOnReview = onReview;
+        if (onReview && status == null) status = "ON_REVIEW";
+    }
+    @Deprecated
+    public boolean isRejected() { 
+        return "REJECTED".equals(status) || isRejected; 
+    }
+    @Deprecated
+    public void setRejected(boolean rejected) { 
+        isRejected = rejected;
+        if (rejected && status == null) status = "REJECTED";
+    }
     public OffsetDateTime getPublicationTime() { return publicationTime; }
     public void setPublicationTime(OffsetDateTime publicationTime) { this.publicationTime = publicationTime; }
     public OffsetDateTime getStartTime() { return startTime; }
     public void setStartTime(OffsetDateTime startTime) { this.startTime = startTime; }
     public OffsetDateTime getEndTime() { return endTime; }
     public void setEndTime(OffsetDateTime endTime) { this.endTime = endTime; }
-    public String getDocumentName() { return documentName; }
-    public void setDocumentName(String documentName) { this.documentName = documentName; }
-    public String getResultLink() { return resultLink; }
-    public void setResultLink(String resultLink) { this.resultLink = resultLink; }
+    public java.math.BigDecimal getBudget() { return budget; }
+    public void setBudget(java.math.BigDecimal budget) { this.budget = budget; }
+    public Boolean getIsSpecSent() { return isSpecSent; }
+    public void setIsSpecSent(Boolean isSpecSent) { this.isSpecSent = isSpecSent; }
     public Integer getReplyBind() { return replyBind; }
     public void setReplyBind(Integer replyBind) { this.replyBind = replyBind; }
     public String getCustOfOrder() { return custOfOrder; }

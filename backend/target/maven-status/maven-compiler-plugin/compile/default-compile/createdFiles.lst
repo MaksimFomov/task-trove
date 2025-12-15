@@ -14,6 +14,7 @@ com/fomov/tasktroveapi/service/impl/RoleServiceImpl.class
 com/fomov/tasktroveapi/mapper/OrdersMapperImpl.class
 com/fomov/tasktroveapi/service/impl/EmailServiceImpl.class
 com/fomov/tasktroveapi/dto/UpdatePortfolioDto.class
+com/fomov/tasktroveapi/model/OrderStatus.class
 com/fomov/tasktroveapi/dto/ChatDto.class
 com/fomov/tasktroveapi/mapper/RoleMapper.class
 com/fomov/tasktroveapi/model/Customer.class

@@ -17,7 +17,6 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
            "LEFT JOIN FETCH cust.account " +
            "LEFT JOIN FETCH c.performer perf " +
            "LEFT JOIN FETCH perf.account " +
-           "LEFT JOIN FETCH c.administrator " +
            "WHERE c.roomName = :roomName")
     List<Chat> findByRoomNameWithRelations(@Param("roomName") String roomName);
     
@@ -26,7 +25,6 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
            "LEFT JOIN FETCH cust.account " +
            "LEFT JOIN FETCH c.performer perf " +
            "LEFT JOIN FETCH perf.account " +
-           "LEFT JOIN FETCH c.administrator " +
            "WHERE c.customer.id = :customerId " +
            "AND c.deletedByCustomer = false " +
            "ORDER BY c.lastMessageTime DESC, c.id DESC")
@@ -37,7 +35,6 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
            "LEFT JOIN FETCH cust.account " +
            "LEFT JOIN FETCH c.performer perf " +
            "LEFT JOIN FETCH perf.account " +
-           "LEFT JOIN FETCH c.administrator " +
            "WHERE c.performer.id = :performerId " +
            "AND c.deletedByPerformer = false " +
            "ORDER BY c.lastMessageTime DESC, c.id DESC")
@@ -48,7 +45,6 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
            "LEFT JOIN FETCH cust.account " +
            "LEFT JOIN FETCH c.performer perf " +
            "LEFT JOIN FETCH perf.account " +
-           "LEFT JOIN FETCH c.administrator " +
            "WHERE c.id = :id")
     Optional<Chat> findByIdWithRelations(@Param("id") Integer id);
     
@@ -56,9 +52,33 @@ public interface ChatRepository extends JpaRepository<Chat, Integer> {
            "LEFT JOIN FETCH c.customer cust " +
            "LEFT JOIN FETCH cust.account " +
            "LEFT JOIN FETCH c.performer perf " +
-           "LEFT JOIN FETCH perf.account " +
-           "LEFT JOIN FETCH c.administrator")
+           "LEFT JOIN FETCH perf.account")
     List<Chat> findAllWithRelations();
+    
+    @Query("SELECT c FROM Chat c " +
+           "LEFT JOIN FETCH c.customer cust " +
+           "LEFT JOIN FETCH cust.account " +
+           "LEFT JOIN FETCH c.performer perf " +
+           "LEFT JOIN FETCH perf.account " +
+           "WHERE c.customer.id = :customerId " +
+           "AND c.performer.id = :performerId " +
+           "AND c.deletedByCustomer = false " +
+           "AND c.deletedByPerformer = false " +
+           "ORDER BY c.lastMessageTime DESC, c.id DESC")
+    List<Chat> findByCustomerIdAndPerformerIdWithRelations(@Param("customerId") Integer customerId, 
+                                                           @Param("performerId") Integer performerId);
+    
+    // Метод для поиска чата без учета флагов удаления (для восстановления чата)
+    @Query("SELECT c FROM Chat c " +
+           "LEFT JOIN FETCH c.customer cust " +
+           "LEFT JOIN FETCH cust.account " +
+           "LEFT JOIN FETCH c.performer perf " +
+           "LEFT JOIN FETCH perf.account " +
+           "WHERE c.customer.id = :customerId " +
+           "AND c.performer.id = :performerId " +
+           "ORDER BY c.lastMessageTime DESC, c.id DESC")
+    List<Chat> findByCustomerIdAndPerformerIdIgnoreDeleted(@Param("customerId") Integer customerId, 
+                                                           @Param("performerId") Integer performerId);
     
     // Deprecated: Use findByRoomNameWithRelations instead
     @Deprecated

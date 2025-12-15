@@ -18,6 +18,7 @@ public class ReplyDto {
     @JsonProperty("performerId")
     private Integer performerId;
     
+    // Computed fields for frontend compatibility (based on Order.status and Order.performer_id)
     @JsonProperty("isDoneThisTask")
     private Boolean isDoneThisTask = false;
     
@@ -27,8 +28,8 @@ public class ReplyDto {
     @JsonProperty("donned")
     private Boolean donned = false;
     
-    @JsonProperty("workBind")
-    private Integer workBind = 0;
+    @JsonProperty("isApprovedByCustomer")
+    private Boolean isApprovedByCustomer = false;
     
     // Дополнительные поля для фронтенда
     @JsonProperty("orderNameByOrder")
@@ -65,6 +66,7 @@ public class ReplyDto {
     public Integer getPerformerId() { return performerId; }
     public void setPerformerId(Integer performerId) { this.performerId = performerId; }
 
+    // Computed fields getters/setters for frontend compatibility
     public Boolean getIsDoneThisTask() { return isDoneThisTask; }
     public void setIsDoneThisTask(Boolean isDoneThisTask) { this.isDoneThisTask = isDoneThisTask; }
 
@@ -74,8 +76,9 @@ public class ReplyDto {
     public Boolean getDonned() { return donned; }
     public void setDonned(Boolean donned) { this.donned = donned; }
 
-    public Integer getWorkBind() { return workBind; }
-    public void setWorkBind(Integer workBind) { this.workBind = workBind; }
+    public Boolean getIsApprovedByCustomer() { return isApprovedByCustomer; }
+    public void setIsApprovedByCustomer(Boolean isApprovedByCustomer) { this.isApprovedByCustomer = isApprovedByCustomer; }
+
     public String getOrderNameByOrder() { return orderNameByOrder != null ? orderNameByOrder : orderName; }
     public void setOrderNameByOrder(String orderNameByOrder) { this.orderNameByOrder = orderNameByOrder; }
     public String getOrderDescription() { return orderDescription; }

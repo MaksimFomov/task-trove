@@ -40,14 +40,10 @@ public class Customer {
     @Column(name = "middle_name", length = 50)
     private String middleName;
     
-    @Column(length = 50)
-    private String phone;
-    
-    @Column(columnDefinition = "TEXT")
-    private String description;
-    
-    @Column(name = "scope_s", length = 255)
-    private String scopeS;
+    @OneToMany(mappedBy = "customer", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
+    @ToString.Exclude
+    @JsonIgnore
+    private List<Portfolio> portfolios = new ArrayList<>();
     
     @OneToMany(mappedBy = "customer", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REMOVE}, fetch = FetchType.LAZY)
     @ToString.Exclude
@@ -65,6 +61,16 @@ public class Customer {
     private List<WorkExperience> workExperiences = new ArrayList<>();
     
     // Методы для работы со связанными сущностями
+    public void addPortfolio(Portfolio portfolio) {
+        portfolios.add(portfolio);
+        portfolio.setCustomer(this);
+    }
+    
+    public void removePortfolio(Portfolio portfolio) {
+        portfolios.remove(portfolio);
+        portfolio.setCustomer(null);
+    }
+    
     public void addChat(Chat chat) {
         chats.add(chat);
         chat.setCustomer(this);
