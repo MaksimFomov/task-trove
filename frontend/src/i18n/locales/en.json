@@ -90,7 +90,8 @@
     "users": "Users",
     "statistics": "Statistics",
     "notifications": "Notifications",
-    "settings": "Settings"
+    "settings": "Settings",
+    "rating": "Performer Rating"
   },
   "orders": {
     "title": "Orders",
@@ -472,6 +473,13 @@
     "law": "Law",
     "consulting": "Consulting",
     "other": "Other"
+  },
+  "rating": {
+    "title": "Performer Rating",
+    "description": "Top performers based on customer ratings",
+    "noPerformers": "No performers with rating yet",
+    "completedOrders": "completed orders",
+    "points": "points"
   },
   "validationMessages": {
     "lastNameRequired": "Last name is required",

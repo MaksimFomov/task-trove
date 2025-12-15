@@ -1,0 +1,282 @@
+@startuml Диаграмма классов
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 11
+skinparam class {
+  BackgroundColor #E8F4F8
+  BorderColor #0066CC
+  FontColor #000000
+  ArrowColor #0066CC
+}
+
+' ========== Перечисления ==========
+enum OrderStatus {
+  ACTIVE
+  IN_PROCESS
+  ON_CHECK
+  ON_REVIEW
+  DONE
+  REJECTED
+}
+
+enum ReviewerType {
+  CUSTOMER
+  PERFORMER
+}
+
+' ========== Основные классы ==========
+class Account {
+  - Integer id : PK
+  - String email
+  - String password
+  - Boolean isActive
+  --
+  + getId() : Integer
+  + getEmail() : String
+  + getPassword() : String
+  + getIsActive() : Boolean
+}
+
+class Role {
+  - Integer id : PK
+  - String name
+  - String description
+  --
+  + getId() : Integer
+  + getName() : String
+  + getDescription() : String
+}
+
+class Customer {
+  - Integer id : PK
+  - String lastName
+  - String firstName
+  - String middleName
+  --
+  + getId() : Integer
+  + getLastName() : String
+  + getFirstName() : String
+  + getMiddleName() : String
+  + getEmail() : String
+  + getFullName() : String
+}
+
+class Performer {
+  - Integer id : PK
+  - Integer age
+  - String lastName
+  - String firstName
+  - String middleName
+  - Integer rating
+  --
+  + getId() : Integer
+  + getAge() : Integer
+  + getLastName() : String
+  + getFirstName() : String
+  + getMiddleName() : String
+  + getRating() : Integer
+  + getEmail() : String
+  + getFullName() : String
+}
+
+class Administrator {
+  - Integer id : PK
+  - String name
+  --
+  + getId() : Integer
+  + getName() : String
+  + getEmail() : String
+}
+
+class Orders {
+  - Integer id : PK
+  - String title
+  - String scope
+  - String techStack
+  - String description
+  - OrderStatus status
+  - Boolean isDeletedByCustomer
+  - OffsetDateTime publicationTime
+  - OffsetDateTime startTime
+  - OffsetDateTime endTime
+  - BigDecimal budget
+  - Boolean isSpecSent
+  - Integer replyBind
+  --
+  + getId() : Integer
+  + getTitle() : String
+  + getScope() : String
+  + getTechStack() : String
+  + getDescription() : String
+  + getStatus() : OrderStatus
+}
+
+class Reply {
+  - Integer id : PK
+  - Boolean isApprovedByCustomer
+  --
+  + getId() : Integer
+  + getOrderName() : String
+  + getOrderId() : Integer
+  + getPerformerId() : Integer
+  + getIsApprovedByCustomer() : Boolean
+}
+
+class Portfolio {
+  - Integer id : PK
+  - String ownerType
+  - String name
+  - String phone
+  - String email
+  - String townCountry
+  - String specializations
+  - String employment
+  - String experience
+  - String description
+  - String scopeS
+  - Boolean isActive
+  --
+  + getId() : Integer
+  + getOwnerType() : String
+  + getName() : String
+  + getPhone() : String
+  + getEmail() : String
+  + getTownCountry() : String
+  + getSpecializations() : String
+  + getEmployment() : String
+  + getExperience() : String
+  + getDescription() : String
+  + getScopeS() : String
+  + getIsActive() : Boolean
+  + getPerformerId() : Integer
+  + getCustomerId() : Integer
+}
+
+class Chat {
+  - Integer id : PK
+  - String roomName
+  - OffsetDateTime lastMessageTime
+  - Boolean checkByCustomer
+  - Boolean checkByPerformer
+  - OffsetDateTime lastCheckedByCustomerTime
+  - OffsetDateTime lastCheckedByPerformerTime
+  - Boolean deletedByCustomer
+  - Boolean deletedByPerformer
+  --
+  + getId() : Integer
+  + getRoomName() : String
+  + getCustomerId() : Integer
+  + getPerformerId() : Integer
+  + getLastMessageTime() : OffsetDateTime
+}
+
+class Message {
+  - Integer id : PK
+  - String text
+  - String senderType
+  - OffsetDateTime created
+  --
+  + getId() : Integer
+  + getText() : String
+  + getSenderType() : String
+  + getCreated() : OffsetDateTime
+  + getChatId() : Integer
+  + getFromWho() : String
+  + getSenderId() : Integer
+}
+
+class WorkExperience {
+  - Integer id : PK
+  - String name
+  - Integer rate
+  - String text
+  - ReviewerType reviewerType
+  - LocalDateTime createdAt
+  - LocalDateTime updatedAt
+  --
+  + getId() : Integer
+  + getName() : String
+  + getRate() : Integer
+  + getText() : String
+  + getReviewerType() : ReviewerType
+  + getCreatedAt() : LocalDateTime
+}
+
+class Notification {
+  - Integer id : PK
+  - String userRole
+  - String type
+  - String title
+  - String message
+  - Boolean isRead
+  - OffsetDateTime createdAt
+  - Integer relatedOrderId
+  - Integer relatedPerformerId
+  - Integer relatedCustomerId
+  --
+  + getId() : Integer
+  + getUserRole() : String
+  + getType() : String
+  + getTitle() : String
+  + getMessage() : String
+  + getIsRead() : Boolean
+  + getCreatedAt() : OffsetDateTime
+}
+
+' ========== Связи ==========
+' Account - Role
+Account }o--|| Role : role_id
+
+' Account - User entities (OneToOne)
+Account ||--|| Customer : account_id
+Account ||--|| Performer : account_id
+Account ||--|| Administrator : account_id
+
+' Customer relationships (OneToMany)
+Customer ||--o{ Portfolio : customer_id
+Customer ||--o{ Chat : customer_id
+Customer ||--o{ Orders : customer_id
+Customer ||--o{ WorkExperience : customer_id
+
+' Performer relationships (OneToMany)
+Performer ||--o{ Portfolio : performer_id
+Performer ||--o{ Chat : performer_id
+Performer }o--o{ Orders : performer_id
+Performer ||--o{ Reply : performer_id
+Performer ||--o{ WorkExperience : performer_id
+
+' Orders relationships
+Orders }o--|| Customer : customer_id
+Orders }o--o| Performer : performer_id
+Orders ||--o{ Reply : order_id
+Orders }o--|| OrderStatus
+
+' Reply relationships
+Reply }o--|| Orders : order_id
+Reply }o--|| Performer : performer_id
+
+' Portfolio relationships
+Portfolio }o--o| Customer : customer_id
+Portfolio }o--o| Performer : performer_id
+
+' Chat relationships
+Chat }o--|| Customer : customer_id
+Chat }o--|| Performer : performer_id
+Chat ||--o{ Message : chat_id
+
+' Message relationships
+Message }o--|| Chat : chat_id
+Message }o--|| Account : sender_id
+
+' WorkExperience relationships
+WorkExperience }o--|| Customer : customer_id
+WorkExperience }o--|| Performer : performer_id
+WorkExperience }o--o| Orders : order_id
+WorkExperience }o--|| ReviewerType
+
+' Notification relationships
+Notification }o--|| Account : account_id
+
+@enduml
+

@@ -87,7 +87,8 @@
     "users": "İstifadəçilər",
     "statistics": "Statistika",
     "notifications": "Bildirişlər",
-    "settings": "Parametrlər"
+    "settings": "Parametrlər",
+    "rating": "İcraçıların reytinqi"
   },
   "orders": {
     "title": "Sifarişlər",
@@ -294,5 +295,12 @@
     "oct": "okt",
     "nov": "noy",
     "dec": "dek"
+  },
+  "rating": {
+    "title": "İcraçıların reytinqi",
+    "description": "Müştərilərin qiymətləndirmələri əsasında top icraçılar",
+    "noPerformers": "Hələ reytinqi olan icraçılar yoxdur",
+    "completedOrders": "tamamlanmış sifarişlər",
+    "points": "xal"
   }
 }

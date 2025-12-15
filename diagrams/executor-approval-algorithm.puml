@@ -1,0 +1,64 @@
+@startuml Алгоритм утверждения исполнителя на заказ
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 12
+skinparam activity {
+  BackgroundColor #E8F4F8
+  BorderColor #0066CC
+  FontColor #000000
+}
+skinparam arrow {
+  Color #0066CC
+}
+
+start
+
+:Начало;
+
+:Утверждение исполнителя\nна заказ;
+
+if (Профиль исполнителя\nактивен?) then (нет)
+  :Уведомление заказчика\nо неактивности профиля\nисполнителя;
+  stop
+else (да)
+  :Изменение статуса отклика\nна "В работе";
+endif
+
+partition "1" {
+  :Извлечение всех откликов\nна заказ из БД;
+  
+  :Перебор откликов на заказ\ni=0, i<N, i++;
+  
+  repeat
+    if (Отклик принадлежит\nисполнителю?) then (нет)
+      :Удаление отклика;
+    else (да)
+    endif
+  repeat while (Есть еще отклики?) is (да)
+  ->нет;
+}
+
+partition "2" {
+  :Поиск чата между\nзаказчиком и исполнителем;
+  
+  if (Чат уже создан?) then (нет)
+    :Создание чата между\nисполнителем и заказчиком;
+  else (да)
+  endif
+}
+
+partition "3" {
+  if (Необходимо отправить\nинформацию?) then (да)
+    :Заполнить форму\nдля отправки данных;
+    :Отправка данных\nна почту исполнителю;
+  else (нет)
+  endif
+}
+
+:Конец;
+
+stop
+
+@enduml
+

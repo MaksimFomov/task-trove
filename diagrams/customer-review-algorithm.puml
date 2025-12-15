@@ -1,0 +1,99 @@
+@startuml Алгоритм оставления заказчиком отзыва исполнителю
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 12
+skinparam activity {
+  BackgroundColor #E8F4F8
+  BorderColor #0066CC
+  FontColor #000000
+}
+skinparam arrow {
+  Color #0066CC
+}
+
+start
+
+:Начало;
+
+:Получение заказчика\nпо accountId из БД;
+
+if (Заказчик найден?) then (нет)
+  :Выброс исключения:\n"Customer not found";
+  stop
+else (да)
+endif
+
+if (Заказ указан\nв запросе?) then (да)
+  :Поиск заказа в БД\nпо orderId;
+  
+  if (Заказ найден?) then (нет)
+    :Выброс исключения:\n"Order not found";
+    stop
+  else (да)
+    if (Статус заказа = DONE?) then (нет)
+      :Выброс исключения:\n"Cannot add review for order\nthat is not completed";
+      stop
+    else (да)
+      if (Заказ принадлежит\nтекущему заказчику?) then (нет)
+        :Выброс исключения:\n"Access denied to order";
+        stop
+      else (да)
+        if (У заказа есть\nисполнитель?) then (нет)
+          :Выброс исключения:\n"Order does not have\na performer assigned";
+          stop
+        else (да)
+          :Получение исполнителя\nиз заказа;
+        endif
+      endif
+    endif
+  endif
+else (нет)
+  if (ID исполнителя\nуказан в DTO?) then (нет)
+    :Выброс исключения:\n"Performer ID is required";
+    stop
+  else (да)
+    :Поиск исполнителя\nпо ID из DTO;
+    
+    if (Исполнитель найден?) then (нет)
+      :Выброс исключения:\n"Performer not found";
+      stop
+    else (да)
+    endif
+  endif
+endif
+
+:Создание объекта отзыва\n(WorkExperience);
+note right
+  Маппинг DTO в Entity
+  Установка полей:
+  - customer
+  - performer
+  - reviewerType = CUSTOMER
+  - order
+  - rate
+  - description
+end note
+
+:Сохранение отзыва в БД;
+
+if (У исполнителя\nесть аккаунт?) then (да)
+  :Формирование данных\nдля уведомления;
+  note right
+    orderTitle
+    customerName
+    mark
+    orderId
+  end note
+  
+  :Создание уведомления\nдля исполнителя;
+  note right: Уведомление о том,\nчто его оценили
+else (нет)
+endif
+
+:Конец;
+
+stop
+
+@enduml
+

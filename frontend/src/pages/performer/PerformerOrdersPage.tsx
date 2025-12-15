@@ -306,7 +306,7 @@ export default function PerformerOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('orders.orders')}</h1>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{t('orders.title')}</h1>
 
       <div className="card">
         {/* Вкладки */}

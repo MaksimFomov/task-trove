@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
-import { Briefcase, MessageSquare, Users, CheckCircle, BarChart3, User } from 'lucide-react';
+import { Briefcase, MessageSquare, Users, CheckCircle, BarChart3, User, Trophy } from 'lucide-react';
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -52,6 +52,14 @@ export default function HomePage() {
               <h3 className="text-xl font-semibold mb-2">{t('navigation.portfolio')}</h3>
               <p className="text-gray-600 dark:text-slate-400">{t('navigation.portfolio')}</p>
             </div>
+            <div
+              onClick={() => navigate('/rating')}
+              className="card cursor-pointer hover:shadow-lg transition-shadow"
+            >
+              <Trophy className="w-12 h-12 text-primary-600 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.rating', 'Рейтинг исполнителей')}</h3>
+              <p className="text-gray-600 dark:text-slate-400">{t('navigation.rating', 'Рейтинг исполнителей')}</p>
+            </div>
           </>
         )}
 
@@ -80,6 +88,14 @@ export default function HomePage() {
               <User className="w-12 h-12 text-primary-600 mb-4" />
               <h3 className="text-xl font-semibold mb-2">{t('navigation.portfolio')}</h3>
               <p className="text-gray-600">{t('navigation.portfolio')}</p>
+            </div>
+            <div
+              onClick={() => navigate('/rating')}
+              className="card cursor-pointer hover:shadow-lg transition-shadow"
+            >
+              <Trophy className="w-12 h-12 text-primary-600 mb-4" />
+              <h3 className="text-xl font-semibold mb-2">{t('navigation.rating', 'Рейтинг исполнителей')}</h3>
+              <p className="text-gray-600">{t('navigation.rating', 'Рейтинг исполнителей')}</p>
             </div>
           </>
         )}

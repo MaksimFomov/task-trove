@@ -87,7 +87,8 @@
     "users": "Foydalanuvchilar",
     "statistics": "Statistika",
     "notifications": "Bildirishnomalar",
-    "settings": "Sozlamalar"
+    "settings": "Sozlamalar",
+    "rating": "Ijrochilar reytingi"
   },
   "orders": {
     "title": "Buyurtmalar",
@@ -294,5 +295,12 @@
     "oct": "okt",
     "nov": "noy",
     "dec": "dek"
+  },
+  "rating": {
+    "title": "Ijrochilar reytingi",
+    "description": "Mijozlar baholashiga asoslangan top ijrochilar",
+    "noPerformers": "Hali reytingi bo'lgan ijrochilar yo'q",
+    "completedOrders": "bajarilgan buyurtmalar",
+    "points": "ball"
   }
 }

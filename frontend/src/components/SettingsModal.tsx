@@ -734,8 +734,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </p>
               <div className="space-y-3">
                 {[
-                  { code: 'en', flag: '🇬🇧', nameKey: 'settings.english', descKey: 'settings.englishDescription' },
                   { code: 'ru', flag: '🇷🇺', nameKey: 'settings.russian', descKey: 'settings.russianDescription' },
+                  { code: 'en', flag: '🇬🇧', nameKey: 'settings.english', descKey: 'settings.englishDescription' },
                   { code: 'uk', flag: '🇺🇦', nameKey: 'settings.ukrainian', descKey: 'settings.ukrainianDescription' },
                   { code: 'be', flag: '🇧🇾', nameKey: 'settings.belarusian', descKey: 'settings.belarusianDescription' },
                   { code: 'kk', flag: '🇰🇿', nameKey: 'settings.kazakh', descKey: 'settings.kazakhDescription' },

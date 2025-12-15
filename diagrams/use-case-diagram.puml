@@ -1,0 +1,218 @@
+@startuml Диаграмма вариантов использования
+!theme plain
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Arial"
+skinparam defaultFontSize 11
+skinparam usecase {
+  BackgroundColor #E8F4F8
+  BorderColor #0066CC
+  FontColor #000000
+}
+skinparam actor {
+  BackgroundColor #FFFFFF
+  BorderColor #0066CC
+  FontColor #000000
+}
+
+left to right direction
+
+actor "Заказчик" as Customer
+actor "Исполнитель" as Performer
+actor "Администратор" as Administrator
+actor "СуперАдминистратор" as SuperAdministrator
+
+rectangle "Система TaskTrove" {
+  
+  ' ========== Общие варианты использования ==========
+  usecase "Регистрация" as UC_Registration
+  usecase "Авторизация" as UC_Authorization
+  
+  ' ========== Варианты использования для Заказчика ==========
+  usecase "Создание заказа" as UC_CreateOrder
+  usecase "Просмотр списка своих заказов" as UC_ViewMyOrders
+  usecase "Просмотр списка активных заказов" as UC_ViewActiveOrders
+  usecase "Просмотр списка заказов в работе" as UC_ViewInProgressOrders
+  usecase "Просмотр списка выполненных заказов" as UC_ViewDoneOrders
+  usecase "Просмотр информации о заказе" as UC_ViewOrderInfo
+  usecase "Редактирование заказа" as UC_EditOrder
+  usecase "Удаление заказа" as UC_DeleteOrder
+  usecase "Просмотр откликов исполнителей" as UC_ViewReplies
+  usecase "Утверждение исполнителя на заказ" as UC_ApprovePerformer
+  usecase "Отправка информации на почту" as UC_SendEmail
+  usecase "Отправка документа с ТЗ" as UC_SendDocument
+  usecase "Отправка комментария к ТЗ" as UC_SendComment
+  usecase "Отказ от исполнителя" as UC_RefusePerformer
+  usecase "Просмотр информации о выполнении" as UC_ViewExecutionInfo
+  usecase "Подтверждение готовности заказа" as UC_ConfirmReadiness
+  usecase "Добавление отзыва исполнителю" as UC_AddReviewToPerformer
+  usecase "Просмотр списка чатов" as UC_ViewChats
+  usecase "Поддержание связи через чат" as UC_MaintainChat
+  usecase "Удаление чата" as UC_DeleteChat
+  usecase "Просмотр портфолио" as UC_ViewPortfolio
+  usecase "Редактирование портфолио" as UC_EditPortfolio
+  usecase "Просмотр отзывов" as UC_ViewReviews
+  usecase "Просмотр портфолио исполнителя" as UC_ViewPerformerPortfolio
+  usecase "Просмотр отзывов исполнителя" as UC_ViewPerformerReviews
+  usecase "Просмотр выполненных заказов исполнителя" as UC_ViewPerformerDoneOrders
+  usecase "Просмотр топ исполнителей" as UC_ViewTopPerformers
+  
+  ' ========== Варианты использования для Исполнителя ==========
+  usecase "Просмотр списка заказов" as UC_ViewOrdersList
+  usecase "Сортировка заказов по параметрам" as UC_SortOrders
+  usecase "Просмотр информации по заказу" as UC_ViewOrderDetails
+  usecase "Оформление отклика на заказ" as UC_CreateReply
+  usecase "Управление профилем" as UC_ManageProfile
+  usecase "Редактирование профиля" as UC_EditProfile
+  usecase "Просмотр статуса профиля" as UC_ViewProfileStatus
+  usecase "Просмотр отзывов о работе" as UC_ViewWorkReviews
+  usecase "Просмотр профиля" as UC_ViewProfile
+  usecase "Управление заказами и откликами" as UC_ManageOrdersAndReplies
+  usecase "Просмотр истории заказов" as UC_ViewOrderHistory
+  usecase "Просмотр списка активных заказов" as UC_ViewMyActiveOrders
+  usecase "Уведомление заказчика о готовности" as UC_NotifyReadiness
+  usecase "Просмотр списка откликов" as UC_ViewMyReplies
+  usecase "Удаление отклика" as UC_DeleteReply
+  usecase "Отказ от заказа" as UC_RefuseOrder
+  usecase "Просмотр списка чатов" as UC_ViewPerformerChats
+  usecase "Поддержание связи через чат" as UC_MaintainPerformerChat
+  usecase "Удаление чата" as UC_DeletePerformerChat
+  usecase "Добавление отзыва заказчику" as UC_AddReviewToCustomer
+  usecase "Просмотр портфолио заказчика" as UC_ViewCustomerPortfolio
+  usecase "Просмотр отзывов заказчика" as UC_ViewCustomerReviews
+  usecase "Просмотр выполненных заказов заказчика" as UC_ViewCustomerDoneOrders
+  usecase "Просмотр топ исполнителей" as UC_ViewTopPerformersPerformer
+  
+  ' ========== Варианты использования для Администратора ==========
+  usecase "Управление контентом исполнителей" as UC_ManagePerformerContent
+  usecase "Активация профилей исполнителей" as UC_ActivateProfiles
+  usecase "Удаление комментариев" as UC_DeleteComments
+  usecase "Управление пользователями" as UC_ManageUsers
+  usecase "Просмотр списка пользователей" as UC_ViewUsers
+  usecase "Редактирование пользователя" as UC_EditUser
+  usecase "Удаление пользователя" as UC_DeleteUser
+  usecase "Активация пользователя" as UC_ActivateUser
+  usecase "Деактивация пользователя" as UC_DeactivateUser
+  usecase "Просмотр деталей пользователя" as UC_ViewUserDetails
+  usecase "Создание администратора" as UC_CreateAdministrator
+  usecase "Отправка кода подтверждения для администратора" as UC_SendAdminVerification
+  usecase "Управление заказами" as UC_ManageOrders
+  usecase "Просмотр всех заказов" as UC_ViewAllOrders
+  usecase "Просмотр заказов на рассмотрении" as UC_ViewOrdersOnReview
+  usecase "Одобрение заказа" as UC_ApproveOrder
+  usecase "Отклонение заказа" as UC_RejectOrder
+  usecase "Удаление заказа" as UC_DeleteOrderAdmin
+  usecase "Просмотр статистики" as UC_ViewStatistics
+  usecase "Удаление отзывов" as UC_DeleteReviews
+  usecase "Просмотр портфолио пользователя" as UC_ViewUserPortfolio
+  usecase "Просмотр выполненных заказов пользователя" as UC_ViewUserDoneOrders
+  usecase "Просмотр отзывов пользователя" as UC_ViewUserReviews
+}
+
+' ========== Связи Заказчика ==========
+Customer --> UC_Registration
+Customer --> UC_Authorization
+Customer --> UC_CreateOrder
+Customer --> UC_ViewMyOrders
+Customer --> UC_ViewChats
+Customer --> UC_ViewPortfolio
+Customer --> UC_EditPortfolio
+Customer --> UC_ViewReviews
+
+UC_ViewMyOrders ..> UC_ViewActiveOrders : <<включить>>
+UC_ViewMyOrders ..> UC_ViewInProgressOrders : <<включить>>
+UC_ViewMyOrders ..> UC_ViewDoneOrders : <<включить>>
+
+UC_ViewActiveOrders ..> UC_ViewOrderInfo : <<расширить>>
+UC_ViewOrderInfo ..> UC_ViewReplies : <<расширить>>
+UC_ViewReplies ..> UC_ApprovePerformer : <<расширить>>
+UC_ApprovePerformer ..> UC_SendEmail : <<расширить>>
+UC_SendEmail ..> UC_SendDocument : <<включить>>
+UC_SendEmail ..> UC_SendComment : <<включить>>
+
+UC_ViewActiveOrders ..> UC_EditOrder : <<расширить>>
+UC_ViewActiveOrders ..> UC_DeleteOrder : <<расширить>>
+
+UC_ViewInProgressOrders ..> UC_ViewExecutionInfo : <<расширить>>
+UC_ViewExecutionInfo ..> UC_ConfirmReadiness : <<расширить>>
+UC_ConfirmReadiness ..> UC_AddReviewToPerformer : <<расширить>>
+
+UC_ViewChats ..> UC_MaintainChat : <<включить>>
+
+UC_ViewOrderInfo ..> UC_ViewPerformerPortfolio : <<расширить>>
+UC_ViewOrderInfo ..> UC_ViewPerformerReviews : <<расширить>>
+UC_ViewOrderInfo ..> UC_ViewPerformerDoneOrders : <<расширить>>
+UC_ViewOrderInfo ..> UC_RefusePerformer : <<расширить>>
+
+' ========== Связи Исполнителя ==========
+Performer --> UC_Registration
+Performer --> UC_Authorization
+Performer --> UC_ViewOrdersList
+Performer --> UC_CreateReply
+Performer --> UC_ManageProfile
+Performer --> UC_ViewProfile
+Performer --> UC_ManageOrdersAndReplies
+Performer --> UC_ViewPerformerChats
+
+UC_ViewOrdersList ..> UC_SortOrders : <<включить>>
+UC_ViewOrdersList ..> UC_ViewOrderDetails : <<включить>>
+
+UC_CreateReply ..> UC_ManageProfile : <<расширить>>
+UC_ManageProfile ..> UC_EditProfile : <<расширить>>
+UC_ManageProfile ..> UC_ViewProfileStatus : <<расширить>>
+UC_ManageProfile ..> UC_ViewWorkReviews : <<расширить>>
+
+UC_ManageOrdersAndReplies ..> UC_ViewOrderHistory : <<включить>>
+UC_ManageOrdersAndReplies ..> UC_ViewMyActiveOrders : <<включить>>
+UC_ViewMyActiveOrders ..> UC_NotifyReadiness : <<включить>>
+UC_ManageOrdersAndReplies ..> UC_ViewMyReplies : <<включить>>
+UC_ViewMyReplies ..> UC_DeleteReply : <<включить>>
+
+UC_ViewOrderDetails ..> UC_ViewCustomerPortfolio : <<расширить>>
+UC_ViewOrderDetails ..> UC_ViewCustomerReviews : <<расширить>>
+UC_ViewOrderDetails ..> UC_ViewCustomerDoneOrders : <<расширить>>
+
+UC_ViewPerformerChats ..> UC_MaintainPerformerChat : <<включить>>
+
+UC_ViewMyActiveOrders ..> UC_RefuseOrder : <<расширить>>
+UC_ViewMyActiveOrders ..> UC_AddReviewToCustomer : <<расширить>>
+
+' ========== Связи Администратора ==========
+Administrator --> UC_Authorization
+Administrator --> UC_ManagePerformerContent
+Administrator --> UC_ManageUsers
+Administrator --> UC_ManageOrders
+Administrator --> UC_ViewStatistics
+
+UC_ManagePerformerContent ..> UC_ActivateProfiles : <<включить>>
+UC_ManagePerformerContent ..> UC_DeleteComments : <<включить>>
+
+UC_ManageUsers ..> UC_ViewUsers : <<включить>>
+UC_ManageUsers ..> UC_EditUser : <<включить>>
+UC_ManageUsers ..> UC_DeleteUser : <<включить>>
+UC_ManageUsers ..> UC_ActivateUser : <<включить>>
+UC_ManageUsers ..> UC_DeactivateUser : <<включить>>
+UC_ManageUsers ..> UC_ViewUserDetails : <<включить>>
+
+UC_ManageOrders ..> UC_ViewAllOrders : <<включить>>
+UC_ManageOrders ..> UC_ViewOrdersOnReview : <<включить>>
+UC_ManageOrders ..> UC_ApproveOrder : <<включить>>
+UC_ManageOrders ..> UC_RejectOrder : <<включить>>
+UC_ManageOrders ..> UC_DeleteOrderAdmin : <<включить>>
+
+UC_ViewUserDetails ..> UC_ViewUserPortfolio : <<расширить>>
+UC_ViewUserDetails ..> UC_ViewUserDoneOrders : <<расширить>>
+UC_ViewUserDetails ..> UC_ViewUserReviews : <<расширить>>
+UC_ViewUserDetails ..> UC_DeleteReviews : <<расширить>>
+
+' ========== Связи СуперАдминистратора ==========
+SuperAdministrator --> UC_Authorization
+SuperAdministrator --> UC_ManagePerformerContent
+SuperAdministrator --> UC_ManageUsers
+SuperAdministrator --> UC_ManageOrders
+SuperAdministrator --> UC_ViewStatistics
+SuperAdministrator --> UC_CreateAdministrator
+
+UC_CreateAdministrator ..> UC_SendAdminVerification : <<включить>>
+
+@enduml
+
