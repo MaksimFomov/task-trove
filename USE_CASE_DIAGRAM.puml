@@ -109,14 +109,14 @@ rectangle "Система TaskTrove" {
 }
 
 ' ========== Связи Заказчика ==========
-Customer --> UC_Registration
-Customer --> UC_Authorization
-Customer --> UC_CreateOrder
-Customer --> UC_ViewMyOrders
-Customer --> UC_ViewChats
-Customer --> UC_ViewPortfolio
-Customer --> UC_EditPortfolio
-Customer --> UC_ViewReviews
+Customer -- UC_Registration
+Customer -- UC_Authorization
+Customer -- UC_CreateOrder
+Customer -- UC_ViewMyOrders
+Customer -- UC_ViewChats
+Customer -- UC_ViewPortfolio
+Customer -- UC_EditPortfolio
+Customer -- UC_ViewReviews
 
 UC_ViewMyOrders ..> UC_ViewActiveOrders : <<включить>>
 UC_ViewMyOrders ..> UC_ViewInProgressOrders : <<включить>>
@@ -144,14 +144,14 @@ UC_ViewOrderInfo ..> UC_ViewPerformerDoneOrders : <<расширить>>
 UC_ViewOrderInfo ..> UC_RefusePerformer : <<расширить>>
 
 ' ========== Связи Исполнителя ==========
-Performer --> UC_Registration
-Performer --> UC_Authorization
-Performer --> UC_ViewOrdersList
-Performer --> UC_CreateReply
-Performer --> UC_ManageProfile
-Performer --> UC_ViewProfile
-Performer --> UC_ManageOrdersAndReplies
-Performer --> UC_ViewPerformerChats
+Performer -- UC_Registration
+Performer -- UC_Authorization
+Performer -- UC_ViewOrdersList
+Performer -- UC_CreateReply
+Performer -- UC_ManageProfile
+Performer -- UC_ViewProfile
+Performer -- UC_ManageOrdersAndReplies
+Performer -- UC_ViewPerformerChats
 
 UC_ViewOrdersList ..> UC_SortOrders : <<включить>>
 UC_ViewOrdersList ..> UC_ViewOrderDetails : <<включить>>
@@ -177,11 +177,11 @@ UC_ViewMyActiveOrders ..> UC_RefuseOrder : <<расширить>>
 UC_ViewMyActiveOrders ..> UC_AddReviewToCustomer : <<расширить>>
 
 ' ========== Связи Администратора ==========
-Administrator --> UC_Authorization
-Administrator --> UC_ManagePerformerContent
-Administrator --> UC_ManageUsers
-Administrator --> UC_ManageOrders
-Administrator --> UC_ViewStatistics
+Administrator -- UC_Authorization
+Administrator -- UC_ManagePerformerContent
+Administrator -- UC_ManageUsers
+Administrator -- UC_ManageOrders
+Administrator -- UC_ViewStatistics
 
 UC_ManagePerformerContent ..> UC_ActivateProfiles : <<включить>>
 UC_ManagePerformerContent ..> UC_DeleteComments : <<включить>>
@@ -205,12 +205,12 @@ UC_ViewUserDetails ..> UC_ViewUserReviews : <<расширить>>
 UC_ViewUserDetails ..> UC_DeleteReviews : <<расширить>>
 
 ' ========== Связи СуперАдминистратора ==========
-SuperAdministrator --> UC_Authorization
-SuperAdministrator --> UC_ManagePerformerContent
-SuperAdministrator --> UC_ManageUsers
-SuperAdministrator --> UC_ManageOrders
-SuperAdministrator --> UC_ViewStatistics
-SuperAdministrator --> UC_CreateAdministrator
+SuperAdministrator -- UC_Authorization
+SuperAdministrator -- UC_ManagePerformerContent
+SuperAdministrator -- UC_ManageUsers
+SuperAdministrator -- UC_ManageOrders
+SuperAdministrator -- UC_ViewStatistics
+SuperAdministrator -- UC_CreateAdministrator
 
 UC_CreateAdministrator ..> UC_SendAdminVerification : <<включить>>
 

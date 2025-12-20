@@ -10,21 +10,6 @@ skinparam class {
   ArrowColor #0066CC
 }
 
-' ========== Перечисления ==========
-enum OrderStatus {
-  ACTIVE
-  IN_PROCESS
-  ON_CHECK
-  ON_REVIEW
-  DONE
-  REJECTED
-}
-
-enum ReviewerType {
-  CUSTOMER
-  PERFORMER
-}
-
 ' ========== Основные классы ==========
 class Account {
   - Integer id : PK
@@ -250,7 +235,6 @@ Performer ||--o{ WorkExperience : performer_id
 Orders }o--|| Customer : customer_id
 Orders }o--o| Performer : performer_id
 Orders ||--o{ Reply : order_id
-Orders }o--|| OrderStatus
 
 ' Reply relationships
 Reply }o--|| Orders : order_id
@@ -273,7 +257,6 @@ Message }o--|| Account : sender_id
 WorkExperience }o--|| Customer : customer_id
 WorkExperience }o--|| Performer : performer_id
 WorkExperience }o--o| Orders : order_id
-WorkExperience }o--|| ReviewerType
 
 ' Notification relationships
 Notification }o--|| Account : account_id
