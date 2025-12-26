@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 
 @Generated(
     value = "org.mapstruct.ap.MappingProcessor",
-    date = "2025-12-15T20:06:13+0300",
-    comments = "version: 1.6.3, compiler: javac, environment: Java 25 (Homebrew)"
+    date = "2025-12-21T15:22:25+0300",
+    comments = "version: 1.6.3, compiler: Eclipse JDT (IDE) 3.44.0.v20251118-1623, environment: Java 21.0.9 (Eclipse Adoptium)"
 )
 @Component
 public class OrdersMapperImpl implements OrdersMapper {
@@ -21,15 +21,15 @@ public class OrdersMapperImpl implements OrdersMapper {
 
         Orders orders = new Orders();
 
-        orders.setStackS( dto.getStackS() );
-        orders.setId( dto.getId() );
-        orders.setTitle( dto.getTitle() );
-        orders.setScope( dto.getScope() );
-        orders.setDescription( dto.getDescription() );
-        orders.setStartTime( dto.getStartTime() );
-        orders.setEndTime( dto.getEndTime() );
         orders.setBudget( dto.getBudget() );
+        orders.setDescription( dto.getDescription() );
+        orders.setEndTime( dto.getEndTime() );
+        orders.setId( dto.getId() );
         orders.setIsSpecSent( dto.getIsSpecSent() );
+        orders.setScope( dto.getScope() );
+        orders.setStartTime( dto.getStartTime() );
+        orders.setTitle( dto.getTitle() );
+        orders.setStackS( dto.getStackS() );
 
         afterMappingToEntity( orders, dto );
 
