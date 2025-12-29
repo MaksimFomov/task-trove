@@ -127,7 +127,7 @@ public class CustomerServiceImpl implements CustomerService {
         
         List<Orders> orders;
         if (searchTerm != null && !searchTerm.isBlank()) {
-            orders = ordersService.findByTitleContaining(searchTerm);
+            orders = ordersService.findByCustomerIdAndSearchTerm(customer.getId(), searchTerm);
         } else {
             orders = ordersService.findByCustomerId(customer.getId());
         }

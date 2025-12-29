@@ -46,6 +46,11 @@ public class OrdersServiceImpl implements OrdersService {
     }
 
     @Override
+    public List<Orders> findByCustomerIdAndSearchTerm(Integer customerId, String searchTerm) {
+        return repository.findByCustomerIdAndSearchTerm(customerId, searchTerm);
+    }
+
+    @Override
     public List<Orders> findByPerformerId(Integer performerId) {
         return repository.findByPerformerId(performerId);
     }

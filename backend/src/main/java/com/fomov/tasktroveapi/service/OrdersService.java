@@ -12,6 +12,7 @@ public interface OrdersService {
     Orders save(Orders order);
     void deleteById(Integer id);
     List<Orders> findByCustomerId(Integer customerId);
+    List<Orders> findByCustomerIdAndSearchTerm(Integer customerId, String searchTerm);
     List<Orders> findByPerformerId(Integer performerId);
     List<Orders> findByStatus(OrderStatus status);
     List<Orders> findByTitleContaining(String titlePart);

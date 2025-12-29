@@ -413,7 +413,9 @@ export default function RegisterPage() {
       errors.phone = t('validationMessages.phoneInvalid');
     }
 
-    if (customerData.description.trim() && customerData.description.trim().length < 10) {
+    if (!customerData.description.trim()) {
+      errors.description = t('validationMessages.descriptionRequired');
+    } else if (customerData.description.trim().length < 10) {
       errors.description = t('validationMessages.descriptionMinLength');
     }
 
@@ -937,7 +939,7 @@ export default function RegisterPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                   <FileText className="w-4 h-4 inline mr-2" />
-                  {t('register.description')}
+                  {t('register.description')} <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={customerData.description}

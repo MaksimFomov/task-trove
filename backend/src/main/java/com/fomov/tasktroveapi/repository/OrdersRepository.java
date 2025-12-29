@@ -23,8 +23,11 @@ public interface OrdersRepository extends JpaRepository<Orders, Integer> {
     @Query("SELECT DISTINCT o FROM Orders o LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.performer LEFT JOIN FETCH o.replies WHERE o.status = 'ACTIVE' AND o.performer IS NULL")
     List<Orders> findAllActive();
     
-    @Query("SELECT DISTINCT o FROM Orders o LEFT JOIN FETCH o.customer c LEFT JOIN FETCH c.account LEFT JOIN FETCH o.performer p LEFT JOIN FETCH p.account LEFT JOIN FETCH o.replies WHERE o.customer.id = :customerId")
+    @Query("SELECT DISTINCT o FROM Orders o LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.performer LEFT JOIN FETCH o.replies WHERE o.customer.id = :customerId")
     List<Orders> findByCustomerId(@Param("customerId") Integer customerId);
+    
+    @Query("SELECT DISTINCT o FROM Orders o LEFT JOIN FETCH o.customer LEFT JOIN FETCH o.performer LEFT JOIN FETCH o.replies WHERE o.customer.id = :customerId AND (LOWER(o.title) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR LOWER(o.scope) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR LOWER(o.techStack) LIKE LOWER(CONCAT('%', :searchTerm, '%')))")
+    List<Orders> findByCustomerIdAndSearchTerm(@Param("customerId") Integer customerId, @Param("searchTerm") String searchTerm);
     
     @Query("SELECT o FROM Orders o LEFT JOIN FETCH o.customer c LEFT JOIN FETCH c.account LEFT JOIN FETCH o.performer p LEFT JOIN FETCH p.account WHERE o.performer.id = :performerId")
     List<Orders> findByPerformerId(@Param("performerId") Integer performerId);
