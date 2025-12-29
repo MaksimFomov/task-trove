@@ -98,6 +98,8 @@
     "myOrders": "My Orders",
     "createOrder": "Create Order",
     "editOrder": "Edit Order",
+    "changeOrder": "Change Order",
+    "saveAndSendForReview": "Save and send order for review",
     "orderDetails": "Order Details",
     "orderNumber": "Order #{{id}}",
     "orderNotFound": "Order not found",
@@ -134,6 +136,7 @@
     "refusePerformerMessage": "The order will return to active status and you can choose another performer.",
     "refuseOrderConfirm": "Are you sure you want to refuse this order?",
     "refuseOrderMessage": "The order will return to active status.",
+    "refuseOrder": "Refuse order",
     "noReplies": "No replies yet",
     "noRepliesWithoutYours": "No orders without your replies found",
     "noOrdersInWork": "No orders in progress found",
@@ -146,7 +149,13 @@
     "noNewOrders": "No new orders found",
     "noCompletedOrders": "No completed orders found",
     "replySent": "Reply sent",
-    "refuseOrderSuccess": "You have successfully refused the order"
+    "refuseOrderSuccess": "You have successfully refused the order",
+    "reviewAdded": "Review added",
+    "cancelReply": "Cancel reply",
+    "replyToOrder": "Reply to order",
+    "orderInactiveOrModeration": "This order is inactive or under moderation",
+    "cannotUndo": "This action cannot be undone",
+    "canMakeCorrections": "After completion, you can make corrections if the customer requests them"
   },
   "chats": {
     "title": "Chats",
@@ -160,10 +169,12 @@
     "deleteChatMessage": "The chat will be deleted only for you. The other participant will continue to see it in their list.",
     "enterMessage": "Enter message...",
     "chatDeletedPlaceholder": "Chat deleted. Messages unavailable.",
-    "sendMessage": "Send message"
+    "sendMessage": "Send message",
+    "searchPlaceholder": "Search by order title, name or room...",
+    "lastMessage": "Last message"
   },
   "portfolio": {
-    "title": "My Portfolio",
+    "title": "Portfolio",
     "firstName": "First Name",
     "lastName": "Last Name",
     "middleName": "Middle Name",
@@ -174,7 +185,10 @@
     "experience": "Experience",
     "saveSuccess": "Portfolio saved successfully",
     "saveError": "Error saving portfolio",
-    "emailCannotChange": "Email cannot be changed"
+    "emailCannotChange": "Email cannot be changed",
+    "update": "Update portfolio",
+    "confirmUpdate": "Confirm update",
+    "confirmUpdateMessage": "Are you sure you want to update the portfolio? All changes will be saved."
   },
   "notifications": {
     "title": "Notifications",
@@ -354,22 +368,30 @@
     "enterLastName": "Enter your last name",
     "enterMiddleName": "Enter your middle name",
     "phone": "Phone",
+    "phonePlaceholder": "Enter phone number",
     "enterPhone": "Enter your phone number",
     "description": "Description",
     "enterDescription": "Enter description",
     "scope": "Business Area",
     "selectScope": "Select one or more business areas:",
+    "businessAreas": "Business Areas",
+    "selectBusinessAreas": "Select one or more business areas",
     "selected": "Selected",
     "technologies": "Technologies",
     "technologiesPlaceholder": "React, Node.js, PostgreSQL",
     "age": "Age",
     "enterAge": "Enter your age",
     "townCountry": "City/Country",
+    "townCountryPlaceholder": "Enter city and country",
     "enterTownCountry": "Enter city and country",
     "selectSpecializations": "Select one or more specializations:",
+    "specializations": "Specializations",
     "employment": "Employment",
+    "availability": "Availability",
+    "selectEmployment": "Select work availability",
     "enterEmployment": "Enter employment",
     "experience": "Experience",
+    "experiencePlaceholder": "Enter work experience",
     "enterExperience": "Enter experience",
     "verifyEmail": "Verify email",
     "sending": "Sending...",
@@ -498,6 +520,21 @@
     "ageRange": "Age must be between 18 and 120 years",
     "specializationsRequired": "Select at least one specialization",
     "employment": "Select employment availability"
+  },
+  "reviews": {
+    "myReviews": "My Reviews",
+    "noReviews": "No reviews yet",
+    "reviewsWillAppear": "Reviews for completed orders will appear here",
+    "loading": "Loading reviews...",
+    "noText": "No text"
+  },
+  "employment": {
+    "fullDay": "Full Day",
+    "partTime": "Part Time",
+    "fewHours": "Few Hours a Day",
+    "weekends": "Weekends",
+    "evening": "Evening Time",
+    "negotiable": "Negotiable"
   }
 }
 

@@ -1,3 +1,4 @@
--- V1: Initial schema baseline
--- Эта миграция пустая, так как схема базы данных уже существует
--- Flyway использует baseline-on-migrate=true для работы с существующей БД
+-- V1: Baseline migration
+-- Таблицы создаются автоматически через JPA/Hibernate (ddl-auto=update)
+-- Эта миграция нужна только для baseline Flyway
+
